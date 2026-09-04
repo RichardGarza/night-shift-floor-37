@@ -21,8 +21,10 @@ One **persistent** level. Soft restart never unloads it.
 
 - [ ] Place one `AOfficeArena` (or BP child)
 - [ ] **8** alien spawn point markers at edges: stairwells, loading dock, elevator bank, service corridor
-- [ ] Wire markers into `AOfficeArena::SpawnPointActors`
-- [ ] Cover volumes registered on arena (optional query boxes)
+- [ ] Wire markers into `AOfficeArena::SpawnPointActors` (optional — Phase 2 auto-generates 8 edge defaults at ±~2300 cm if empty)
+- [ ] Cover volumes registered on arena (optional — Phase 2 ships 6 default cubicle/resin query boxes; replace for final art)
+- [ ] Call / rely on `RefreshSpawnGather` after soft reset if markers change at runtime
+- [ ] Optional: GameMode/Character tick `EnforceBoundsOnActor` for hard floor clamp
 - [ ] NavMesh Bounds Volume covering walkable floors, ramps, stairs (tower contested)
 - [ ] Player start in a readable spawn (not atrium top)
 - [ ] World Settings: GameMode → `AArenaGameMode` (or BP)
