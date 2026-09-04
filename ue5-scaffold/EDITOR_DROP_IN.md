@@ -59,7 +59,7 @@ Same soft reference to **`DA_GameConfig`** on:
 
 ### Note — ResolveOrCreate landed; DA still for shared tuning
 
-`UGameConfig::ResolveOrCreate` **has landed** (Phase 5): GameMode/Character can load `/Game/Data/DA_GameConfig` or fall back to DESIGN defaults in PIE if unset. There is **no** BeginPlay auto-resolve TODO anymore.
+`UGameConfig::ResolveOrCreate` **has landed** (Phase 5): GameMode/Character load `/Game/Data/DA_GameConfig` when present, otherwise PIE uses DESIGN defaults via `NewObject`. BeginPlay calls `ResolveAndPropagateGameConfig` — Editor assignment of `DA_GameConfig` remains recommended for shared tuning.
 
 Still **create and assign `DA_GameConfig` in Editor** so designers share one tunable asset across GameMode, Character, FX pool, and bots (packaging + iteration). See `Content/Data/README.md`.
 
