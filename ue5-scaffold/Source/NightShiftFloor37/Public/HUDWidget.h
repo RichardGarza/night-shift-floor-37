@@ -34,24 +34,7 @@ public:
 	void ShowWin(float MatchTimeSeconds);
 
 	UFUNCTION(BlueprintCallable, Category = "HUD")
-	void ClearPrompt();
-
-	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void ShowHitMarker(bool bHeadshot);
-
-	/** Remaining hit-marker visibility time (seconds). BP can poll or use IsHitMarkerVisible. */
-	UPROPERTY(BlueprintReadOnly, Category = "HUD")
-	float HitMarkerTimeRemaining = 0.f;
-
-	UFUNCTION(BlueprintPure, Category = "HUD")
-	bool IsHitMarkerVisible() const { return HitMarkerTimeRemaining > 0.f; }
-
-	/**
-	 * Wire from WBP (viewport click / invisible full-screen button / OnMouseButtonDown)
-	 * so "Click to play" / "click to restart" works without a styled UMG button yet.
-	 */
-	UFUNCTION(BlueprintCallable, Category = "HUD")
-	void HandlePrimaryClick();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "HUD")
 	void OnRefreshHUD(float HealthPercent, int32 Mag, int32 Reserve, int32 Kills, float TimeSeconds);
@@ -65,4 +48,6 @@ protected:
 
 	UPROPERTY()
 	TWeakObjectPtr<ANightShiftCharacter> BoundCharacter;
+
+	float HitMarkerTimeRemaining = 0.f;
 };

@@ -2,9 +2,7 @@
 #include "ArenaGameMode.h"
 #include "NightShiftCharacter.h"
 #include "RifleComponent.h"
-#include "GameConfig.h"
 #include "NightShiftFloor37.h"
-#include "Kismet/GameplayStatics.h"
 
 void UHUDWidget::NativeConstruct()
 {
@@ -19,10 +17,6 @@ void UHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	if (HitMarkerTimeRemaining > 0.f)
 	{
 		HitMarkerTimeRemaining -= InDeltaTime;
-		if (HitMarkerTimeRemaining < 0.f)
-		{
-			HitMarkerTimeRemaining = 0.f;
-		}
 	}
 
 	if (!BoundGameMode.IsValid() || !BoundCharacter.IsValid())
@@ -35,11 +29,8 @@ void UHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	{
 		BoundCharacter->Rifle->GetAmmo(Mag, Reserve);
 	}
-
-	const float MaxHP = (BoundCharacter->GameConfig)
-		? BoundCharacter->GameConfig->PlayerMaxHealth
-		: 100.f;
-	const float HPPct = (MaxHP > 0.f) ? (BoundCharacter->Health / MaxHP) : 0.f;
+	const float MaxHP = 100.f; // prefer GameConfig when wired
+	const float HPPct = BoundCharacter->Health / MaxHP;
 	OnRefreshHUD(HPPct, Mag, Reserve, BoundGameMode->KillCount, BoundGameMode->MatchTimeSeconds);
 }
 
@@ -64,31 +55,9 @@ void UHUDWidget::ShowWin(float MatchTimeSeconds)
 	OnPromptChanged(FText::FromString(FString::Printf(TEXT("Floor cleared — %.1fs"), MatchTimeSeconds)));
 }
 
-void UHUDWidget::ClearPrompt()
-{
-	OnPromptChanged(FText::GetEmpty());
-}
-
 void UHUDWidget::ShowHitMarker(bool bHeadshot)
 {
 	HitMarkerTimeRemaining = 0.12f;
 	(void)bHeadshot;
-	// TODO: BP animates crosshair tick using IsHitMarkerVisible / HitMarkerTimeRemaining
-}
-
-void UHUDWidget::HandlePrimaryClick()
-{
-	if (AArenaGameMode* GM = BoundGameMode.Get())
-	{
-		GM->RequestStartOrRestart();
-		return;
-	}
-
-	if (UWorld* World = GetWorld())
-	{
-		if (AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(World)))
-		{
-			GM->RequestStartOrRestart();
-		}
-	}
+	// TODO: BP animates crosshair tick
 }
