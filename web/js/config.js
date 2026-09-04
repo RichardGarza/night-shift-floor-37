@@ -40,6 +40,7 @@ export const CONFIG = Object.freeze({
     magSize: 30,
     reserve: 90,
     rpm: 600,
+    // DESIGN kill remains 3 body / 2 head (hit-counts). Alien HP pools = hits×dmg so both stay live.
     bodyDmg: 25,
     headDmg: 50,
     reloadTime: 1.5,

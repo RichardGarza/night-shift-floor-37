@@ -13,7 +13,7 @@ export class HUD {
     this.overlay = document.getElementById('overlay');
     this.overlayHint = document.getElementById('overlay-hint');
     this.overlayTitle = this.overlay.querySelector('h1');
-    this._mode = 'start'; // start | playing | dead | win
+    this._mode = 'start'; // start | playing | paused | dead | win
   }
 
   setMode(mode, extra = {}) {
@@ -26,6 +26,9 @@ export class HUD {
     if (mode === 'start') {
       this.overlayTitle.textContent = 'Night Shift — Floor 37';
       this.overlayHint.textContent = 'Click to play';
+    } else if (mode === 'paused') {
+      this.overlayTitle.textContent = 'Paused';
+      this.overlayHint.textContent = 'Click to resume';
     } else if (mode === 'dead') {
       this.overlayTitle.textContent = 'You died';
       this.overlayHint.textContent = 'Click to restart';

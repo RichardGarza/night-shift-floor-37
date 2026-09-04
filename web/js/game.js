@@ -78,10 +78,32 @@ export class Game {
   }
 
   requestPlay() {
+    if (this.hud.mode === 'paused') {
+      this.canvas.requestPointerLock?.();
+      this.running = true;
+      this.hud.setMode('playing');
+      return;
+    }
     this.canvas.requestPointerLock?.();
     this.softReset();
     this.running = true;
     this.hud.setMode('playing');
+  }
+
+  /** Pause sim + unlock pointer. Idempotent; no-op if not playing. */
+  pause() {
+    if (this.hud.mode !== 'playing') return;
+    this.running = false;
+    document.exitPointerLock?.();
+    this.input.forward = false;
+    this.input.back = false;
+    this.input.left = false;
+    this.input.right = false;
+    this.input.sprint = false;
+    this.input.jump = false;
+    this.input.shoot = false;
+    this.input.reload = false;
+    this.hud.setMode('paused');
   }
 
   softReset() {
@@ -117,7 +139,8 @@ export class Game {
     else if (k === 'KeyQ' && down) {
       this.player.shoulder *= -1;
     } else if (k === 'Escape' && down) {
-      document.exitPointerLock?.();
+      if (this.hud.mode === 'playing') this.pause();
+      else document.exitPointerLock?.();
     }
   }
 
@@ -142,6 +165,10 @@ export class Game {
 
   _lockChange() {
     this.locked = document.pointerLockElement === this.canvas;
+    // Esc / OS unlock while playing should pause (running already false on dead/win)
+    if (!this.locked && this.running && this.hud.mode === 'playing') {
+      this.pause();
+    }
   }
 
   _loop() {

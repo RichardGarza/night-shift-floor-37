@@ -108,8 +108,9 @@ export class Alien {
     this.root.position.y = 0;
     this.root.visible = true;
     this.alive = true;
-    this.hpBody = CONFIG.alien.bodyHitsToKill;
-    this.hpHead = CONFIG.alien.headHitsToKill;
+    // HP pools = hits×dmg so CONFIG.rifle bodyDmg/headDmg stay live; DESIGN TTK still 3 body OR 2 head
+    this.hpBody = CONFIG.alien.bodyHitsToKill * CONFIG.rifle.bodyDmg;
+    this.hpHead = CONFIG.alien.headHitsToKill * CONFIG.rifle.headDmg;
     this.velocity.set(0, 0, 0);
     this.strafeDir = Math.random() < 0.5 ? -1 : 1;
     this.burstLeft = 0;
@@ -133,11 +134,12 @@ export class Alien {
   /** @returns true if killed */
   takeHit(isHead) {
     if (!this.alive) return false;
-    if (isHead) this.hpHead -= 1;
-    else this.hpBody -= 1;
+    if (isHead) this.hpHead -= CONFIG.rifle.headDmg;
+    else this.hpBody -= CONFIG.rifle.bodyDmg;
     this.flashT = CONFIG.feedback.flashMs / 1000;
     this.body.material = _flashMat;
     this.headMesh.material = _flashMat;
+    // Kill if either pool is depleted (DESIGN: 3 body OR 2 head)
     if (this.hpBody <= 0 || this.hpHead <= 0) {
       this.kill();
       return true;
