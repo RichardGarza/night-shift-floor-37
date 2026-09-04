@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Night Shift — Floor 37</title>
+  <link rel="stylesheet" href="./css/style.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://esm.sh/three@0.170.0",
+      "three/addons/": "https://esm.sh/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+  <div id="hud">
+    <div id="vignette"></div>
+    <div id="crosshair"><span class="dot"></span></div>
+    <div id="stats">
+      <div id="hp-label">HP <span id="hp-num">100</span></div>
+      <div id="hp-wrap"><div id="hp-bar"></div></div>
+    </div>
+    <div id="ammo"><span id="mag">30</span> <span class="reserve">/ <span id="reserve">90</span></span></div>
+    <div id="top-right">
+      <div>Kills <span id="kills">0</span> / 25</div>
+      <div id="timer">0:00</div>
+    </div>
+  </div>
+  <div id="overlay">
+    <div class="panel">
+      <h1>Night Shift — Floor 37</h1>
+      <p>Wet tile. Dying fluorescents. Alien resin on the cubicles.</p>
+      <p>Clear the floor. They keep coming.</p>
+      <p class="hint" id="overlay-hint">Click to play</p>
+      <p class="sub">WASD move · Mouse aim · LMB shoot · R reload · Shift sprint · Space jump · Q shoulder</p>
+    </div>
+  </div>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
