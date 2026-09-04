@@ -20,6 +20,8 @@ enum class EArenaMatchState : uint8
 	Lost           UMETA(DisplayName = "Lost")
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMatchStateChanged, EArenaMatchState, NewState);
+
 /**
  * Owns match flow: kill count, timer, win at KillsToWin, death → restart prompt, soft reset.
  * Soft restart resets HP/ammo/kills/timer/alien state/player transform without unloading the level.
@@ -47,6 +49,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens")
 	TSubclassOf<AAlienBot> AlienBotClass;
 
+	/**
+	 * UMG HUD widget class (assign WBP_NightShiftHUD in Editor).
+	 * If unset, match logic still runs and a one-time warning is logged.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HUD")
+	TSubclassOf<UHUDWidget> HUDWidgetClass;
+
 	UPROPERTY(BlueprintReadOnly, Category = "Match")
 	EArenaMatchState MatchState = EArenaMatchState::WaitingToStart;
 
@@ -56,8 +65,19 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Match")
 	float MatchTimeSeconds = 0.f;
 
+	UPROPERTY(BlueprintAssignable, Category = "Match|Events")
+	FOnMatchStateChanged OnMatchStateChanged;
+
 	UFUNCTION(BlueprintCallable, Category = "Match")
 	void StartMatch();
+
+	/**
+	 * Click-to-play / click-to-restart entry.
+	 * WaitingToStart → StartMatch.
+	 * Lost / Won → SoftRestart + StartMatch (one click).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Match")
+	void RequestStartOrRestart();
 
 	UFUNCTION(BlueprintCallable, Category = "Match")
 	void RegisterKill(AActor* Victim);
@@ -73,10 +93,16 @@ public:
 	void PauseMatch(bool bPause);
 
 	UFUNCTION(BlueprintPure, Category = "Match")
+	bool IsMatchPaused() const { return bMatchPaused; }
+
+	UFUNCTION(BlueprintPure, Category = "Match")
 	bool HasWon() const { return MatchState == EArenaMatchState::Won; }
 
 	UFUNCTION(BlueprintPure, Category = "Arena")
 	AOfficeArena* GetOfficeArena() const { return CachedArena; }
+
+	UFUNCTION(BlueprintPure, Category = "HUD")
+	UHUDWidget* GetHUDWidget() const { return HUDWidget; }
 
 	/**
 	 * Respawn a dead pool bot at farthest edge spawn from the player.
@@ -89,12 +115,20 @@ public:
 	int32 GetLiveAlienCount() const;
 
 protected:
+	void SetMatchState(EArenaMatchState NewState);
 	void CheckWinCondition();
 	void EnsureAlienPopulation();
 	void ClampDelta(float& DeltaSeconds) const;
 	void FindOrCacheArena();
 	void BuildAlienPool();
 	void SoftRestartAlienPool();
+	/** @param bShowPromptIfWaiting Show "Click to play" when leaving match in WaitingToStart. */
+	void SoftRestartInternal(bool bShowPromptIfWaiting);
+	void CreateAndBindHUD();
+	void EnsureHUDBound();
+	void UpdatePlayerInputMode();
+	void RecordStartTransform();
+	void ResetPlayerTransform();
 	FVector GetPlayerLocation() const;
 	ANightShiftCharacter* GetPlayerCharacter() const;
 
@@ -104,5 +138,10 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UHUDWidget> HUDWidget;
 
+	/** Player transform recorded on BeginPlay (fallback if no APlayerStart). */
+	FTransform StartTransform = FTransform::Identity;
+	bool bHasStartTransform = false;
+
 	bool bMatchPaused = false;
+	bool bLoggedMissingHUDClass = false;
 };
