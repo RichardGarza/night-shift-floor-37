@@ -292,9 +292,10 @@ void ANightShiftCharacter::RequestReload()
 
 void ANightShiftCharacter::RequestPause()
 {
+	// Esc toggles pause / unlock (DESIGN)
 	if (AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
 	{
-		GM->PauseMatch(true);
+		GM->PauseMatch(!GM->IsMatchPaused());
 	}
 }
 

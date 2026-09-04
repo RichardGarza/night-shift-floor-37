@@ -3,8 +3,8 @@
 #include "OfficeArena.h"
 #include "AlienBot.h"
 #include "NightShiftCharacter.h"
-#include "RifleComponent.h"
 #include "HUDWidget.h"
+#include "RifleComponent.h"
 #include "NightShiftFloor37.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
@@ -27,13 +27,12 @@ void AArenaGameMode::BeginPlay()
 	BuildAlienPool();
 	RecordStartTransform();
 	CreateAndBindHUD();
-
 	SetMatchState(EArenaMatchState::WaitingToStart);
 	UpdatePlayerInputMode();
-
-	UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode::BeginPlay — waiting to start (win @ %d kills, pool %d)"),
+	UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode::BeginPlay — waiting to start (win @ %d kills, pool %d, HUD %s)"),
 		GameConfig ? GameConfig->KillsToWin : 25,
-		AlienPool.Num());
+		AlienPool.Num(),
+		HUDWidget ? TEXT("bound") : TEXT("missing"));
 }
 
 void AArenaGameMode::Tick(float DeltaSeconds)
@@ -56,16 +55,6 @@ void AArenaGameMode::ClampDelta(float& DeltaSeconds) const
 	{
 		DeltaSeconds = MaxDt;
 	}
-}
-
-void AArenaGameMode::SetMatchState(EArenaMatchState NewState)
-{
-	if (MatchState == NewState)
-	{
-		return;
-	}
-	MatchState = NewState;
-	OnMatchStateChanged.Broadcast(NewState);
 }
 
 void AArenaGameMode::FindOrCacheArena()
@@ -143,61 +132,31 @@ void AArenaGameMode::BuildAlienPool()
 		AlienPool.Num(), MaxLive);
 }
 
-void AArenaGameMode::RecordStartTransform()
+void AArenaGameMode::SetMatchState(EArenaMatchState NewState)
 {
-	if (APawn* Pawn = UGameplayStatics::GetPlayerPawn(this, 0))
-	{
-		StartTransform = Pawn->GetActorTransform();
-		bHasStartTransform = true;
-		return;
-	}
-
-	if (UWorld* World = GetWorld())
-	{
-		if (AActor* PlayerStart = UGameplayStatics::GetActorOfClass(World, APlayerStart::StaticClass()))
-		{
-			StartTransform = PlayerStart->GetActorTransform();
-			bHasStartTransform = true;
-		}
-	}
-}
-
-void AArenaGameMode::ResetPlayerTransform()
-{
-	FTransform ResetXform = StartTransform;
-	bool bHaveXform = bHasStartTransform;
-
-	if (UWorld* World = GetWorld())
-	{
-		if (AActor* PlayerStart = UGameplayStatics::GetActorOfClass(World, APlayerStart::StaticClass()))
-		{
-			ResetXform = PlayerStart->GetActorTransform();
-			bHaveXform = true;
-		}
-	}
-
-	ANightShiftCharacter* Player = GetPlayerCharacter();
-	if (!Player || !bHaveXform)
+	if (MatchState == NewState)
 	{
 		return;
 	}
-
-	Player->SetActorTransform(ResetXform, false, nullptr, ETeleportType::TeleportPhysics);
-	if (AController* C = Player->GetController())
-	{
-		C->SetControlRotation(ResetXform.GetRotation().Rotator());
-	}
+	MatchState = NewState;
+	OnMatchStateChanged.Broadcast(NewState);
 }
 
 void AArenaGameMode::CreateAndBindHUD()
 {
+	if (HUDWidget)
+	{
+		EnsureHUDBound();
+		return;
+	}
+
 	if (!HUDWidgetClass)
 	{
 		if (!bLoggedMissingHUDClass)
 		{
 			bLoggedMissingHUDClass = true;
 			UE_LOG(LogNightShift, Warning,
-				TEXT("AArenaGameMode: HUDWidgetClass unset — match logic runs without HUD. Assign WBP in Editor."));
+				TEXT("AArenaGameMode: HUDWidgetClass unset — assign WBP_NightShiftHUD (or UHUDWidget BP) on the GameMode. Match logic still runs."));
 		}
 		return;
 	}
@@ -205,21 +164,18 @@ void AArenaGameMode::CreateAndBindHUD()
 	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
 	if (!PC)
 	{
-		UE_LOG(LogNightShift, Warning, TEXT("AArenaGameMode: no PlayerController — cannot create HUD."));
+		UE_LOG(LogNightShift, Warning, TEXT("AArenaGameMode: no PlayerController yet — HUD deferred."));
 		return;
 	}
 
+	HUDWidget = CreateWidget<UHUDWidget>(PC, HUDWidgetClass);
 	if (!HUDWidget)
 	{
-		HUDWidget = CreateWidget<UHUDWidget>(PC, HUDWidgetClass);
-		if (!HUDWidget)
-		{
-			UE_LOG(LogNightShift, Error, TEXT("AArenaGameMode: CreateWidget failed for HUDWidgetClass."));
-			return;
-		}
-		HUDWidget->AddToViewport();
+		UE_LOG(LogNightShift, Error, TEXT("AArenaGameMode: CreateWidget failed for HUDWidgetClass."));
+		return;
 	}
 
+	HUDWidget->AddToViewport(100);
 	EnsureHUDBound();
 	HUDWidget->ShowStartPrompt();
 }
@@ -228,16 +184,66 @@ void AArenaGameMode::EnsureHUDBound()
 {
 	if (!HUDWidget)
 	{
+		CreateAndBindHUD();
+		if (!HUDWidget)
+		{
+			return;
+		}
+	}
+
+	ANightShiftCharacter* Player = GetPlayerCharacter();
+	HUDWidget->BindToMatch(this, Player);
+
+	// After BindToMatch: rifle hits → HUD hit-marker
+	if (Player && Player->Rifle)
+	{
+		Player->Rifle->OnHitConfirmed.RemoveAll(HUDWidget);
+		Player->Rifle->OnHitConfirmed.AddDynamic(HUDWidget, &UHUDWidget::ShowHitMarker);
+	}
+}
+
+void AArenaGameMode::RecordStartTransform()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
 		return;
 	}
 
-	ANightShiftCharacter* Character = GetPlayerCharacter();
-	HUDWidget->BindToMatch(this, Character);
-
-	if (Character && Character->Rifle)
+	for (TActorIterator<APlayerStart> It(World); It; ++It)
 	{
-		Character->Rifle->OnHitConfirmed.RemoveDynamic(HUDWidget.Get(), &UHUDWidget::ShowHitMarker);
-		Character->Rifle->OnHitConfirmed.AddDynamic(HUDWidget.Get(), &UHUDWidget::ShowHitMarker);
+		StartTransform = It->GetActorTransform();
+		bHasStartTransform = true;
+		UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode: start transform from APlayerStart %s"), *It->GetName());
+		return;
+	}
+
+	if (APawn* Pawn = UGameplayStatics::GetPlayerPawn(this, 0))
+	{
+		StartTransform = Pawn->GetActorTransform();
+		bHasStartTransform = true;
+		UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode: start transform from player pawn (no APlayerStart)."));
+	}
+}
+
+void AArenaGameMode::ResetPlayerTransform()
+{
+	if (!bHasStartTransform)
+	{
+		RecordStartTransform();
+	}
+	if (!bHasStartTransform)
+	{
+		return;
+	}
+
+	if (APawn* Pawn = UGameplayStatics::GetPlayerPawn(this, 0))
+	{
+		Pawn->SetActorTransform(StartTransform, false, nullptr, ETeleportType::ResetPhysics);
+		if (AController* C = Pawn->GetController())
+		{
+			C->SetControlRotation(StartTransform.Rotator());
+		}
 	}
 }
 
@@ -249,51 +255,56 @@ void AArenaGameMode::UpdatePlayerInputMode()
 		return;
 	}
 
-	const bool bPrompting =
-		MatchState == EArenaMatchState::WaitingToStart ||
-		MatchState == EArenaMatchState::Lost ||
-		MatchState == EArenaMatchState::Won;
-	const bool bShowUI = bMatchPaused || bPrompting;
+	const bool bNeedUI =
+		bMatchPaused
+		|| MatchState == EArenaMatchState::WaitingToStart
+		|| MatchState == EArenaMatchState::Lost
+		|| MatchState == EArenaMatchState::Won;
 
-	PC->bShowMouseCursor = bShowUI;
-	if (bShowUI)
+	if (bNeedUI)
 	{
+		PC->bShowMouseCursor = true;
 		FInputModeGameAndUI Mode;
+		Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		Mode.SetHideCursorDuringCapture(false);
+		if (HUDWidget)
+		{
+			Mode.SetWidgetToFocus(HUDWidget->TakeWidget());
+		}
 		PC->SetInputMode(Mode);
 	}
 	else
 	{
+		PC->bShowMouseCursor = false;
 		PC->SetInputMode(FInputModeGameOnly());
 	}
 }
 
 void AArenaGameMode::StartMatch()
 {
+	EnsureHUDBound();
 	KillCount = 0;
 	MatchTimeSeconds = 0.f;
 	bMatchPaused = false;
 	SetMatchState(EArenaMatchState::InProgress);
 	FindOrCacheArena();
-	EnsureHUDBound();
-
 	if (CachedArena)
 	{
 		CachedArena->RefreshSpawnGather();
 	}
 	EnsureAlienPopulation();
-
 	if (HUDWidget)
 	{
 		HUDWidget->ClearPrompt();
 	}
-
 	UpdatePlayerInputMode();
 	UE_LOG(LogNightShift, Log, TEXT("Match started — %d live aliens."), GetLiveAlienCount());
 }
 
 void AArenaGameMode::RequestStartOrRestart()
 {
+	EnsureHUDBound();
+
 	if (MatchState == EArenaMatchState::WaitingToStart)
 	{
 		StartMatch();
@@ -302,10 +313,13 @@ void AArenaGameMode::RequestStartOrRestart()
 
 	if (MatchState == EArenaMatchState::Lost || MatchState == EArenaMatchState::Won)
 	{
-		// One click: soft reset then immediately start (prefer over two-click prompt).
-		SoftRestartInternal(false);
+		// One-click restart: skip "Click to play" gate
+		SoftRestartInternal(/*bShowPromptIfWaiting=*/false);
 		StartMatch();
+		return;
 	}
+
+	// InProgress — ignore click (Esc pause owns unlock)
 }
 
 void AArenaGameMode::RegisterKill(AActor* /*Victim*/)
@@ -322,25 +336,23 @@ void AArenaGameMode::RegisterKill(AActor* /*Victim*/)
 
 void AArenaGameMode::NotifyPlayerDied()
 {
+	if (MatchState != EArenaMatchState::InProgress)
+	{
+		return;
+	}
 	SetMatchState(EArenaMatchState::Lost);
-	bMatchPaused = false;
-
 	if (HUDWidget)
 	{
 		HUDWidget->ShowDeathPrompt();
 	}
-	else
-	{
-		UE_LOG(LogNightShift, Log, TEXT("Player died — HUD missing (\"You died — click to restart\")."));
-	}
-
 	UpdatePlayerInputMode();
 	UE_LOG(LogNightShift, Log, TEXT("Player died."));
 }
 
 void AArenaGameMode::SoftRestart()
 {
-	SoftRestartInternal(true);
+	// Public soft reset → WaitingToStart + "Click to play"
+	SoftRestartInternal(/*bShowPromptIfWaiting=*/true);
 }
 
 void AArenaGameMode::SoftRestartInternal(bool bShowPromptIfWaiting)
@@ -359,15 +371,22 @@ void AArenaGameMode::SoftRestartInternal(bool bShowPromptIfWaiting)
 	}
 
 	SoftRestartAlienPool();
-	EnsureHUDBound();
 
-	if (bShowPromptIfWaiting && HUDWidget)
+	if (HUDWidget)
 	{
-		HUDWidget->ShowStartPrompt();
+		if (bShowPromptIfWaiting)
+		{
+			HUDWidget->ShowStartPrompt();
+		}
+		else
+		{
+			HUDWidget->ClearPrompt();
+		}
 	}
-
 	UpdatePlayerInputMode();
-	UE_LOG(LogNightShift, Log, TEXT("SoftRestart complete — alien pool reset (%d slots)."), AlienPool.Num());
+
+	UE_LOG(LogNightShift, Log, TEXT("SoftRestartInternal(prompt=%s) — alien pool reset (%d slots)."),
+		bShowPromptIfWaiting ? TEXT("true") : TEXT("false"), AlienPool.Num());
 }
 
 void AArenaGameMode::SoftRestartAlienPool()
@@ -382,7 +401,7 @@ void AArenaGameMode::SoftRestartAlienPool()
 	{
 		if (Bot)
 		{
-			Bot->SoftReset();
+			Bot->SoftReset(); // SoftDespawn — stay inactive until StartMatch
 		}
 	}
 
@@ -392,15 +411,16 @@ void AArenaGameMode::SoftRestartAlienPool()
 		BuildAlienPool();
 	}
 
-	// Redistribute at farthest-from-player edge spawns so population is ready for StartMatch.
-	EnsureAlienPopulation();
+	// Do NOT EnsureAlienPopulation here — WaitingToStart must not leave chasing bots.
+	// StartMatch / InProgress tick calls EnsureAlienPopulation.
 }
 
 void AArenaGameMode::PauseMatch(bool bPause)
 {
 	bMatchPaused = bPause;
+	// Esc → pause / unlock (DESIGN input)
 	UpdatePlayerInputMode();
-	UE_LOG(LogNightShift, Log, TEXT("PauseMatch: %s"), bPause ? TEXT("paused") : TEXT("resumed"));
+	UE_LOG(LogNightShift, Log, TEXT("PauseMatch: %s"), bMatchPaused ? TEXT("paused") : TEXT("resumed"));
 }
 
 void AArenaGameMode::CheckWinCondition()
@@ -409,13 +429,10 @@ void AArenaGameMode::CheckWinCondition()
 	if (KillCount >= Need)
 	{
 		SetMatchState(EArenaMatchState::Won);
-		bMatchPaused = false;
-
 		if (HUDWidget)
 		{
 			HUDWidget->ShowWin(MatchTimeSeconds);
 		}
-
 		UpdatePlayerInputMode();
 		UE_LOG(LogNightShift, Log, TEXT("WIN — %d kills in %.2fs"), KillCount, MatchTimeSeconds);
 	}
@@ -461,6 +478,12 @@ bool AArenaGameMode::RespawnAlien(AAlienBot* Bot)
 
 void AArenaGameMode::EnsureAlienPopulation()
 {
+	// Only populate while a match is live — SoftRestart leaves pool despawned in WaitingToStart.
+	if (MatchState != EArenaMatchState::InProgress)
+	{
+		return;
+	}
+
 	FindOrCacheArena();
 	const int32 MaxLive = GameConfig ? GameConfig->MaxLiveAliens : 6;
 
