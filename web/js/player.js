@@ -1,10 +1,18 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
+import { overlapsSolidXZ, resolveSolidAxis } from './collision.js';
 
 const _fwd = new THREE.Vector3();
 const _right = new THREE.Vector3();
 const _wish = new THREE.Vector3();
 const _tmp = new THREE.Vector3();
+const _eye = new THREE.Vector3();
+const _muzzle = new THREE.Vector3();
+const _aimOrigin = new THREE.Vector3();
+const _aimDir = new THREE.Vector3();
+const _back = new THREE.Vector3();
+const _camRight = new THREE.Vector3();
+const _aimRay = { origin: _aimOrigin, dir: _aimDir };
 
 function rampHeightAt(b, x, z) {
   const dx = x - b.x0;
@@ -90,10 +98,10 @@ export class Player {
 
   get muzzleWorld() {
     const m = CONFIG.rifle.muzzleOffset;
-    _tmp.set(m.x * this.shoulder, m.y, m.z);
-    _tmp.applyAxisAngle(_up, this.yaw);
-    _tmp.add(this.root.position);
-    return _tmp.clone();
+    _muzzle.set(m.x * this.shoulder, m.y, m.z);
+    _muzzle.applyAxisAngle(_up, this.yaw);
+    _muzzle.add(this.root.position);
+    return _muzzle;
   }
 
   reset(spawnPos) {
@@ -160,15 +168,15 @@ export class Player {
   }
 
   _eyePoint() {
-    return _tmp.set(
+    return _eye.set(
       this.root.position.x,
       this.root.position.y + CONFIG.player.eyeOffset,
       this.root.position.z
-    ).clone();
+    );
   }
 
   getAimRay() {
-    const origin = new THREE.Vector3(
+    _aimOrigin.set(
       this.root.position.x,
       this.root.position.y + CONFIG.player.eyeOffset,
       this.root.position.z
@@ -176,12 +184,12 @@ export class Player {
     // Slight shoulder offset for OTS feel on aim origin (camera-based)
     const pitch = this.pitch + this.recoilPitch;
     const yaw = this.yaw + this.recoilYaw;
-    const dir = new THREE.Vector3(
+    _aimDir.set(
       -Math.sin(yaw) * Math.cos(pitch),
       Math.sin(pitch),
       -Math.cos(yaw) * Math.cos(pitch)
     ).normalize();
-    return { origin, dir };
+    return _aimRay;
   }
 
   update(dt, input, solids, half) {
@@ -268,10 +276,15 @@ export class Player {
       }
     }
 
-    // Invisible bounds
+    // Invisible bounds (XZ walls + ceiling)
     const lim = half - r - 0.2;
     pos.x = Math.max(-lim, Math.min(lim, pos.x));
     pos.z = Math.max(-lim, Math.min(lim, pos.z));
+    const maxFeetY = CONFIG.arena.ceilingHeight - h;
+    if (pos.y > maxFeetY) {
+      pos.y = maxFeetY;
+      if (this.velocity.y > 0) this.velocity.y = 0;
+    }
     if (pos.y < -2) {
       this.takeDamage(100);
     }
@@ -294,28 +307,17 @@ export class Player {
     const stepUp = CONFIG.player.stepUp;
     for (let i = 0; i < solids.length; i++) {
       const b = solids[i];
-      if (!b.blockXZ || b.ramp) continue;
+      if (!b.blockXZ || b.ramp || b.ceiling) continue;
       // Only collide if feet/body overlaps box in Y
       const py = pos.y + CONFIG.player.height * 0.5;
       if (py + CONFIG.player.height * 0.45 < b.min.y || py - CONFIG.player.height * 0.45 > b.max.y) continue;
-      const minX = b.min.x - r;
-      const maxX = b.max.x + r;
-      const minZ = b.min.z - r;
-      const maxZ = b.max.z + r;
-      if (pos.x > minX && pos.x < maxX && pos.z > minZ && pos.z < maxZ) {
-        const top = b.max.y;
-        if (this.onGround && top > pos.y + 0.02 && top <= pos.y + stepUp) {
-          pos.y = top;
-          continue;
-        }
-        if (axis === 'x') {
-          const cx = (b.min.x + b.max.x) * 0.5;
-          pos.x = pos.x < cx ? minX : maxX;
-        } else {
-          const cz = (b.min.z + b.max.z) * 0.5;
-          pos.z = pos.z < cz ? minZ : maxZ;
-        }
+      if (!overlapsSolidXZ(b, pos.x, pos.z, r)) continue;
+      const top = b.max.y;
+      if (this.onGround && top > pos.y + 0.02 && top <= pos.y + stepUp) {
+        pos.y = top;
+        continue;
       }
+      resolveSolidAxis(pos, r, b, axis);
     }
   }
 
@@ -360,18 +362,18 @@ export class Player {
     // Camera behind and to the side
     const cosP = Math.cos(pitch);
     const sinP = Math.sin(pitch);
-    const back = new THREE.Vector3(
+    _back.set(
       Math.sin(yaw) * cosP,
       -sinP,
       Math.cos(yaw) * cosP
     );
-    const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+    _camRight.set(Math.cos(yaw), 0, -Math.sin(yaw));
 
     const target = this.root.position;
     this._camPos.set(
-      target.x + back.x * dist + right.x * shoulder,
-      target.y + height + back.y * dist,
-      target.z + back.z * dist + right.z * shoulder
+      target.x + _back.x * dist + _camRight.x * shoulder,
+      target.y + height + _back.y * dist,
+      target.z + _back.z * dist + _camRight.z * shoulder
     );
 
     // Shake
@@ -382,9 +384,9 @@ export class Player {
 
     this.camera.position.copy(this._camPos);
     this._lookAt.set(
-      target.x - Math.sin(yaw) * Math.cos(pitch) * 8 + right.x * shoulder * 0.3,
+      target.x - Math.sin(yaw) * Math.cos(pitch) * 8 + _camRight.x * shoulder * 0.3,
       target.y + CONFIG.player.eyeOffset + Math.sin(pitch) * 8,
-      target.z - Math.cos(yaw) * Math.cos(pitch) * 8 + right.z * shoulder * 0.3
+      target.z - Math.cos(yaw) * Math.cos(pitch) * 8 + _camRight.z * shoulder * 0.3
     );
     this.camera.lookAt(this._lookAt);
   }

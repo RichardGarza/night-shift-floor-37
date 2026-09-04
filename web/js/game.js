@@ -15,6 +15,10 @@ export class Game {
     this.kills = 0;
     this.elapsed = 0;
     this.locked = false;
+    /** After UI click / unpause / pointer-lock re-acquire: ignore fire until LMB up */
+    this.suppressFireUntilUp = false;
+    /** Safety frames so suppress cannot stick if pointer-lock swallows mouseup */
+    this._suppressFrames = 0;
 
     this.renderer = new THREE.WebGLRenderer({
       canvas,
@@ -38,6 +42,16 @@ export class Game {
     this.rifle = new Rifle(this.player, this.combat);
     this.aliens = new AlienManager(this.scene, this.spawnPoints);
     this.hud = new HUD();
+
+    // Hot-path: reused shot collider list + prebuilt world entries (no per-shot alloc)
+    this._shotCols = [];
+    this._worldShotCols = [];
+    for (let i = 0; i < this.solids.length; i++) {
+      const s = this.solids[i];
+      if (!s.mesh || !s.blockXZ) continue;
+      if (s.max.y - s.min.y < 0.8) continue;
+      this._worldShotCols.push({ mesh: s.mesh, kind: 'world' });
+    }
 
     this.input = {
       forward: false,
@@ -68,7 +82,14 @@ export class Game {
     document.addEventListener('mouseup', this._onMouseUp);
     document.addEventListener('pointerlockchange', this._onPointerLockChange);
 
-    this.hud.overlay.addEventListener('click', () => this.requestPlay());
+    // mousedown + stopPropagation: UI primary-click never reaches combat mousedown
+    this.hud.overlay.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this._armFireSuppress();
+      this.requestPlay();
+    });
 
     this._resize();
     this.softReset();
@@ -77,7 +98,15 @@ export class Game {
     requestAnimationFrame(this._loop);
   }
 
+  _armFireSuppress() {
+    this.suppressFireUntilUp = true;
+    this._suppressFrames = 8;
+    this.input.shoot = false;
+  }
+
   requestPlay() {
+    // Overlay / HUD primary-click must not also fire the rifle
+    this._armFireSuppress();
     if (this.hud.mode === 'paused') {
       this.canvas.requestPointerLock?.();
       this.running = true;
@@ -151,20 +180,33 @@ export class Game {
   }
 
   _mouseDown(e) {
-    if (e.button === 0) {
-      if (!this.locked && this.hud.mode === 'playing') {
-        this.canvas.requestPointerLock?.();
-      }
-      this.input.shoot = true;
+    if (e.button !== 0) return;
+    // WaitingToStart / Won / Lost / paused: LMB is UI only — never combat fire
+    if (this.hud.mode !== 'playing' || !this.running) return;
+    if (this.suppressFireUntilUp) return;
+    if (!this.locked) {
+      // Re-acquire lock without treating this press as a shot
+      this._armFireSuppress();
+      this.canvas.requestPointerLock?.();
+      return;
     }
+    this.input.shoot = true;
   }
 
   _mouseUp(e) {
-    if (e.button === 0) this.input.shoot = false;
+    if (e.button !== 0) return;
+    this.input.shoot = false;
+    this.suppressFireUntilUp = false;
+    this._suppressFrames = 0;
   }
 
   _lockChange() {
+    const wasLocked = this.locked;
     this.locked = document.pointerLockElement === this.canvas;
+    if (this.locked && !wasLocked) {
+      // Pointer-lock re-acquire must not trigger a shot
+      this._armFireSuppress();
+    }
     // Esc / OS unlock while playing should pause (running already false on dead/win)
     if (!this.locked && this.running && this.hud.mode === 'playing') {
       this.pause();
@@ -175,6 +217,13 @@ export class Game {
     requestAnimationFrame(this._loop);
     let dt = this.clock.getDelta();
     if (dt > CONFIG.maxDt) dt = CONFIG.maxDt;
+
+    // Consume UI/lock suppress: keep shoot cleared; drop flag after a few frames if mouseup was lost
+    if (this.suppressFireUntilUp) {
+      this.input.shoot = false;
+      if (this._suppressFrames > 0) this._suppressFrames -= 1;
+      else this.suppressFireUntilUp = false;
+    }
 
     if (this.running && this.hud.mode === 'playing') {
       this.elapsed += dt;
@@ -188,13 +237,13 @@ export class Game {
         dt,
         this.input,
         () => {
-          const cols = this.aliens.getColliders();
-          // Block bullets with tall cover / walls (skip thin walkable platforms)
-          for (let i = 0; i < this.solids.length; i++) {
-            const s = this.solids[i];
-            if (!s.mesh || !s.blockXZ) continue;
-            if (s.max.y - s.min.y < 0.8) continue;
-            cols.push({ mesh: s.mesh, kind: 'world' });
+          const cols = this._shotCols;
+          cols.length = 0;
+          const aliens = this.aliens.getColliders();
+          for (let i = 0; i < aliens.length; i++) cols.push(aliens[i]);
+          // Block bullets with tall cover / walls (prebuilt; skip thin platforms)
+          for (let i = 0; i < this._worldShotCols.length; i++) {
+            cols.push(this._worldShotCols[i]);
           }
           return cols;
         },

@@ -4,7 +4,7 @@ import { CONFIG } from './config.js';
 /**
  * Builds the ~50x50 office floor + atrium.
  * Returns { group, solids, spawnPoints, half }
- * solids: { min, max, walkable, blockXZ } AABB in world space
+ * solids: { min, max, walkable, blockXZ, obb?, ceiling? } AABB (+ optional yaw OBB)
  */
 export function buildArena(scene) {
   const half = CONFIG.mapSize * 0.5;
@@ -273,6 +273,7 @@ export function buildArena(scene) {
   }
 
   // === SERVER RACKS (6) ===
+  // One rack is yaw-rotated; collision uses OBB matching the mesh (not pre-rotation AABB).
   const racks = [
     [18, 0, 0], [18, 0, 3], [18.5, 0, -3.5],
     [-18, 0, 2], [-18, 0, -1], [-17.5, 0, -4],
@@ -280,13 +281,44 @@ export function buildArena(scene) {
   racks.forEach(([x, , z], i) => {
     const h = i < 2 ? 3.6 : 2.2; // two stacked taller
     const ang = i === 2 ? 0.4 : 0;
-    const mesh = addBox(x, h * 0.5, z, 1.0, h, 0.7, shared.metal, { cast: true });
-    mesh.rotation.y = ang;
-    // Blink lights
-    const light = new THREE.PointLight(i % 2 ? 0x44ff66 : 0xffaa33, 0.6, 5, 2);
-    light.position.set(x, h * 0.7, z);
-    group.add(light);
+    const sx = 1.0;
+    const sz = 0.7;
+    let mesh;
+    if (ang !== 0) {
+      mesh = new THREE.Mesh(boxGeo, shared.metal);
+      mesh.position.set(x, h * 0.5, z);
+      mesh.scale.set(sx, h, sz);
+      mesh.rotation.y = ang;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      group.add(mesh);
+      const cos = Math.cos(ang);
+      const sin = Math.sin(ang);
+      const hx = sx * 0.5;
+      const hz = sz * 0.5;
+      const extX = Math.abs(hx * cos) + Math.abs(hz * sin);
+      const extZ = Math.abs(hx * sin) + Math.abs(hz * cos);
+      solids.push({
+        min: new THREE.Vector3(x - extX, 0, z - extZ),
+        max: new THREE.Vector3(x + extX, h, z + extZ),
+        walkable: false,
+        blockXZ: true,
+        mesh,
+        obb: { cx: x, cz: z, hx, hz, cos, sin, yaw: ang },
+      });
+    } else {
+      mesh = addBox(x, h * 0.5, z, sx, h, sz, shared.metal, { cast: true });
+    }
   });
+  // Shared rack cluster lights (2 instead of 6) — east green / west amber
+  {
+    const east = new THREE.PointLight(0x44ff66, 0.85, 9, 2);
+    east.position.set(18.2, 2.8, 0);
+    group.add(east);
+    const west = new THREE.PointLight(0xffaa33, 0.85, 9, 2);
+    west.position.set(-18, 2.6, -1);
+    group.add(west);
+  }
 
   // === CABLE TRAYS at 1.5m ===
   for (let i = -20; i <= 20; i += 4) {
@@ -322,15 +354,11 @@ export function buildArena(scene) {
     }
   }
 
-  // Mood lights — sick green / amber
+  // Mood lights — sick green / amber (culled 7→3; bump range for coverage)
   const moodLights = [
-    [0, 12, 0, 0x44aa55, 1.2, 28],
-    [-12, 4, -12, 0xb8860b, 0.9, 16],
-    [12, 4, 12, 0x3a8a3a, 0.8, 14],
-    [-12, 5, 12, 0xaa7733, 0.7, 12],
-    [12, 5, -12, 0x55aa66, 0.7, 12],
-    [0, 16, 0, 0x66cc77, 0.5, 20],
-    [14, 3, 8, 0xcc9944, 0.6, 10],
+    [0, 12, 0, 0x44aa55, 1.45, 34],       // atrium / tower core
+    [-12, 5, -8, 0xb8860b, 1.05, 22],    // SW amber wash
+    [12, 4, 10, 0x3a8a3a, 1.0, 20],     // NE green + conference pad
   ];
   for (const [x, y, z, col, int, dist] of moodLights) {
     const pl = new THREE.PointLight(col, int, dist, 2);
@@ -359,6 +387,25 @@ export function buildArena(scene) {
   scene.add(group);
   scene.fog = new THREE.Fog(CONFIG.arena.fogColor, CONFIG.arena.fogNear, CONFIG.arena.fogFar);
   scene.background = new THREE.Color(CONFIG.arena.fogColor);
+
+  // Invisible ceiling — solid box + vertical clamp (tower ~14m + headroom)
+  {
+    const ceilY = CONFIG.arena.ceilingHeight;
+    const thick = 0.5;
+    const mesh = new THREE.Mesh(boxGeo, shared.wall);
+    mesh.position.set(0, ceilY + thick * 0.5, 0);
+    mesh.scale.set(CONFIG.mapSize, thick, CONFIG.mapSize);
+    mesh.visible = false;
+    group.add(mesh);
+    solids.push({
+      min: new THREE.Vector3(-half, ceilY, -half),
+      max: new THREE.Vector3(half, ceilY + thick, half),
+      walkable: false,
+      blockXZ: false,
+      ceiling: true,
+      mesh,
+    });
+  }
 
   // 8 edge spawn points
   const spawnPoints = [

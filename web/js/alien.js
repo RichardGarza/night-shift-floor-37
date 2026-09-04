@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
+import { overlapsSolidXZ, resolveSolidAxis } from './collision.js';
 
 const _to = new THREE.Vector3();
 const _side = new THREE.Vector3();
@@ -63,14 +64,16 @@ export class Alien {
     this.headMesh = new THREE.Mesh(_headGeo, _headMat.clone());
     this.headMesh.position.y = CONFIG.alien.height * 0.88;
     this.headMesh.userData.alienRef = this;
+    // Cosmetic only — hit volume is top 25% of body capsule (see combat.js)
+    this.headMesh.raycast = () => {};
     this.root.add(this.headMesh);
 
     this.root.visible = false;
     scene.add(this.root);
 
     this.alive = false;
-    this.hpBody = 0;
-    this.hpHead = 0;
+    this.bodyHitsLeft = 0;
+    this.headHitsLeft = 0;
     this.velocity = new THREE.Vector3();
     this.strafeDir = 1;
     this.burstLeft = 0;
@@ -108,9 +111,9 @@ export class Alien {
     this.root.position.y = 0;
     this.root.visible = true;
     this.alive = true;
-    // HP pools = hits×dmg so CONFIG.rifle bodyDmg/headDmg stay live; DESIGN TTK still 3 body OR 2 head
-    this.hpBody = CONFIG.alien.bodyHitsToKill * CONFIG.rifle.bodyDmg;
-    this.hpHead = CONFIG.alien.headHitsToKill * CONFIG.rifle.headDmg;
+    // Independent hit counters: DESIGN kill = 3 body OR 2 headshots (mixed do not combine)
+    this.bodyHitsLeft = CONFIG.alien.bodyHitsToKill;
+    this.headHitsLeft = CONFIG.alien.headHitsToKill;
     this.velocity.set(0, 0, 0);
     this.strafeDir = Math.random() < 0.5 ? -1 : 1;
     this.burstLeft = 0;
@@ -134,13 +137,13 @@ export class Alien {
   /** @returns true if killed */
   takeHit(isHead) {
     if (!this.alive) return false;
-    if (isHead) this.hpHead -= CONFIG.rifle.headDmg;
-    else this.hpBody -= CONFIG.rifle.bodyDmg;
+    if (isHead) this.headHitsLeft -= 1;
+    else this.bodyHitsLeft -= 1;
     this.flashT = CONFIG.feedback.flashMs / 1000;
     this.body.material = _flashMat;
     this.headMesh.material = _flashMat;
-    // Kill if either pool is depleted (DESIGN: 3 body OR 2 head)
-    if (this.hpBody <= 0 || this.hpHead <= 0) {
+    // Kill if either counter reaches 0 (DESIGN: 3 body OR 2 head; independent pools)
+    if (this.bodyHitsLeft <= 0 || this.headHitsLeft <= 0) {
       this.kill();
       return true;
     }
@@ -178,9 +181,14 @@ export class Alien {
       if (this.burstLeft > 0) {
         this.shotCd -= dt;
         if (this.shotCd <= 0) {
-          this._fireAt(player, combat);
-          this.burstLeft -= 1;
-          this.shotCd = 60 / CONFIG.alien.burstRpm;
+          // Per-shot LoS: if broken mid-burst, abort and let chase take over next frame
+          if (!this._hasLos(player, solids)) {
+            this.burstLeft = 0;
+          } else {
+            this._fireAt(player, combat, solids);
+            this.burstLeft -= 1;
+            this.shotCd = 60 / CONFIG.alien.burstRpm;
+          }
         }
       } else if (this.burstCd <= 0) {
         this.burstLeft = CONFIG.alien.burstShots;
@@ -263,6 +271,8 @@ export class Alien {
       }
     }
     pos.y = gy;
+    const maxFeetY = CONFIG.arena.ceilingHeight - CONFIG.alien.height;
+    if (pos.y > maxFeetY) pos.y = maxFeetY;
 
     const lim = half - r - 0.3;
     pos.x = Math.max(-lim, Math.min(lim, pos.x));
@@ -295,17 +305,10 @@ export class Alien {
     const py = y + h * 0.5;
     for (let i = 0; i < solids.length; i++) {
       const b = solids[i];
-      if (!b.blockXZ || b.ramp) continue;
+      if (!b.blockXZ || b.ramp || b.ceiling) continue;
       if (py + h * 0.35 < b.min.y || py - h * 0.35 > b.max.y) continue;
       if (b.walkable && b.max.y - b.min.y < 0.5 && Math.abs(y - b.max.y) < 0.45) continue;
-      if (
-        x > b.min.x - r &&
-        x < b.max.x + r &&
-        z > b.min.z - r &&
-        z < b.max.z + r
-      ) {
-        return true;
-      }
+      if (overlapsSolidXZ(b, x, z, r)) return true;
     }
     return false;
   }
@@ -344,9 +347,9 @@ export class Alien {
       const z = _origin.z + _dir.z * t;
       for (let i = 0; i < solids.length; i++) {
         const b = solids[i];
-        if (!b.blockXZ || b.ramp) continue;
+        if (!b.blockXZ || b.ramp || b.ceiling) continue;
         if (b.max.y - b.min.y < 1.4) continue;
-        if (x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z && y > b.min.y && y < b.max.y) {
+        if (y > b.min.y && y < b.max.y && overlapsSolidXZ(b, x, z, 0)) {
           return false;
         }
       }
@@ -354,8 +357,10 @@ export class Alien {
     return true;
   }
 
-  _fireAt(player, combat) {
+  _fireAt(player, combat, solids) {
     if (!player.alive) return;
+    // Engage fire only with line of sight (belt-and-suspenders with burst loop)
+    if (solids && !this._hasLos(player, solids)) return;
     const hit = Math.random() < CONFIG.alien.accuracy;
     _origin.set(this.position.x, this.position.y + 1.3, this.position.z);
     if (hit) {
@@ -383,29 +388,18 @@ export class Alien {
     const stepUp = CONFIG.alien.stepUp;
     for (let i = 0; i < solids.length; i++) {
       const b = solids[i];
-      if (!b.blockXZ || b.ramp) continue;
+      if (!b.blockXZ || b.ramp || b.ceiling) continue;
       const py = pos.y + h * 0.5;
       if (py + h * 0.4 < b.min.y || py - h * 0.4 > b.max.y) continue;
       if (b.walkable && b.max.y - b.min.y < 0.5 && Math.abs(pos.y - b.max.y) < 0.4) continue;
-      const minX = b.min.x - r;
-      const maxX = b.max.x + r;
-      const minZ = b.min.z - r;
-      const maxZ = b.max.z + r;
-      if (pos.x > minX && pos.x < maxX && pos.z > minZ && pos.z < maxZ) {
-        // Small step-up onto low ledges / fine stairs
-        const top = b.max.y;
-        if (top > pos.y + 0.02 && top <= pos.y + stepUp) {
-          pos.y = top;
-          continue;
-        }
-        if (axis === 'x') {
-          const cx = (b.min.x + b.max.x) * 0.5;
-          pos.x = pos.x < cx ? minX : maxX;
-        } else {
-          const cz = (b.min.z + b.max.z) * 0.5;
-          pos.z = pos.z < cz ? minZ : maxZ;
-        }
+      if (!overlapsSolidXZ(b, pos.x, pos.z, r)) continue;
+      // Small step-up onto low ledges / fine stairs
+      const top = b.max.y;
+      if (top > pos.y + 0.02 && top <= pos.y + stepUp) {
+        pos.y = top;
+        continue;
       }
+      resolveSolidAxis(pos, r, b, axis);
     }
   }
 }
@@ -414,6 +408,8 @@ export class AlienManager {
   constructor(scene, spawnPoints) {
     this.spawnPoints = spawnPoints;
     this.aliens = [];
+    /** Reused each getColliders() call — avoid per-shot array alloc */
+    this._colliderBuf = [];
     for (let i = 0; i < CONFIG.alien.count; i++) {
       this.aliens.push(new Alien(scene));
     }
@@ -464,12 +460,13 @@ export class AlienManager {
   }
 
   getColliders() {
-    const out = [];
+    const out = this._colliderBuf;
+    out.length = 0;
     for (let i = 0; i < this.aliens.length; i++) {
       const a = this.aliens[i];
       if (!a.alive) continue;
+      // Body capsule only; head mesh is visual-only (isHead via Y threshold)
       out.push({ mesh: a.body, kind: 'alien', alien: a });
-      out.push({ mesh: a.headMesh, kind: 'alien', alien: a });
     }
     return out;
   }

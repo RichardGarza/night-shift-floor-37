@@ -40,7 +40,8 @@ export const CONFIG = Object.freeze({
     magSize: 30,
     reserve: 90,
     rpm: 600,
-    // DESIGN kill remains 3 body / 2 head (hit-counts). Alien HP pools = hits×dmg so both stay live.
+    // Rifle damage stats (feedback/UI). Alien death uses hit-counts per DESIGN
+    // "3 body or 2 headshots" — independent pools; mixed hits do not combine.
     bodyDmg: 25,
     headDmg: 50,
     reloadTime: 1.5,
@@ -56,7 +57,7 @@ export const CONFIG = Object.freeze({
     flashMs: 80,
     tracerMs: 60,
     tracerPool: 24,
-    muzzlePool: 8,
+    muzzlePool: 4,
     muzzleLightIntensity: 4,
     muzzleLightDuration: 0.05,
     hitMarkerMs: 120,
@@ -106,5 +107,7 @@ export const CONFIG = Object.freeze({
     fogFar: 55,
     // Continuous ramp thickness / collision pad
     rampThickness: 0.28,
+    // Invisible ceiling (~14m atrium tower + headroom); feet clamp = ceilingHeight - height
+    ceilingHeight: 16,
   },
 });

@@ -15,6 +15,8 @@ export class CombatSystem {
     this.muzzles = [];
     this.hitMarkerUntil = 0;
     this.vignette = 0;
+    /** Reused each hitscan — avoid per-shot mesh list alloc */
+    this._meshList = [];
     this._tracerGeo = new THREE.BufferGeometry();
     this._tracerMat = new THREE.LineBasicMaterial({
       color: 0xffeeaa,
@@ -86,7 +88,8 @@ export class CombatSystem {
   hitscan(origin, direction, colliders, range = CONFIG.rifle.range) {
     this.raycaster.set(origin, direction);
     this.raycaster.far = range;
-    const meshes = [];
+    const meshes = this._meshList;
+    meshes.length = 0;
     for (let i = 0; i < colliders.length; i++) {
       if (colliders[i].mesh.visible) meshes.push(colliders[i].mesh);
     }
@@ -103,7 +106,7 @@ export class CombatSystem {
       if (c.mesh === h.object || (c.mesh.children && c.mesh.children.includes(h.object))) {
         if (c.kind === 'alien') {
           alien = c.alien;
-          // Head = top 25% of capsule height
+          // Head = top 25% of capsule (head mesh is cosmetic; body capsule only)
           const localY = h.point.y - alien.position.y;
           isHead = localY >= CONFIG.alien.height * 0.75;
         }
