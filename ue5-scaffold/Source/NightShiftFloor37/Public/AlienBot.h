@@ -64,6 +64,13 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "FX")
 	bool bIsFlashing = false;
 
+	/**
+	 * Material/BP-readable flash intensity 0→1 while flashing (DESIGN: white flash 80 ms).
+	 * Bind mesh emissive to this / OnHitFlash in Editor. No mesh materials required in C++.
+	 */
+	UPROPERTY(BlueprintReadOnly, Category = "FX")
+	float HitFlashAlpha = 0.f;
+
 	/** Broadcast when flash starts (true) or expires (false). */
 	UPROPERTY(BlueprintAssignable, Category = "FX")
 	FOnAlienHitFlash OnHitFlash;
@@ -95,9 +102,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "AI")
 	bool IsRespawnPending() const;
 
+	/** When true, ChasePlayer tries AI MoveTo before steering fallback (needs NavMesh + AIController). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	bool bPreferNavMeshMoveTo = false;
+
 protected:
 	void UpdateAI(float DeltaSeconds);
 	void ChasePlayer(float DeltaSeconds);
+	bool TryNavMeshMoveToTarget();
 	void StrafeAndBurst(float DeltaSeconds);
 	void TryBurstShot();
 	void Die();

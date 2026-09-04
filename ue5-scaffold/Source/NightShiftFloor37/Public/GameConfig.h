@@ -208,4 +208,11 @@ public:
 	/** Helper: seconds between shots at Mag RPM. */
 	UFUNCTION(BlueprintPure, Category = "Rifle")
 	float GetSecondsPerShot() const { return RoundsPerMinute > 0.f ? 60.f / RoundsPerMinute : 0.1f; }
+
+	/**
+	 * Load /Game/Data/DA_GameConfig if Present; else NewObject with DESIGN defaults (PIE-safe).
+	 * Pass Existing if already assigned on GameMode/Character.
+	 */
+	static UGameConfig* ResolveOrCreate(UObject* Outer, UGameConfig* Existing = nullptr);
 };
+

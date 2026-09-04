@@ -11,6 +11,8 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Kismet/GameplayStatics.h"
+#include "Camera/CameraShakeBase.h"
+#include "GameFramework/PlayerController.h"
 
 ANightShiftCharacter::ANightShiftCharacter()
 {
@@ -49,8 +51,15 @@ void ANightShiftCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	ApplyConfigToMovement();
-	ConfigureCapsuleFromConfig();
+	if (!GameConfig)
+	{
+		if (const AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
+		{
+			GameConfig = GM->GameConfig;
+		}
+	}
+	GameConfig = UGameConfig::ResolveOrCreate(this, GameConfig);
+	ApplyResolvedGameConfig();
 	Health = GameConfig ? GameConfig->PlayerMaxHealth : 100.f;
 	TimeSinceLastDamage = GameConfig ? GameConfig->PlayerRegenDelaySeconds : 5.f;
 	LastGroundedZ = GetActorLocation().Z;
@@ -156,7 +165,7 @@ void ANightShiftCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		}
 		if (JumpAction)
 		{
-			EIC->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
+			EIC->BindAction(JumpAction, ETriggerEvent::Started, this, &ANightShiftCharacter::TryJumpOrMantle);
 			EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 		}
 		if (SprintAction)
@@ -181,6 +190,25 @@ void ANightShiftCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		{
 			EIC->BindAction(PauseAction, ETriggerEvent::Started, this, &ANightShiftCharacter::RequestPause);
 		}
+	}
+}
+
+
+void ANightShiftCharacter::ApplyResolvedGameConfig()
+{
+	if (!GameConfig)
+	{
+		return;
+	}
+	ApplyConfigToMovement();
+	ConfigureCapsuleFromConfig();
+	if (Rifle)
+	{
+		Rifle->InitializeFromConfig(GameConfig);
+	}
+	if (ArenaCollision)
+	{
+		ArenaCollision->GameConfig = GameConfig;
 	}
 }
 
@@ -290,12 +318,60 @@ void ANightShiftCharacter::RequestReload()
 	}
 }
 
+
+void ANightShiftCharacter::TryJumpOrMantle()
+{
+	if (TryMantleOverLedge())
+	{
+		return;
+	}
+	Jump();
+}
+
+bool ANightShiftCharacter::TryMantleOverLedge()
+{
+	// Optional DESIGN mantle: forward probe for waist-high ledge, then up+over. No animation required for v1.
+	UWorld* World = GetWorld();
+	UCharacterMovementComponent* Move = GetCharacterMovement();
+	if (!World || !Move || !Move->IsMovingOnGround())
+	{
+		return false;
+	}
+
+	const FVector Start = GetActorLocation();
+	const FVector Forward = GetActorForwardVector();
+	FHitResult WallHit;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(MantleWall), false, this);
+	const FVector WallEnd = Start + Forward * MantleReachCm;
+	if (!World->LineTraceSingleByChannel(WallHit, Start, WallEnd, ECC_Visibility, Params))
+	{
+		return false;
+	}
+
+	const FVector TopStart = WallHit.ImpactPoint + Forward * 10.f + FVector(0.f, 0.f, MantleHeightCm);
+	const FVector TopEnd = TopStart - FVector(0.f, 0.f, MantleHeightCm + 40.f);
+	FHitResult TopHit;
+	if (!World->LineTraceSingleByChannel(TopHit, TopStart, TopEnd, ECC_Visibility, Params))
+	{
+		return false;
+	}
+
+	const FVector Landing = TopHit.ImpactPoint + FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 2.f);
+	SetActorLocation(Landing, false, nullptr, ETeleportType::TeleportPhysics);
+	Move->StopMovementImmediately();
+	UE_LOG(LogNightShift, Verbose, TEXT("Mantle success"));
+	return true;
+}
+
 void ANightShiftCharacter::RequestPause()
 {
-	// Esc toggles pause / unlock (DESIGN)
+	// Esc toggles pause / unlock (DESIGN) — only during InProgress (PauseMatch enforces)
 	if (AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
 	{
-		GM->PauseMatch(!GM->IsMatchPaused());
+		if (GM->MatchState == EArenaMatchState::InProgress || GM->IsMatchPaused())
+		{
+			GM->PauseMatch(!GM->IsMatchPaused());
+		}
 	}
 }
 
@@ -313,6 +389,15 @@ float ANightShiftCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
 	if (Applied > 0.f)
 	{
 		OnDamaged.Broadcast(Applied);
+		// Camera shake (optional class). Vignette: WBP binds to OnDamaged.
+		if (DamageCameraShake)
+		{
+			if (APlayerController* PC = Cast<APlayerController>(GetController()))
+			{
+				const float Scale = GameConfig ? GameConfig->CameraShakeScale : 0.35f;
+				PC->ClientStartCameraShake(DamageCameraShake, Scale);
+			}
+		}
 	}
 	BroadcastHealthChanged();
 

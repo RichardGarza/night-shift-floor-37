@@ -18,6 +18,13 @@ URifleComponent::URifleComponent()
 void URifleComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	if (!Config)
+	{
+		if (const ANightShiftCharacter* Char = Cast<ANightShiftCharacter>(GetOwner()))
+		{
+			Config = Char->GameConfig;
+		}
+	}
 	if (Config)
 	{
 		InitializeFromConfig(Config);

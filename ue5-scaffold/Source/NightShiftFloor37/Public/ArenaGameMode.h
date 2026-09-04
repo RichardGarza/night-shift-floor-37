@@ -119,6 +119,8 @@ protected:
 	void CheckWinCondition();
 	void EnsureAlienPopulation();
 	void ClampDelta(float& DeltaSeconds) const;
+	/** Auto-resolve GameConfig (asset or DESIGN defaults) and push to bots/player/rifle/collision. */
+	void ResolveAndPropagateGameConfig();
 	void FindOrCacheArena();
 	void BuildAlienPool();
 	void SoftRestartAlienPool();

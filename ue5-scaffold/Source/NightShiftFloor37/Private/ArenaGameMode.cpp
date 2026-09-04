@@ -5,6 +5,7 @@
 #include "NightShiftCharacter.h"
 #include "HUDWidget.h"
 #include "RifleComponent.h"
+#include "ArenaCollision.h"
 #include "NightShiftFloor37.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
@@ -22,17 +23,20 @@ AArenaGameMode::AArenaGameMode()
 void AArenaGameMode::BeginPlay()
 {
 	Super::BeginPlay();
-	// TODO: Resolve GameConfig from Content/Data if unset.
+	ResolveAndPropagateGameConfig();
 	FindOrCacheArena();
 	BuildAlienPool();
+	// Pool may build before pawn exists — propagate again for player/rifle/collision.
+	ResolveAndPropagateGameConfig();
 	RecordStartTransform();
 	CreateAndBindHUD();
 	SetMatchState(EArenaMatchState::WaitingToStart);
 	UpdatePlayerInputMode();
-	UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode::BeginPlay — waiting to start (win @ %d kills, pool %d, HUD %s)"),
+	UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode::BeginPlay — waiting to start (win @ %d kills, pool %d, HUD %s, config %s)"),
 		GameConfig ? GameConfig->KillsToWin : 25,
 		AlienPool.Num(),
-		HUDWidget ? TEXT("bound") : TEXT("missing"));
+		HUDWidget ? TEXT("bound") : TEXT("missing"),
+		GameConfig ? *GameConfig->GetName() : TEXT("null"));
 }
 
 void AArenaGameMode::Tick(float DeltaSeconds)
@@ -54,6 +58,37 @@ void AArenaGameMode::ClampDelta(float& DeltaSeconds) const
 	if (DeltaSeconds > MaxDt)
 	{
 		DeltaSeconds = MaxDt;
+	}
+}
+
+
+void AArenaGameMode::ResolveAndPropagateGameConfig()
+{
+	GameConfig = UGameConfig::ResolveOrCreate(this, GameConfig);
+
+	FindOrCacheArena();
+	if (CachedArena && GameConfig)
+	{
+		CachedArena->GameConfig = GameConfig;
+	}
+
+	for (AAlienBot* Bot : AlienPool)
+	{
+		if (!Bot)
+		{
+			continue;
+		}
+		Bot->GameConfig = GameConfig;
+		if (Bot->ArenaCollision)
+		{
+			Bot->ArenaCollision->GameConfig = GameConfig;
+		}
+	}
+
+	if (ANightShiftCharacter* Player = GetPlayerCharacter())
+	{
+		Player->GameConfig = GameConfig;
+		Player->ApplyResolvedGameConfig();
 	}
 }
 
@@ -417,6 +452,11 @@ void AArenaGameMode::SoftRestartAlienPool()
 
 void AArenaGameMode::PauseMatch(bool bPause)
 {
+	// Only pause during an active match; always allow clear when already paused.
+	if (bPause && MatchState != EArenaMatchState::InProgress && !bMatchPaused)
+	{
+		return;
+	}
 	bMatchPaused = bPause;
 	// Esc → pause / unlock (DESIGN input)
 	UpdatePlayerInputMode();

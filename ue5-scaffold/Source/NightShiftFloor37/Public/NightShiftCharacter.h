@@ -14,6 +14,7 @@ class UGameConfig;
 class UInputMappingContext;
 class UInputAction;
 class UArenaCollision;
+class UCameraShakeBase;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDamaged, float, Amount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDied);
@@ -111,7 +112,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Recoil")
 	FVector2D RecoilOffsetDegrees = FVector2D::ZeroVector;
 
-	// ----- Feedback delegates (HUD / vignette / shake bind without Editor assets) -----
+	// ----- Feedback (HUD / vignette / shake) -----
+	// Vignette: bind WBP red-edge overlay to OnDamaged (Editor-only UMG).
+	// Camera shake: assign DamageCameraShake — played in TakeDamage when set.
 
 	UPROPERTY(BlueprintAssignable, Category = "Health|Events")
 	FOnDamaged OnDamaged;
@@ -121,6 +124,10 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Health|Events")
 	FOnHealthChanged OnHealthChanged;
+
+	/** Optional camera shake played on TakeDamage (EditAnywhere — assign UCameraShakeBase subclass in BP). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Feedback")
+	TSubclassOf<UCameraShakeBase> DamageCameraShake;
 
 	// ----- Input handlers (wire to Enhanced Input) -----
 
@@ -151,6 +158,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	void RequestPause();
 
+	/** Space: jump, or short mantle if a ledge is within MantleReach (DESIGN Jump/mantle). */
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void TryJumpOrMantle();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float MantleReachCm = 80.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float MantleHeightCm = 120.f;
+
 	// ----- Combat / health -----
 
 	UFUNCTION(BlueprintCallable, Category = "Health")
@@ -158,6 +175,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Health")
 	void SoftResetPlayerState();
+
+	/** Apply GameConfig after ResolveOrCreate (movement, capsule, rifle). */
+	UFUNCTION(BlueprintCallable, Category = "Config")
+	void ApplyResolvedGameConfig();
 
 	UFUNCTION(BlueprintCallable, Category = "Recoil")
 	void AddRecoilKick(float PitchDegrees, float YawDegrees);
@@ -177,6 +198,7 @@ protected:
 	void UpdateRecoilRecovery(float DeltaSeconds);
 	void UpdateSprintSpeed();
 	void ApplyShoulderOffset();
+	bool TryMantleOverLedge();
 	void BroadcastHealthChanged();
 	void SnapshotGroundedZIfNeeded();
 

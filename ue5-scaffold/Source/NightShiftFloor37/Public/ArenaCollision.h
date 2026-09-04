@@ -22,6 +22,8 @@ class NIGHTSHIFTFLOOR37_API UArenaCollision : public UActorComponent
 public:
 	UArenaCollision();
 
+	virtual void BeginPlay() override;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
 	TObjectPtr<UGameConfig> GameConfig;
 

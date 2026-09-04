@@ -9,6 +9,9 @@
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
+#include "NavigationSystem.h"
+#include "Navigation/PathFollowingComponent.h"
+#include "AIController.h"
 #include "EngineUtils.h"
 
 namespace AlienBotPrivate
@@ -36,6 +39,10 @@ void AAlienBot::BeginPlay()
 	{
 		GetCharacterMovement()->MaxWalkSpeed = GameConfig->AlienMoveSpeed;
 		GetCapsuleComponent()->SetCapsuleSize(GameConfig->AlienCapsuleRadiusCm, GameConfig->AlienCapsuleHalfHeightCm);
+		if (ArenaCollision)
+		{
+			ArenaCollision->GameConfig = GameConfig;
+		}
 	}
 	BurstCooldownRemaining = 0.f;
 	BurstShotsRemaining = 0;
@@ -70,18 +77,24 @@ void AAlienBot::UpdateHitFlash(float DeltaSeconds)
 {
 	if (HitFlashTimeRemaining <= 0.f)
 	{
+		HitFlashAlpha = 0.f;
 		return;
 	}
 	HitFlashTimeRemaining -= DeltaSeconds;
+	const float DurSec = (GameConfig ? GameConfig->HitFlashDurationMs : 80.f) * 0.001f;
+	// HitFlashAlpha 1→0 over ~80 ms for BP/material (no mesh materials required in C++).
+	HitFlashAlpha = DurSec > KINDA_SMALL_NUMBER
+		? FMath::Clamp(HitFlashTimeRemaining / DurSec, 0.f, 1.f)
+		: 0.f;
 	if (HitFlashTimeRemaining <= 0.f)
 	{
 		HitFlashTimeRemaining = 0.f;
+		HitFlashAlpha = 0.f;
 		if (bIsFlashing)
 		{
 			bIsFlashing = false;
 			OnHitFlash.Broadcast(false);
 		}
-		// TODO: restore material color from white flash
 	}
 }
 
@@ -110,6 +123,7 @@ void AAlienBot::ActivateAtSpawn(const FTransform& SpawnTransform)
 	BurstShotsRemaining = 0;
 	BurstIntraShotRemaining = 0.f;
 	HitFlashTimeRemaining = 0.f;
+	HitFlashAlpha = 0.f;
 	if (bIsFlashing)
 	{
 		bIsFlashing = false;
@@ -146,6 +160,7 @@ void AAlienBot::SoftReset()
 	StrafeSign = 1.f;
 	SteerSideSign = 1.f;
 	HitFlashTimeRemaining = 0.f;
+	HitFlashAlpha = 0.f;
 	if (bIsFlashing)
 	{
 		bIsFlashing = false;
@@ -188,6 +203,31 @@ void AAlienBot::UpdateAI(float DeltaSeconds)
 	}
 }
 
+bool AAlienBot::TryNavMeshMoveToTarget()
+{
+	// Stub for Editor NavMesh: requires AIController + NavMeshBounds in level (see NAVMESH_NOTES.md).
+	if (!bPreferNavMeshMoveTo || !TargetPlayer.IsValid())
+	{
+		return false;
+	}
+	AAIController* AIC = Cast<AAIController>(GetController());
+	if (!AIC)
+	{
+		return false;
+	}
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (!NavSys)
+	{
+		return false;
+	}
+	FAIMoveRequest Req(TargetPlayer.Get());
+	Req.SetAcceptanceRadius(100.f);
+	Req.SetUsePathfinding(true);
+	const FPathFollowingRequestResult Result = AIC->MoveTo(Req);
+	return Result.Code == EPathFollowingRequestResult::RequestSuccessful
+		|| Result.Code == EPathFollowingRequestResult::AlreadyAtGoal;
+}
+
 void AAlienBot::ChasePlayer(float DeltaSeconds)
 {
 	(void)DeltaSeconds;
@@ -196,8 +236,12 @@ void AAlienBot::ChasePlayer(float DeltaSeconds)
 		return;
 	}
 
-	// TODO (Editor follow-up): NavMesh MoveTo via AIController for stairs/ramps when simple
-	// steering is not enough. Waypoint graph is also fine if MoveTo cannot climb the atrium.
+	// Prefer NavMesh MoveTo when enabled (atrium stairs/ramps). Else simple steering fallback.
+	if (TryNavMeshMoveToTarget())
+	{
+		return;
+	}
+
 	const FVector ToPlayer = TargetPlayer->GetActorLocation() - GetActorLocation();
 	FVector Desired = ToPlayer.GetSafeNormal2D();
 	if (Desired.IsNearlyZero())
@@ -346,15 +390,15 @@ float AAlienBot::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
 
 void AAlienBot::PlayHitFlash()
 {
-	// DESIGN: flash white 80 ms — store remaining as seconds so Tick expires in wall time.
+	// DESIGN 80ms white flash: bind mesh material emissive to HitFlashAlpha / OnHitFlash (Editor MID).
 	const float Ms = GameConfig ? GameConfig->HitFlashDurationMs : 80.f;
 	HitFlashTimeRemaining = Ms * 0.001f;
+	HitFlashAlpha = 1.f;
 	if (!bIsFlashing)
 	{
 		bIsFlashing = true;
 		OnHitFlash.Broadcast(true);
 	}
-	// TODO: set emissive/white overlay on mesh material
 }
 
 void AAlienBot::Die()

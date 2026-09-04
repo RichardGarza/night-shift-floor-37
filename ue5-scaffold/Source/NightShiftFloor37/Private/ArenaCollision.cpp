@@ -12,6 +12,23 @@ UArenaCollision::UArenaCollision()
 	OverlapScratch.Reserve(16);
 }
 
+void UArenaCollision::BeginPlay()
+{
+	Super::BeginPlay();
+	if (GameConfig)
+	{
+		return;
+	}
+	if (const ANightShiftCharacter* Player = Cast<ANightShiftCharacter>(GetOwner()))
+	{
+		GameConfig = Player->GameConfig;
+	}
+	else if (const AAlienBot* Bot = Cast<AAlienBot>(GetOwner()))
+	{
+		GameConfig = Bot->GameConfig;
+	}
+}
+
 void UArenaCollision::PushApartNearbyAliens(AAlienBot* SelfBot)
 {
 	if (!SelfBot || !GetWorld())

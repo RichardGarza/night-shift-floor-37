@@ -57,9 +57,11 @@ Same soft reference to **`DA_GameConfig`** on:
 - [ ] Any **AlienBot** BP / CDO defaults if `GameConfig` is exposed (GameMode also copies its `GameConfig` onto pool bots when bots are unset)
 - [ ] Optional but recommended: `AOfficeArena` → **`GameConfig`** (arena size / atrium height sync)
 
-### Note — auto-resolve TODO
+### Note — ResolveOrCreate landed; DA still for shared tuning
 
-`AArenaGameMode::BeginPlay` still has a **GameConfig auto-resolve TODO** (“Resolve GameConfig from Content/Data if unset”). Until NumberTwoCoding lands that fix, **Editor assignment is the reliable path**. Do not leave `GameConfig` null on GameMode / Character / FX pool.
+`UGameConfig::ResolveOrCreate` **has landed** (Phase 5): GameMode/Character can load `/Game/Data/DA_GameConfig` or fall back to DESIGN defaults in PIE if unset. There is **no** BeginPlay auto-resolve TODO anymore.
+
+Still **create and assign `DA_GameConfig` in Editor** so designers share one tunable asset across GameMode, Character, FX pool, and bots (packaging + iteration). See `Content/Data/README.md`.
 
 ---
 
