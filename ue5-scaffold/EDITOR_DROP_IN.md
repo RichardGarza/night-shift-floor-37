@@ -1,0 +1,251 @@
+# Editor Drop-In — Night Shift Floor 37
+
+**Audience:** Richard / Account Setup after the C++ scaffold is merged into a **UE5.4+ Third Person + Enhanced Input** project.
+
+**Scope:** Exact Editor click-paths for Audit/Boss blockers. This scaffold ships **C++ + markdown only** — no `.uasset` binaries. You create Data Assets, Input Actions, Blueprints, and the HUD Widget Blueprint in the Editor.
+
+**Related docs:**
+- [`INPUT_MAPPING.md`](INPUT_MAPPING.md) — authoritative IA / IMC keys
+- [`LEVEL_SETUP_CHECKLIST.md`](LEVEL_SETUP_CHECKLIST.md) — arena layout, spawns, cover
+- [`PHASE4.md`](PHASE4.md) — match loop, HUD prompts, soft restart
+- [`Content/UI/README.md`](Content/UI/README.md) — WBP notes
+- `../DESIGN.md` — tunables mirrored by `UGameConfig` defaults
+
+---
+
+## Order of operations
+
+1. Merge C++ scaffold into project → Generate project files → **Compile**
+2. Create **`DA_GameConfig`** (`Content/Data/`)
+3. Create Enhanced Input assets (`Content/Input/`) — IAs + `IMC_NightShift`
+4. Create **Character BP** (`BP_NightShiftCharacter`, parent `ANightShiftCharacter`) → wire GameConfig + IMC + IAs
+5. Create **GameMode BP** (`BP_ArenaGameMode`, parent `AArenaGameMode`) → GameConfig + `HUDWidgetClass` (after WBP exists) + Default Pawn Class
+6. Level actors: `AOfficeArena`, PlayerStart, **`AFXPoolManager`**, Nav Mesh Bounds Volume
+7. Create **`WBP_NightShiftHUD`** (parent `UHUDWidget`) → visuals → assign on GameMode
+8. World Settings: GameMode Override = `BP_ArenaGameMode` (or `AArenaGameMode`)
+9. **PIE** smoke list (below)
+
+---
+
+## 1. DA_GameConfig
+
+### Create
+
+- [ ] Content Browser → `Content/Data/` (create folder if missing)
+- [ ] Right-click → **Miscellaneous → Data Asset**
+- [ ] Pick class **`UGameConfig`** (picker may show **Game Config**)
+- [ ] Name: **`DA_GameConfig`**
+- [ ] Open it → leave defaults (they match `DESIGN.md` / `UGameConfig` header) unless you are changing tunables
+
+Key defaults you should see (spot-check):
+
+| Category | Examples |
+|---|---|
+| Player | MaxHealth 100, Walk 600, Sprint 900, Capsule ~42 / 90 |
+| Rifle | Mag 30 / Reserve 90, 600 RPM |
+| Aliens | MaxLive 6, Respawn 3 s |
+| Match | KillsToWin **25** |
+| Pools | TracerPoolSize **32**, MuzzleLightPoolSize **8** |
+
+### Assign everywhere
+
+Same soft reference to **`DA_GameConfig`** on:
+
+- [ ] **World Settings** → GameMode (or class defaults of `AArenaGameMode` / `BP_ArenaGameMode`) → **`GameConfig`**
+- [ ] **Player Character BP** (parent `ANightShiftCharacter` / `BP_NightShiftCharacter`) → **`GameConfig`**
+- [ ] Level-placed **`AFXPoolManager`** → **`GameConfig`**
+- [ ] Any **AlienBot** BP / CDO defaults if `GameConfig` is exposed (GameMode also copies its `GameConfig` onto pool bots when bots are unset)
+- [ ] Optional but recommended: `AOfficeArena` → **`GameConfig`** (arena size / atrium height sync)
+
+### Note — auto-resolve TODO
+
+`AArenaGameMode::BeginPlay` still has a **GameConfig auto-resolve TODO** (“Resolve GameConfig from Content/Data if unset”). Until NumberTwoCoding lands that fix, **Editor assignment is the reliable path**. Do not leave `GameConfig` null on GameMode / Character / FX pool.
+
+---
+
+## 2. Enhanced Input — IMC + IA
+
+**Authoritative key table:** [`INPUT_MAPPING.md`](INPUT_MAPPING.md).
+
+### Plugin / Project Settings
+
+- [ ] **Edit → Plugins** → **Enhanced Input** enabled (Third Person template usually has it)
+- [ ] **Edit → Project Settings → Input**: Default Mapping Context may stay **unset** — the character adds `IMC_NightShift` at runtime from `DefaultMappingContext`
+
+### Folder
+
+- [ ] Content Browser → `Content/Input/` (create if missing)
+
+### Create Input Actions (exact names)
+
+Right-click → **Input → Input Action** for each:
+
+| Asset | Value type |
+|---|---|
+| `IA_Move` | **Axis2D** (Vector2D) |
+| `IA_Look` | **Axis2D** (Vector2D) |
+| `IA_Jump` | **Digital** (bool) |
+| `IA_Sprint` | **Digital** (bool) |
+| `IA_Fire` | **Digital** (bool) |
+| `IA_Reload` | **Digital** (bool) |
+| `IA_ShoulderSwap` | **Digital** (bool) |
+| `IA_Pause` | **Digital** (bool) |
+
+(Optional: set Consume Input per `INPUT_MAPPING.md` — Jump/Reload/ShoulderSwap/Pause Yes; Move/Look/Sprint/Fire No.)
+
+### Create mapping context
+
+- [ ] Right-click → **Input → Input Mapping Context**
+- [ ] Name: **`IMC_NightShift`**
+- [ ] Add mappings (from `INPUT_MAPPING.md`):
+
+| Action | Key | Notes |
+|---|---|---|
+| `IA_Move` | **W** | Swizzle / Negate as needed for Axis2D Y+ |
+| `IA_Move` | **S** | Negate Y |
+| `IA_Move` | **A** | Negate X |
+| `IA_Move` | **D** | X+ |
+| `IA_Look` | **Mouse XY** | — |
+| `IA_Jump` | **Space** | Pressed |
+| `IA_Sprint` | **Left Shift** | Ongoing / Pressed+Released |
+| `IA_Fire` | **Left Mouse Button** | Pressed + Released (Started/Completed) |
+| `IA_Reload` | **R** | Pressed |
+| `IA_ShoulderSwap` | **Q** | Pressed |
+| `IA_Pause` | **Escape** | Pressed |
+
+KBM-first; gamepad can come later.
+
+### Wire on Character BP
+
+Create (if not already):
+
+- [ ] Content Browser → `Content/Blueprints/` → Blueprint Class → parent **`ANightShiftCharacter`**
+- [ ] Name: **`BP_NightShiftCharacter`** (Editor-created; not shipped in this scaffold)
+
+On **Class Defaults** (Category **Input** / **Config**):
+
+| Property | Asset |
+|---|---|
+| `DefaultMappingContext` | `IMC_NightShift` |
+| `MoveAction` | `IA_Move` |
+| `LookAction` | `IA_Look` |
+| `JumpAction` | `IA_Jump` |
+| `SprintAction` | `IA_Sprint` |
+| `FireAction` | `IA_Fire` |
+| `ReloadAction` | `IA_Reload` |
+| `ShoulderSwapAction` | `IA_ShoulderSwap` |
+| `PauseAction` | `IA_Pause` |
+| `GameConfig` | `DA_GameConfig` |
+
+C++ already binds Started/Completed/Triggered in `SetupPlayerInputComponent` — you only assign the assets.
+
+Also set GameMode **Default Pawn Class** → `BP_NightShiftCharacter` (see §3 / GameMode BP).
+
+---
+
+## 3. WBP HUD → HUDWidgetClass
+
+### Create widget
+
+- [ ] Content Browser → `Content/UI/`
+- [ ] Right-click → **User Interface → Widget Blueprint**
+- [ ] Parent class must be C++ **`UHUDWidget`** (not plain `UserWidget`)
+- [ ] Name: **`WBP_NightShiftHUD`**
+
+### Implement BlueprintImplementableEvents
+
+In the Event Graph:
+
+- [ ] **`OnRefreshHUD(HealthPercent, Mag, Reserve, Kills, TimeSeconds)`**
+  - Drive HP bar from `HealthPercent`
+  - Ammo text: format **`Mag / Reserve`** (e.g. `30 / 90`)
+  - Kills counter, match timer (`TimeSeconds`)
+- [ ] **`OnPromptChanged(Prompt)`**
+  - Start / death / win text (“Click to play”, “You died — click to restart”, “Floor cleared — Ns”)
+
+### Crosshair + hit-marker
+
+- [ ] Centered crosshair (always-on during match UI)
+- [ ] Hit-marker widget: visibility from polling **`IsHitMarkerVisible`** (or bind to that pure function / `HitMarkerTimeRemaining`) each tick or on refresh
+
+### Clicks / hit-test
+
+C++ already handles **`NativeOnMouseButtonDown` → `HandlePrimaryClick` → GameMode `RequestStartOrRestart`**. For prompts to receive clicks:
+
+- [ ] Root / overlay **Visible** and **hit-testable** when prompts show (`WaitingToStart` / `Lost` / `Won` use GameAndUI + cursor)
+- [ ] Do not set the whole widget to `Self Hit Test Invisible` while a prompt is up
+
+Details: [`PHASE4.md`](PHASE4.md), [`Content/UI/README.md`](Content/UI/README.md).
+
+### Bind on GameMode
+
+- [ ] Create `BP_ArenaGameMode` (parent **`AArenaGameMode`**) under `Content/Blueprints/` if needed
+- [ ] Class Defaults → Category **HUD** → **`HUDWidgetClass`** = **`WBP_NightShiftHUD`**
+- [ ] Also set: `GameConfig` = `DA_GameConfig`, Default Pawn Class = `BP_NightShiftCharacter`
+- [ ] **World Settings → GameMode Override** = `BP_ArenaGameMode` (or set Default GameMode in Project Settings)
+
+**Without `HUDWidgetClass`:** match logic still runs, but HUD is missing and a **one-time warning** is logged (`AArenaGameMode: HUDWidgetClass unset…`).
+
+---
+
+## 4. Place AFXPoolManager
+
+- [ ] Open the persistent office/atrium level
+- [ ] Place actor class **`AFXPoolManager`** once (Place Actors / drag from Content if BP child exists; otherwise place the C++ class)
+- [ ] Details → **`GameConfig`** = **`DA_GameConfig`**
+- [ ] Confirm pool sizes: **`TracerPoolSize` = 32**, **`MuzzleLightPoolSize` = 8** (or leave defaults; BeginPlay also applies sizes from `GameConfig` via `ApplyPoolSizesFromConfig`)
+- [ ] **One instance per level** — rifle finds the pool via `GetActorOfClass`
+
+Prefer place-once in the level over spawning later. See also [`LEVEL_SETUP_CHECKLIST.md`](LEVEL_SETUP_CHECKLIST.md) Pools section.
+
+---
+
+## 5. NavMesh
+
+- [ ] Place **Nav Mesh Bounds Volume** covering ~**50 × 50 m** walkable floor **plus** atrium ramps / stairs / platforms (tower must be contested)
+- [ ] **Build → Paths** (or press **P** / toolbar Build Paths)
+- [ ] Recast NavMesh agent: roughly match alien capsule — **~42 cm radius / ~90 cm half-height** are player defaults; aliens use ~40 / ~88. Project defaults are fine for v1; **tune if bots fail stairs**
+- [ ] Verify **green nav** on atrium ramps/stairs in PIE with NavMesh drawing
+- [ ] No custom NavModifier volumes required for v1 unless you see gaps
+
+Full arena placement (OfficeArena, 8 spawns, cover): [`LEVEL_SETUP_CHECKLIST.md`](LEVEL_SETUP_CHECKLIST.md).
+
+---
+
+## Level actors quick checklist
+
+Alongside the blockers above:
+
+- [ ] One **`AOfficeArena`** (or BP child) — assign `GameConfig`
+- [ ] **PlayerStart** on walkable floor (not atrium top) — soft-reset teleport target
+- [ ] Optional: 8 edge spawn markers wired to `SpawnPointActors` (or rely on procedural defaults)
+- [ ] World Settings GameMode Override as above
+
+---
+
+## Verify in PIE (smoke list)
+
+- [ ] PIE starts → **"Click to play"** prompt visible
+- [ ] **Left-click** → match starts, cursor locks (GameOnly), timer runs
+- [ ] **WASD** move, **mouse** look, **Space** jump, **LShift** sprint
+- [ ] **LMB** fire (full-auto hold), **R** reload — ammo HUD updates
+- [ ] **Q** shoulder swap
+- [ ] HUD: HP bar, ammo `Mag / Reserve`, kills, timer
+- [ ] Hit alien → hit-marker flash (~0.12 s)
+- [ ] Tracers / muzzle lights if `AFXPoolManager` present
+- [ ] Aliens path on atrium ramps (NavMesh green)
+- [ ] **Esc** pause (cursor unlock) / Esc resume
+- [ ] Die → death prompt → click → soft reset (HP/ammo/kills/timer/transform)
+- [ ] 25 kills → win prompt with time → click restarts
+
+Deeper match-loop checks: [`PHASE4.md`](PHASE4.md) Smoke checklist.
+
+---
+
+## What this scaffold does *not* ship
+
+- No `.uasset` / binary content (no pre-made `DA_GameConfig`, IMC, WBP, or Character/GameMode BPs)
+- No git commit of Editor assets from this drop-in doc
+- C++ classes compile after merge; **Editor content is the remaining gate** for Audit/Boss
+
+If something fails PIE, re-check assignment order: **GameConfig → Input on Character → HUDWidgetClass → FXPoolManager → NavMesh**.

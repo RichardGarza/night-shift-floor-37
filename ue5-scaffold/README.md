@@ -16,6 +16,9 @@ Authoritative design numbers: `../DESIGN.md` (and mirrored in `UGameConfig` defa
 6. Follow `LEVEL_SETUP_CHECKLIST.md` for the one persistent office/atrium level.
 7. Build from the Editor (Generate Visual Studio / Rider project files first on Windows/Mac).
 
+> **Missing Editor Content blockers → see [`EDITOR_DROP_IN.md`](EDITOR_DROP_IN.md)**  
+> Exact click-paths for `DA_GameConfig`, Enhanced Input IMC/IA, `WBP_NightShiftHUD` → `HUDWidgetClass`, `AFXPoolManager`, and NavMesh (Audit/Boss gates). Scaffold ships no `.uasset` binaries.
+
 ## Modules
 
 | Class | Role |
