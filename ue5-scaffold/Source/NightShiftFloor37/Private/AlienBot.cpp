@@ -3,11 +3,21 @@
 #include "NightShiftCharacter.h"
 #include "ArenaCollision.h"
 #include "ArenaGameMode.h"
+#include "OfficeArena.h"
 #include "NightShiftFloor37.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
+
+namespace AlienBotPrivate
+{
+	/** Forward probe length for simple obstacle steering (cm). */
+	constexpr float SteerProbeCm = 180.f;
+	/** Blend of lateral offset when probe is blocked (unitless). */
+	constexpr float SteerLateralWeight = 0.85f;
+}
 
 AAlienBot::AAlienBot()
 {
@@ -28,6 +38,8 @@ void AAlienBot::BeginPlay()
 		GetCapsuleComponent()->SetCapsuleSize(GameConfig->AlienCapsuleRadiusCm, GameConfig->AlienCapsuleHalfHeightCm);
 	}
 	BurstCooldownRemaining = 0.f;
+	BurstShotsRemaining = 0;
+	BurstIntraShotRemaining = 0.f;
 }
 
 void AAlienBot::Tick(float DeltaSeconds)
@@ -39,15 +51,7 @@ void AAlienBot::Tick(float DeltaSeconds)
 		DeltaSeconds = MaxDt;
 	}
 
-	if (HitFlashTimeRemaining > 0.f)
-	{
-		HitFlashTimeRemaining -= DeltaSeconds * 1000.f; // stored as ms countdown helper — see PlayHitFlash
-		if (HitFlashTimeRemaining < 0.f)
-		{
-			HitFlashTimeRemaining = 0.f;
-			// TODO: restore material color from white flash
-		}
-	}
+	UpdateHitFlash(DeltaSeconds);
 
 	if (!bIsAlive)
 	{
@@ -62,6 +66,25 @@ void AAlienBot::Tick(float DeltaSeconds)
 	UpdateAI(DeltaSeconds);
 }
 
+void AAlienBot::UpdateHitFlash(float DeltaSeconds)
+{
+	if (HitFlashTimeRemaining <= 0.f)
+	{
+		return;
+	}
+	HitFlashTimeRemaining -= DeltaSeconds;
+	if (HitFlashTimeRemaining <= 0.f)
+	{
+		HitFlashTimeRemaining = 0.f;
+		if (bIsFlashing)
+		{
+			bIsFlashing = false;
+			OnHitFlash.Broadcast(false);
+		}
+		// TODO: restore material color from white flash
+	}
+}
+
 void AAlienBot::SetTarget(ANightShiftCharacter* InTarget)
 {
 	TargetPlayer = InTarget;
@@ -69,23 +92,63 @@ void AAlienBot::SetTarget(ANightShiftCharacter* InTarget)
 
 void AAlienBot::ActivateAtSpawn(const FTransform& SpawnTransform)
 {
+	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
 	SetActorTransform(SpawnTransform);
 	SetActorHiddenInGame(false);
 	SetActorEnableCollision(true);
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->SetMovementMode(MOVE_Walking);
+		Move->StopMovementImmediately();
+	}
 	bIsAlive = true;
 	BodyHitCount = 0;
 	HeadHitCount = 0;
 	CombatState = EAlienCombatState::Chase;
 	BurstCooldownRemaining = 0.f;
+	BurstShotsRemaining = 0;
+	BurstIntraShotRemaining = 0.f;
+	HitFlashTimeRemaining = 0.f;
+	if (bIsFlashing)
+	{
+		bIsFlashing = false;
+		OnHitFlash.Broadcast(false);
+	}
 }
 
 void AAlienBot::SoftDespawn()
 {
+	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
 	bIsAlive = false;
 	CombatState = EAlienCombatState::Dead;
+	BurstShotsRemaining = 0;
+	BurstIntraShotRemaining = 0.f;
+	BurstCooldownRemaining = 0.f;
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
-	GetCharacterMovement()->StopMovementImmediately();
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->StopMovementImmediately();
+	}
+}
+
+void AAlienBot::SoftReset()
+{
+	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
+	BodyHitCount = 0;
+	HeadHitCount = 0;
+	BurstCooldownRemaining = 0.f;
+	BurstShotsRemaining = 0;
+	BurstIntraShotRemaining = 0.f;
+	StrafeSign = 1.f;
+	SteerSideSign = 1.f;
+	HitFlashTimeRemaining = 0.f;
+	if (bIsFlashing)
+	{
+		bIsFlashing = false;
+		OnHitFlash.Broadcast(false);
+	}
+	SoftDespawn();
 }
 
 void AAlienBot::UpdateAI(float DeltaSeconds)
@@ -114,6 +177,9 @@ void AAlienBot::UpdateAI(float DeltaSeconds)
 	}
 	else
 	{
+		// Leaving combat range cancels an in-progress burst; cooldown keeps pacing honest.
+		BurstShotsRemaining = 0;
+		BurstIntraShotRemaining = 0.f;
 		CombatState = EAlienCombatState::Chase;
 		ChasePlayer(DeltaSeconds);
 	}
@@ -122,38 +188,80 @@ void AAlienBot::UpdateAI(float DeltaSeconds)
 void AAlienBot::ChasePlayer(float DeltaSeconds)
 {
 	(void)DeltaSeconds;
-	if (!TargetPlayer.IsValid())
+	if (!TargetPlayer.IsValid() || !GetWorld())
 	{
 		return;
 	}
-	// TODO: Navmesh MoveTo + simple steering. Waypoint graph if stairs fail.
+
+	// TODO (Editor follow-up): NavMesh MoveTo via AIController for stairs/ramps when simple
+	// steering is not enough. Waypoint graph is also fine if MoveTo cannot climb the atrium.
 	const FVector ToPlayer = TargetPlayer->GetActorLocation() - GetActorLocation();
-	AddMovementInput(ToPlayer.GetSafeNormal(), 1.f);
+	FVector Desired = ToPlayer.GetSafeNormal2D();
+	if (Desired.IsNearlyZero())
+	{
+		Desired = ToPlayer.GetSafeNormal();
+	}
+
+	// Simple obstacle steering: forward line trace; if blocked, add lateral offset (alternate sign).
+	const FVector ProbeStart = GetActorLocation();
+	const FVector ProbeEnd = ProbeStart + Desired * AlienBotPrivate::SteerProbeCm;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(AlienSteer), false, this);
+	const bool bBlocked = GetWorld()->LineTraceSingleByChannel(
+		SteerHitScratch, ProbeStart, ProbeEnd, ECC_Visibility, Params);
+
+	if (bBlocked && SteerHitScratch.GetActor() != TargetPlayer.Get())
+	{
+		const FVector Right = FVector::CrossProduct(FVector::UpVector, Desired).GetSafeNormal();
+		Desired = (Desired + Right * SteerSideSign * AlienBotPrivate::SteerLateralWeight).GetSafeNormal();
+		SteerSideSign *= -1.f;
+	}
+
+	AddMovementInput(Desired, 1.f);
 }
 
 void AAlienBot::StrafeAndBurst(float DeltaSeconds)
 {
-	(void)DeltaSeconds;
 	if (!TargetPlayer.IsValid())
 	{
 		return;
 	}
+
 	// Stop forward, strafe L/R (DESIGN)
 	const FVector ToPlayer = (TargetPlayer->GetActorLocation() - GetActorLocation()).GetSafeNormal();
 	const FVector Right = FVector::CrossProduct(FVector::UpVector, ToPlayer).GetSafeNormal();
 	AddMovementInput(Right, StrafeSign);
 
-	if (BurstCooldownRemaining <= 0.f)
+	const int32 BurstCount = GameConfig ? GameConfig->AlienBurstRoundCount : 3;
+	const float BurstInterval = GameConfig ? GameConfig->AlienBurstIntervalSeconds : 1.5f;
+	const float IntraDelay = GameConfig ? GameConfig->AlienBurstIntraShotDelaySeconds : 0.09f;
+
+	// Start a new burst when cooldown is done and no shots are queued.
+	if (BurstCooldownRemaining <= 0.f && BurstShotsRemaining <= 0)
 	{
-		BurstShotsRemaining = GameConfig ? GameConfig->AlienBurstRoundCount : 3;
-		BurstCooldownRemaining = GameConfig ? GameConfig->AlienBurstIntervalSeconds : 1.5f;
+		BurstShotsRemaining = BurstCount;
+		BurstIntraShotRemaining = 0.f; // first shot fires this frame (after tick delay below)
 		StrafeSign *= -1.f;
 	}
 
+	// Fire remaining burst shots with short intra-burst delay — never dump all 3 in one Tick.
 	if (BurstShotsRemaining > 0)
 	{
-		TryBurstShot();
-		--BurstShotsRemaining;
+		BurstIntraShotRemaining -= DeltaSeconds;
+		if (BurstIntraShotRemaining <= 0.f)
+		{
+			TryBurstShot();
+			--BurstShotsRemaining;
+			if (BurstShotsRemaining > 0)
+			{
+				BurstIntraShotRemaining = IntraDelay;
+			}
+			else
+			{
+				// Burst complete — wait full interval before the next 3-round volley.
+				BurstCooldownRemaining = BurstInterval;
+				BurstIntraShotRemaining = 0.f;
+			}
+		}
 	}
 }
 
@@ -179,12 +287,12 @@ bool AAlienBot::HasLineOfSightToTarget() const
 	{
 		return false;
 	}
-	FHitResult Hit;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(AlienLOS), false, this);
 	const FVector Start = GetActorLocation() + FVector(0, 0, 60);
 	const FVector End = TargetPlayer->GetActorLocation() + FVector(0, 0, 60);
-	const bool bBlocked = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
-	return !bBlocked || Hit.GetActor() == TargetPlayer.Get();
+	const bool bBlocked = GetWorld()->LineTraceSingleByChannel(
+		LosHitScratch, Start, End, ECC_Visibility, Params);
+	return !bBlocked || LosHitScratch.GetActor() == TargetPlayer.Get();
 }
 
 float AAlienBot::DistanceToTargetMeters() const
@@ -235,8 +343,14 @@ float AAlienBot::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
 
 void AAlienBot::PlayHitFlash()
 {
-	// DESIGN: flash white 80 ms
-	HitFlashTimeRemaining = GameConfig ? GameConfig->HitFlashDurationMs : 80.f;
+	// DESIGN: flash white 80 ms — store remaining as seconds so Tick expires in wall time.
+	const float Ms = GameConfig ? GameConfig->HitFlashDurationMs : 80.f;
+	HitFlashTimeRemaining = Ms * 0.001f;
+	if (!bIsFlashing)
+	{
+		bIsFlashing = true;
+		OnHitFlash.Broadcast(true);
+	}
 	// TODO: set emissive/white overlay on mesh material
 }
 
@@ -244,7 +358,12 @@ void AAlienBot::Die()
 {
 	bIsAlive = false;
 	CombatState = EAlienCombatState::Dead;
-	GetCharacterMovement()->StopMovementImmediately();
+	BurstShotsRemaining = 0;
+	BurstIntraShotRemaining = 0.f;
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->StopMovementImmediately();
+	}
 	// v1: collapse / hide / respawn — no ragdoll required
 	SetActorEnableCollision(false);
 	SetActorHiddenInGame(true);
@@ -259,11 +378,63 @@ void AAlienBot::Die()
 void AAlienBot::ScheduleRespawn()
 {
 	const float Delay = GameConfig ? GameConfig->AlienRespawnSeconds : 3.f;
-	GetWorldTimerManager().SetTimer(RespawnTimerHandle, [this]()
+	GetWorldTimerManager().SetTimer(RespawnTimerHandle, this, &AAlienBot::PerformRespawn, Delay, false);
+}
+
+void AAlienBot::PerformRespawn()
+{
+	// Prefer GameMode pool helper (keeps MaxLiveAliens accounting); fall back to arena spawn API.
+	if (AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
 	{
-		// TODO: Ask GameMode/Arena for farthest spawn; ActivateAtSpawn
-		UE_LOG(LogNightShift, Log, TEXT("AlienBot respawn timer fired — wire to arena spawn."));
-	}, Delay, false);
+		if (GM->RespawnAlien(this))
+		{
+			return;
+		}
+	}
+
+	if (AOfficeArena* Arena = FindArena())
+	{
+		const FTransform Spawn = Arena->GetFarthestSpawnFrom(GetPlayerLocationOrSelf());
+		ActivateAtSpawn(Spawn);
+		return;
+	}
+
+	UE_LOG(LogNightShift, Warning, TEXT("AlienBot::PerformRespawn — no Arena/GameMode; activating in place."));
+	ActivateAtSpawn(GetActorTransform());
+}
+
+AOfficeArena* AAlienBot::FindArena() const
+{
+	if (AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
+	{
+		if (AOfficeArena* Arena = GM->GetOfficeArena())
+		{
+			return Arena;
+		}
+	}
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+	for (TActorIterator<AOfficeArena> It(World); It; ++It)
+	{
+		return *It;
+	}
+	return nullptr;
+}
+
+FVector AAlienBot::GetPlayerLocationOrSelf() const
+{
+	if (TargetPlayer.IsValid())
+	{
+		return TargetPlayer->GetActorLocation();
+	}
+	if (APawn* P = UGameplayStatics::GetPlayerPawn(this, 0))
+	{
+		return P->GetActorLocation();
+	}
+	return GetActorLocation();
 }
 
 bool AAlienBot::IsLocationOnHead(const FVector& WorldLocation) const
@@ -287,4 +458,3 @@ bool AAlienBot::IsHeadBone(FName BoneName) const
 		|| S.Equals(TEXT("head_01"), ESearchCase::IgnoreCase)
 		|| S.Contains(TEXT("head"), ESearchCase::IgnoreCase);
 }
-

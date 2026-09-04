@@ -8,6 +8,7 @@
 class UGameConfig;
 class ANightShiftCharacter;
 class UArenaCollision;
+class AOfficeArena;
 
 UENUM(BlueprintType)
 enum class EAlienCombatState : uint8
@@ -18,9 +19,12 @@ enum class EAlienCombatState : uint8
 	Dead
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAlienHitFlash, bool, bFlashing);
+
 /**
  * Capsule alien: 4 m/s chase, ≤12 m combat (strafe + 3-round burst / 1.5s, 30% accuracy, 10 dmg).
  * Kill: 3 body or 2 head. Respawn 3 s. Head = top 25% of capsule.
+ * Burst fires with short intra-shot delay (not all in one Tick). Hit flash ~80 ms wall time.
  */
 UCLASS()
 class NIGHTSHIFTFLOOR37_API AAlienBot : public ACharacter
@@ -53,8 +57,16 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
 	bool bIsAlive = true;
 
+	/** Remaining hit-flash time in seconds (DESIGN: 80 ms → 0.08 s). */
 	UPROPERTY(BlueprintReadOnly, Category = "FX")
 	float HitFlashTimeRemaining = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "FX")
+	bool bIsFlashing = false;
+
+	/** Broadcast when flash starts (true) or expires (false). */
+	UPROPERTY(BlueprintAssignable, Category = "FX")
+	FOnAlienHitFlash OnHitFlash;
 
 	UFUNCTION(BlueprintCallable, Category = "AI")
 	void SetTarget(ANightShiftCharacter* InTarget);
@@ -64,6 +76,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "AI")
 	void SoftDespawn();
+
+	/** Match soft-restart: clear timers, reset combat, despawn (GameMode redistributes). */
+	UFUNCTION(BlueprintCallable, Category = "AI")
+	void SoftReset();
+
+	/** Called by respawn timer or GameMode — farthest edge spawn from player. */
+	UFUNCTION(BlueprintCallable, Category = "AI")
+	void PerformRespawn();
 
 	UFUNCTION(BlueprintPure, Category = "Combat")
 	bool IsLocationOnHead(const FVector& WorldLocation) const;
@@ -79,14 +99,32 @@ protected:
 	void Die();
 	void ScheduleRespawn();
 	void PlayHitFlash();
+	void UpdateHitFlash(float DeltaSeconds);
 	bool HasLineOfSightToTarget() const;
 	float DistanceToTargetMeters() const;
+	AOfficeArena* FindArena() const;
+	FVector GetPlayerLocationOrSelf() const;
 
 	UPROPERTY()
 	TWeakObjectPtr<ANightShiftCharacter> TargetPlayer;
 
+	/** Seconds until next burst may start (DESIGN: AlienBurstIntervalSeconds = 1.5). */
 	float BurstCooldownRemaining = 0.f;
+
+	/** Shots left in the current burst (0 = idle between bursts). */
 	int32 BurstShotsRemaining = 0;
+
+	/** Seconds until the next intra-burst shot fires (~0.08–0.1). */
+	float BurstIntraShotRemaining = 0.f;
+
 	float StrafeSign = 1.f;
+
+	/** Alternating lateral sign when forward steer probe is blocked. */
+	float SteerSideSign = 1.f;
+
 	FTimerHandle RespawnTimerHandle;
+
+	/** Reused chase / LOS traces — no per-frame heap in AI tick. */
+	mutable FHitResult SteerHitScratch;
+	mutable FHitResult LosHitScratch;
 };

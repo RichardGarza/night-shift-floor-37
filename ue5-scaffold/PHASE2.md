@@ -1,91 +1,58 @@
-# Phase 2 — Arena package
+# Phase 2 — Arena cover + spawn data (NumberFourCoding slice)
 
 Scaffold root: this directory (`ue5-scaffold/`).
 
-Hardens `AOfficeArena` + `UArenaCollision` from Phase 0/1 stubs into real logic that runs **without Editor art** (procedural defaults) while keeping full APIs for `AArenaGameMode` / `AAlienBot`. Phase 0/1 public APIs preserved; new helpers are additive.
+Builds on NumberTwoCoding’s `AOfficeArena` bounds/ceiling/clamp core. This slice owns **cover volume helpers**, **labeled 8-edge spawn point data**, and **level checklist** placement notes. Bounds/core left alone. Stubs are UE-shaped — not compilable on this machine.
 
-## Deliverables
+## What changed
 
-| Area | What shipped |
+| Area | Change |
 |---|---|
-| **ClampToBounds** | OBB clamp into `BoundsVolume` local box; Z also capped below `CeilingClamp` underside |
-| **EnforceBoundsOnActor** | Sets actor location to clamped point if outside (ceiling-only when XY inside) |
-| **EnsureDefaultSpawns** | If gather yields fewer than `AlienSpawnPointCount`, builds 8 edge transforms |
-| **RefreshSpawnGather** | Soft-reset helper: gather markers → ensure defaults |
-| **Cover API** | `RegisterCoverVolume`, `IsPointInCover`, `GetNearestCoverPoint` |
-| **Default cover** | 4 cubicle boxes + 2 resin clusters as subobjects around atrium |
-| **Layout metadata** | `ArenaHalfExtentCm`, `AtriumTowerHeightCm` synced from `UGameConfig` on BeginPlay |
-| **PushApartNearbyAliens** | Sphere overlap into member `OverlapScratch`; XY half-penetration push |
-| **ApplyFallDamageIfNeeded** | `(FallMeters - Threshold) * 15` HP via `TakeDamage` |
-| **Traces** | Real `LineTraceSingleByChannel` for ground (down) and cover height (up) |
+| **`FOfficeArenaSpawnPoint`** | `USTRUCT`: `FName Id` + `FTransform Transform` |
+| **`AlienSpawnPointData`** | Preferred labeled spawn array; mirrors into legacy `AlienSpawnPoints` |
+| **`EnsureDefaultSpawns`** | Fills 8 DESIGN Ids on walkable square (±half-extent − 200 cm): Stairwell_N/S, LoadingDock_E, ElevatorBank_W, ServiceCorridor_NE/NW/SE/SW |
+| **Spawn helpers** | `GetSpawnPointCount`, `GetSpawnPointById`, `GetFarthestSpawnFrom` prefers data array |
+| **Gather** | `GatherSpawnPointsFromActors` syncs both arrays (tag → label → `Spawn_N`) |
+| **Default cover** | 4 cubicles + **4 resin** (NE/NW/SE/SW) + **RackStack_A/B** + **RackAngled** (35° yaw) |
+| **Cover helpers** | `UnregisterCoverVolume`, `GetCoverVolumeCount`, `FindCoverAwayFromThreat`, `DoesLineHitCover` (line vs OBB) |
+| **Docs** | `LEVEL_SETUP_CHECKLIST.md` atrium/cubicles/racks/resin/spawn table; this `PHASE2.md` |
 
-## Default 8-spawn layout
+## DESIGN → code map
 
-Centered on the arena actor. Walkable edge = `ArenaHalfExtentCm - 200` (~**2300 cm** when half-extent is 2500 / 50 m floor). **Z = arena origin Z** (floor).
-
-| Index | Offset (cm) | Conceptual label |
-|---|---|---|
-| 0 | (0, +Edge) | Stairwell_N |
-| 1 | (0, −Edge) | Stairwell_S |
-| 2 | (+Edge, 0) | LoadingDock_E |
-| 3 | (−Edge, 0) | ElevatorBank_W |
-| 4 | (+Edge, +Edge) | ServiceCorridor_NE |
-| 5 | (−Edge, +Edge) | ServiceCorridor_NW |
-| 6 | (+Edge, −Edge) | ServiceCorridor_SE |
-| 7 | (−Edge, −Edge) | ServiceCorridor_SW |
-
-Count follows `GameConfig::AlienSpawnPointCount` (default 8). If `SpawnPointActors` are wired and count ≥ expected, those transforms win and defaults are skipped.
-
-`GetFarthestSpawnFrom` unchanged — GameMode/bots pick the farthest point from the player on respawn.
-
-## Bounds / ceiling usage
-
-```
-GameMode tick or Character:
-  Arena->EnforceBoundsOnActor(Pawn);
-// or
-  Pawn->SetActorLocation(Arena->ClampToBounds(Pawn->GetActorLocation()));
-```
-
-- `BoundsVolume` half-extent XY synced to `ArenaSizeMeters * 50` cm.
-- `CeilingClamp` sits at `AtriumTowerHeightCm + 200` so atrium top stays inside but roof escapes are blocked.
-
-## Cover usage
-
-```
-Arena->RegisterCoverVolume(MyBox);           // optional Editor / runtime boxes
-if (Arena->IsPointInCover(Loc)) { ... }
-FVector CoverPt;
-if (Arena->GetNearestCoverPoint(Loc, CoverPt)) { ... }
-```
-
-Prototype ships six default query boxes (cubicles N/E/S/W + resin NE/SW). Replace or add real art volumes for shipping.
-
-## Collision helpers (bots / character)
-
-| Call | Behavior |
+| DESIGN | Code |
 |---|---|
-| `PushApartNearbyAliens(Self)` | ECC_Pawn sphere `AlienPushApartRadiusCm`; push Self along XY by `0.5 * (Radius - Dist)` |
-| `ApplyFallDamageIfNeeded(Char, FallM, ThresholdM)` | If FallM > Threshold: damage = excess × **15**; `TakeDamage` |
-| `TraceGroundDistance(From, MaxCm, Hit)` | Visibility line down |
-| `TraceCoverHeight(From, HeightCm, Hit)` | Visibility line up from +10 cm |
+| 8 fixed edge spawns (stairwells, dock, elevator, corridor) | `AlienSpawnPointData` + `EnsureDefaultSpawns` Ids |
+| On spawn, farthest from player | `GetFarthestSpawnFrom` |
+| Cubicle maze low cover | `DefaultCover_CubicleN/E/S/W` (~800 cm ring) |
+| 4 resin / egg barrel clusters | `DefaultCover_ResinNE/NW/SE/SW` (~±1100 cm) |
+| 6 server racks (two stacked, one angled) | `RackStack_A/B` + `RackAngled` query proxies |
+| Cover for AI / soft traces | `IsPointInCover`, `FindCoverAwayFromThreat`, `DoesLineHitCover` |
+| ~50×50 m + 14 m atrium | Synced via NumberTwo `SyncLayoutFromConfig` (untouched) |
 
-## Layout zones (DESIGN — comments in `OfficeArena.h`)
+## Cover search note
 
-Atrium center (~14 m tower) · cubicles · server racks · cable tray @ 1.5 m · conference pad · drywall berm · resin clusters · perimeter glass/planters. Procedural cover only approximates cubicles/resin; place the rest in Editor.
+`FindCoverAwayFromThreat(From, Threat, Out)` picks the registered cover **center farthest from Threat** among volumes within `CoverSearchRadiusCm` of `From` (default 2500; `≤0` = all cover). Cheap break-contact heuristic — not full tactical cover evaluation.
 
-## Editor still recommended for final art
+## Files touched
 
-1. Place `AOfficeArena` (or BP) once in the persistent level.
-2. Prefer **8 Target Point / empty actors** at real stairwells / dock / elevator / corridors → `SpawnPointActors`.
-3. Add real cover boxes / meshes; register extras via `RegisterCoverVolume` or `CoverVolumes`.
-4. NavMesh + art per `LEVEL_SETUP_CHECKLIST.md`.
+- `Source/NightShiftFloor37/Public/OfficeArena.h`
+- `Source/NightShiftFloor37/Private/OfficeArena.cpp`
+- `LEVEL_SETUP_CHECKLIST.md`
+- `PHASE2.md` (this file)
+
+## Editor still required
+
+1. Place `AOfficeArena` once in the persistent level.
+2. Prefer 8 tagged Target Points → `SpawnPointActors` (overrides procedural defaults).
+3. Replace cover proxies with real meshes; register extras via `RegisterCoverVolume`.
+4. NavMesh + art per checklist.
 5. Assign shared `DA_GameConfig`.
+6. Compile in Editor (no UE toolchain here).
 
-Defaults exist so PIE / AI / GameMode can exercise Phase 2 before art lands.
+## Not in this slice
 
-## Not in this phase
-
+- Bounds / ceiling clamp ownership (NumberTwoCoding)
 - Full NavMesh MoveTo AI
+- GameMode population / alien match wiring beyond existing stubs
 - Cooked build / art / audio
-- GameMode population wiring beyond existing stubs
+- Commit / push
