@@ -93,6 +93,7 @@ void AAlienBot::SetTarget(ANightShiftCharacter* InTarget)
 void AAlienBot::ActivateAtSpawn(const FTransform& SpawnTransform)
 {
 	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
+	bRespawnScheduled = false;
 	SetActorTransform(SpawnTransform);
 	SetActorHiddenInGame(false);
 	SetActorEnableCollision(true);
@@ -119,6 +120,7 @@ void AAlienBot::ActivateAtSpawn(const FTransform& SpawnTransform)
 void AAlienBot::SoftDespawn()
 {
 	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
+	bRespawnScheduled = false;
 	bIsAlive = false;
 	CombatState = EAlienCombatState::Dead;
 	BurstShotsRemaining = 0;
@@ -135,6 +137,7 @@ void AAlienBot::SoftDespawn()
 void AAlienBot::SoftReset()
 {
 	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
+	bRespawnScheduled = false;
 	BodyHitCount = 0;
 	HeadHitCount = 0;
 	BurstCooldownRemaining = 0.f;
@@ -378,11 +381,13 @@ void AAlienBot::Die()
 void AAlienBot::ScheduleRespawn()
 {
 	const float Delay = GameConfig ? GameConfig->AlienRespawnSeconds : 3.f;
+	bRespawnScheduled = true;
 	GetWorldTimerManager().SetTimer(RespawnTimerHandle, this, &AAlienBot::PerformRespawn, Delay, false);
 }
 
 void AAlienBot::PerformRespawn()
 {
+	bRespawnScheduled = false;
 	// Prefer GameMode pool helper (keeps MaxLiveAliens accounting); fall back to arena spawn API.
 	if (AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
 	{
@@ -435,6 +440,12 @@ FVector AAlienBot::GetPlayerLocationOrSelf() const
 		return P->GetActorLocation();
 	}
 	return GetActorLocation();
+}
+
+
+bool AAlienBot::IsRespawnPending() const
+{
+	return bRespawnScheduled;
 }
 
 bool AAlienBot::IsLocationOnHead(const FVector& WorldLocation) const

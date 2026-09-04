@@ -91,6 +91,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Combat")
 	bool IsHeadBone(FName BoneName) const;
 
+	/** True while death→respawn timer is running (GameMode must not double-activate). */
+	UFUNCTION(BlueprintPure, Category = "AI")
+	bool IsRespawnPending() const;
+
 protected:
 	void UpdateAI(float DeltaSeconds);
 	void ChasePlayer(float DeltaSeconds);
@@ -123,6 +127,9 @@ protected:
 	float SteerSideSign = 1.f;
 
 	FTimerHandle RespawnTimerHandle;
+
+	/** Set while RespawnTimerHandle is armed; cleared on Activate/SoftDespawn/SoftReset. */
+	bool bRespawnScheduled = false;
 
 	/** Reused chase / LOS traces — no per-frame heap in AI tick. */
 	mutable FHitResult SteerHitScratch;

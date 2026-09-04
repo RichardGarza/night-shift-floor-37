@@ -120,6 +120,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens")
 	float AlienBurstIntervalSeconds = 1.5f;
 
+	/** Delay between shots inside a burst (seconds). DESIGN: ~0.08–0.1 so 3 shots are not dumped in one Tick. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens")
+	float AlienBurstIntraShotDelaySeconds = 0.09f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens")
 	float AlienAccuracy = 0.3f; // 30%
 

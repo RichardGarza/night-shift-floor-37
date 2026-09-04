@@ -9,6 +9,7 @@ class UGameConfig;
 class AOfficeArena;
 class AAlienBot;
 class UHUDWidget;
+class ANightShiftCharacter;
 
 UENUM(BlueprintType)
 enum class EArenaMatchState : uint8
@@ -22,6 +23,7 @@ enum class EArenaMatchState : uint8
 /**
  * Owns match flow: kill count, timer, win at KillsToWin, death → restart prompt, soft reset.
  * Soft restart resets HP/ammo/kills/timer/alien state/player transform without unloading the level.
+ * Maintains a pool of up to MaxLiveAliens (6) AAlienBot actors.
  */
 UCLASS()
 class NIGHTSHIFTFLOOR37_API AArenaGameMode : public AGameModeBase
@@ -36,6 +38,14 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
 	TObjectPtr<UGameConfig> GameConfig;
+
+	/** Optional Editor-wired arena; auto-found on BeginPlay if unset. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Arena")
+	TObjectPtr<AOfficeArena> CachedArena;
+
+	/** Class used when spawning pool bots (defaults to AAlienBot). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens")
+	TSubclassOf<AAlienBot> AlienBotClass;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Match")
 	EArenaMatchState MatchState = EArenaMatchState::WaitingToStart;
@@ -65,13 +75,31 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Match")
 	bool HasWon() const { return MatchState == EArenaMatchState::Won; }
 
+	UFUNCTION(BlueprintPure, Category = "Arena")
+	AOfficeArena* GetOfficeArena() const { return CachedArena; }
+
+	/**
+	 * Respawn a dead pool bot at farthest edge spawn from the player.
+	 * Returns true if activated; false if arena/player missing (caller may fall back).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Aliens")
+	bool RespawnAlien(AAlienBot* Bot);
+
+	UFUNCTION(BlueprintPure, Category = "Aliens")
+	int32 GetLiveAlienCount() const;
+
 protected:
 	void CheckWinCondition();
 	void EnsureAlienPopulation();
 	void ClampDelta(float& DeltaSeconds) const;
+	void FindOrCacheArena();
+	void BuildAlienPool();
+	void SoftRestartAlienPool();
+	FVector GetPlayerLocation() const;
+	ANightShiftCharacter* GetPlayerCharacter() const;
 
 	UPROPERTY()
-	TObjectPtr<AOfficeArena> CachedArena;
+	TArray<TObjectPtr<AAlienBot>> AlienPool;
 
 	UPROPERTY()
 	TObjectPtr<UHUDWidget> HUDWidget;
