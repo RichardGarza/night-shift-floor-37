@@ -13,7 +13,16 @@
 #include "Kismet/GameplayStatics.h"
 #include "Camera/CameraShakeBase.h"
 #include "Engine/DamageEvents.h"
+#include "InputAction.h"
+#include "InputMappingContext.h"
+#include "InputModifiers.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "UObject/ConstructorHelpers.h"
 #include "GameFramework/PlayerController.h"
+#include "Camera/PlayerCameraManager.h"
 
 ANightShiftCharacter::ANightShiftCharacter()
 {
@@ -46,6 +55,24 @@ ANightShiftCharacter::ANightShiftCharacter()
 
 	Rifle = CreateDefaultSubobject<URifleComponent>(TEXT("Rifle"));
 	ArenaCollision = CreateDefaultSubobject<UArenaCollision>(TEXT("ArenaCollision"));
+
+	// Greybox body: engine cylinder scaled to the capsule. No collision — the capsule owns that.
+	BodyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh"));
+	BodyMesh->SetupAttachment(GetCapsuleComponent());
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMat(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	if (CylinderMesh.Succeeded())
+	{
+		BodyMesh->SetStaticMesh(CylinderMesh.Object);
+	}
+	if (ShapeMat.Succeeded())
+	{
+		BodyMesh->SetMaterial(0, ShapeMat.Object);
+	}
+	BodyMesh->SetRelativeScale3D(FVector(0.84f, 0.84f, 1.8f));
+	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BodyMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+	BodyMesh->SetCastShadow(true);
 }
 
 void ANightShiftCharacter::BeginPlay()
@@ -73,16 +100,24 @@ void ANightShiftCharacter::BeginPlay()
 		Rifle->InitializeFromConfig(GameConfig);
 	}
 
-	// Add Enhanced Input mapping context
+	EnsureMappingContext();
+
+	// OTS pitch range: no staring at your own feet or the sky.
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
-			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		if (PC->PlayerCameraManager)
 		{
-			if (DefaultMappingContext)
-			{
-				Subsystem->AddMappingContext(DefaultMappingContext, 0);
-			}
+			PC->PlayerCameraManager->ViewPitchMin = -55.f;
+			PC->PlayerCameraManager->ViewPitchMax = 45.f;
+		}
+		PC->SetControlRotation(GetActorRotation());
+	}
+
+	if (BodyMesh)
+	{
+		if (UMaterialInstanceDynamic* MID = BodyMesh->CreateAndSetMaterialInstanceDynamic(0))
+		{
+			MID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.12f, 0.16f, 0.24f));
 		}
 	}
 
@@ -233,6 +268,95 @@ void ANightShiftCharacter::ConfigureCapsuleFromConfig()
 	GetCapsuleComponent()->SetCapsuleSize(GameConfig->CapsuleRadiusCm, GameConfig->CapsuleHalfHeightCm);
 }
 
+void ANightShiftCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	BuildRuntimeInputDefaults();
+}
+
+void ANightShiftCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	EnsureMappingContext();
+}
+
+void ANightShiftCharacter::BuildRuntimeInputDefaults()
+{
+	// Editor-assigned assets (INPUT_MAPPING.md) win. Anything left null is built here so the
+	// game is playable straight from C++ with the DESIGN key table.
+	auto MakeAction = [this](const TCHAR* Name, EInputActionValueType Type) -> UInputAction*
+	{
+		UInputAction* Action = NewObject<UInputAction>(this, Name);
+		Action->ValueType = Type;
+		return Action;
+	};
+	if (!MoveAction)         { MoveAction = MakeAction(TEXT("IA_Move_Runtime"), EInputActionValueType::Axis2D); }
+	if (!LookAction)         { LookAction = MakeAction(TEXT("IA_Look_Runtime"), EInputActionValueType::Axis2D); }
+	if (!JumpAction)         { JumpAction = MakeAction(TEXT("IA_Jump_Runtime"), EInputActionValueType::Boolean); }
+	if (!SprintAction)       { SprintAction = MakeAction(TEXT("IA_Sprint_Runtime"), EInputActionValueType::Boolean); }
+	if (!FireAction)         { FireAction = MakeAction(TEXT("IA_Fire_Runtime"), EInputActionValueType::Boolean); }
+	if (!ReloadAction)       { ReloadAction = MakeAction(TEXT("IA_Reload_Runtime"), EInputActionValueType::Boolean); }
+	if (!ShoulderSwapAction) { ShoulderSwapAction = MakeAction(TEXT("IA_ShoulderSwap_Runtime"), EInputActionValueType::Boolean); }
+	if (!PauseAction)        { PauseAction = MakeAction(TEXT("IA_Pause_Runtime"), EInputActionValueType::Boolean); }
+
+	if (DefaultMappingContext)
+	{
+		return;
+	}
+	UInputMappingContext* IMC = NewObject<UInputMappingContext>(this, TEXT("IMC_NightShift_Runtime"));
+	auto Negate = [IMC](bool bX, bool bY) -> UInputModifier*
+	{
+		UInputModifierNegate* N = NewObject<UInputModifierNegate>(IMC);
+		N->bX = bX;
+		N->bY = bY;
+		N->bZ = false;
+		return N;
+	};
+	auto SwizzleYX = [IMC]() -> UInputModifier*
+	{
+		UInputModifierSwizzleAxis* S = NewObject<UInputModifierSwizzleAxis>(IMC);
+		S->Order = EInputAxisSwizzle::YXZ;
+		return S;
+	};
+	// WASD → Axis2D (X = right, Y = forward). Bool keys land on X, so W/S swizzle into Y.
+	IMC->MapKey(MoveAction, EKeys::W).Modifiers.Add(SwizzleYX());
+	{
+		FEnhancedActionKeyMapping& M = IMC->MapKey(MoveAction, EKeys::S);
+		M.Modifiers.Add(Negate(true, true));
+		M.Modifiers.Add(SwizzleYX());
+	}
+	IMC->MapKey(MoveAction, EKeys::A).Modifiers.Add(Negate(true, true));
+	IMC->MapKey(MoveAction, EKeys::D);
+	// Mouse: negate Y so mouse-up looks up (same as the Third Person template).
+	IMC->MapKey(LookAction, EKeys::Mouse2D).Modifiers.Add(Negate(false, true));
+	IMC->MapKey(JumpAction, EKeys::SpaceBar);
+	IMC->MapKey(SprintAction, EKeys::LeftShift);
+	IMC->MapKey(FireAction, EKeys::LeftMouseButton);
+	IMC->MapKey(ReloadAction, EKeys::R);
+	IMC->MapKey(ShoulderSwapAction, EKeys::Q);
+	IMC->MapKey(PauseAction, EKeys::Escape);
+	DefaultMappingContext = IMC;
+	UE_LOG(LogNightShift, Log, TEXT("ANightShiftCharacter: built runtime Enhanced Input defaults (no Editor assets assigned)."));
+}
+
+void ANightShiftCharacter::EnsureMappingContext()
+{
+	if (!DefaultMappingContext)
+	{
+		return;
+	}
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC)
+	{
+		return;
+	}
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
+	if (Subsystem && !Subsystem->HasMappingContext(DefaultMappingContext))
+	{
+		Subsystem->AddMappingContext(DefaultMappingContext, 0);
+	}
+}
+
 bool ANightShiftCharacter::IsMatchPaused() const
 {
 	const AArenaGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<AArenaGameMode>() : nullptr;
@@ -259,6 +383,13 @@ void ANightShiftCharacter::Move(const FInputActionValue& Value)
 
 void ANightShiftCharacter::Look(const FInputActionValue& Value)
 {
+	// Only while the match is live: in WaitingToStart / Won / Lost / paused the cursor is free
+	// and the first capture delta would otherwise spin the camera.
+	const AArenaGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<AArenaGameMode>() : nullptr;
+	if (GM && (GM->MatchState != EArenaMatchState::InProgress || GM->IsMatchPaused()))
+	{
+		return;
+	}
 	// Mouse only — recoil is applied in AddRecoilKick + UpdateRecoilRecovery (not dribbled here).
 	const FVector2D Axis = Value.Get<FVector2D>();
 	AddControllerYawInput(Axis.X);

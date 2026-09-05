@@ -6,6 +6,14 @@
 #include "OfficeArena.generated.h"
 
 class UBoxComponent;
+class UStaticMeshComponent;
+class UStaticMesh;
+class UMaterialInterface;
+class UDirectionalLightComponent;
+class USkyLightComponent;
+class USkyAtmosphereComponent;
+class UExponentialHeightFogComponent;
+class UPointLightComponent;
 class UGameConfig;
 
 /**
@@ -99,6 +107,30 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cover")
 	float CoverSearchRadiusCm = 2500.f;
 
+	// ----- Greybox (code-built floor, walls, atrium tower, cover blocks, lighting) -----
+
+	/** Build playable greybox geometry + lighting from engine basic shapes. Turn off once a real level exists. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Greybox")
+	bool bBuildGreybox = true;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
+	TArray<TObjectPtr<UStaticMeshComponent>> GreyboxMeshes;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
+	TObjectPtr<UDirectionalLightComponent> SunLight;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
+	TObjectPtr<USkyLightComponent> SkyLight;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
+	TObjectPtr<USkyAtmosphereComponent> SkyAtmosphere;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
+	TObjectPtr<UExponentialHeightFogComponent> Fog;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
+	TArray<TObjectPtr<UPointLightComponent>> PracticalLights;
+
 	/** Pick spawn farthest from WorldLocation (DESIGN: on spawn, farthest from player). Prefers AlienSpawnPointData. */
 	UFUNCTION(BlueprintCallable, Category = "Spawns")
 	FTransform GetFarthestSpawnFrom(const FVector& WorldLocation) const;
@@ -176,6 +208,19 @@ public:
 	bool DoesLineHitCover(const FVector& Start, const FVector& End) const;
 
 protected:
+	void BuildGreybox();
+	void BuildGreyboxLighting();
+	/** Create the MIDs that colour the greybox (BeginPlay; MIDs cannot exist in the constructor). */
+	void ApplyGreyboxColors();
+	UStaticMeshComponent* AddGreyboxBox(const FString& Name, const FVector& Center, const FVector& Size, const FRotator& Rot, const FLinearColor& Color);
+	/** Sloped box whose top surface runs from SurfaceStart to SurfaceEnd (world-relative cm). */
+	UStaticMeshComponent* AddGreyboxRamp(const FString& Name, const FVector& SurfaceStart, const FVector& SurfaceEnd, float Width, const FLinearColor& Color);
+	TArray<FLinearColor> GreyboxColors;
+	UPROPERTY()
+	TObjectPtr<UStaticMesh> GreyboxCubeMesh;
+	UPROPERTY()
+	TObjectPtr<UMaterialInterface> GreyboxMaterial;
+
 	/** Prototype cubicle-ish boxes around atrium — no BP required (~800 cm ring). */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cover")
 	TObjectPtr<UBoxComponent> DefaultCover_CubicleN;

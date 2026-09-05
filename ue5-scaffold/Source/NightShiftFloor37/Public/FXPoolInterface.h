@@ -60,7 +60,12 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Pool")
 	FVector TracerEnd = FVector::ZeroVector;
 
+	/** Thin bright box stretched from TracerStart to TracerEnd (engine cube). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Pool")
+	TObjectPtr<class UStaticMeshComponent> Mesh;
+
 protected:
+	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 	float TimeRemaining = 0.f;
 };

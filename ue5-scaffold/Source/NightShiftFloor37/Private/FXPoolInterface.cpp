@@ -4,6 +4,11 @@
 #include "Components/SceneComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Engine/World.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "UObject/ConstructorHelpers.h"
 
 // ---------------------------------------------------------------------------
 // APooledTracerActor — placeholder visual; replace with Niagara later
@@ -13,8 +18,35 @@ APooledTracerActor::APooledTracerActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
+	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
+	SetRootComponent(Mesh);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMat(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	if (CubeMesh.Succeeded())
+	{
+		Mesh->SetStaticMesh(CubeMesh.Object);
+	}
+	if (ShapeMat.Succeeded())
+	{
+		Mesh->SetMaterial(0, ShapeMat.Object);
+	}
+	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Mesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+	Mesh->SetCastShadow(false);
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
+}
+
+void APooledTracerActor::BeginPlay()
+{
+	Super::BeginPlay();
+	if (Mesh)
+	{
+		if (UMaterialInstanceDynamic* MID = Mesh->CreateAndSetMaterialInstanceDynamic(0))
+		{
+			MID->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.85f, 0.45f));
+		}
+	}
 }
 
 void APooledTracerActor::Activate(const FVector& Start, const FVector& End, float DurationSeconds)
@@ -23,7 +55,14 @@ void APooledTracerActor::Activate(const FVector& Start, const FVector& End, floa
 	TracerEnd = End;
 	TimeRemaining = FMath::Max(DurationSeconds, 0.001f);
 	bActive = true;
-	SetActorLocation(Start);
+	const FVector D = End - Start;
+	const float Len = FMath::Max(D.Size(), 1.f);
+	SetActorLocation((Start + End) * 0.5f);
+	SetActorRotation(D.Rotation());
+	if (Mesh)
+	{
+		Mesh->SetRelativeScale3D(FVector(Len / 100.f, 0.03f, 0.03f));
+	}
 	SetActorHiddenInGame(false);
 	SetActorTickEnabled(true);
 }

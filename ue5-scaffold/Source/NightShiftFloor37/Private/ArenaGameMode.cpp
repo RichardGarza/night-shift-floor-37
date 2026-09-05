@@ -12,17 +12,65 @@
 #include "GameFramework/PlayerStart.h"
 #include "GameFramework/PlayerController.h"
 #include "Blueprint/UserWidget.h"
+#include "FXPoolInterface.h"
 
 AArenaGameMode::AArenaGameMode()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	AlienBotClass = AAlienBot::StaticClass();
-	// DefaultPawnClass / HUDClass — set in Blueprint or project defaults after drop-in.
+	// Code-first defaults: the game runs with no Blueprints. A BP subclass can still override both.
+	DefaultPawnClass = ANightShiftCharacter::StaticClass();
+	HUDWidgetClass = UHUDWidget::StaticClass();
+}
+
+AActor* AArenaGameMode::ChoosePlayerStart_Implementation(AController* Player)
+{
+	if (AActor* Found = Super::ChoosePlayerStart_Implementation(Player))
+	{
+		return Found;
+	}
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+	EnsureWorldActors();
+	const FVector Origin = CachedArena ? CachedArena->GetActorLocation() : FVector::ZeroVector;
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	// 10 m west of the atrium, facing it (+X).
+	APlayerStart* Start = World->SpawnActor<APlayerStart>(APlayerStart::StaticClass(), Origin + FVector(-1000.f, 0.f, 120.f), FRotator::ZeroRotator, Params);
+	UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode: no PlayerStart in map — spawned one beside the arena."));
+	return Start;
+}
+
+void AArenaGameMode::EnsureWorldActors()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	FindOrCacheArena();
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	if (!CachedArena)
+	{
+		CachedArena = World->SpawnActor<AOfficeArena>(AOfficeArena::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, Params);
+		UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode: spawned AOfficeArena (greybox) at origin."));
+	}
+	TActorIterator<AFXPoolManager> PoolIt(World);
+	if (!PoolIt)
+	{
+		World->SpawnActor<AFXPoolManager>(AFXPoolManager::StaticClass(), FVector(0.f, 0.f, 100.f), FRotator::ZeroRotator, Params);
+		UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode: spawned AFXPoolManager."));
+	}
 }
 
 void AArenaGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+	EnsureWorldActors();
 	ResolveAndPropagateGameConfig();
 	FindOrCacheArena();
 	BuildAlienPool();

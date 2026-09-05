@@ -15,6 +15,7 @@ class UInputMappingContext;
 class UInputAction;
 class UArenaCollision;
 class UCameraShakeBase;
+class UStaticMeshComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDamaged, float, Amount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDied);
@@ -34,6 +35,8 @@ public:
 	ANightShiftCharacter();
 
 	virtual void BeginPlay() override;
+	virtual void PostInitializeComponents() override;
+	virtual void PossessedBy(AController* NewController) override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
@@ -51,6 +54,10 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<URifleComponent> Rifle;
+
+	/** Greybox body (engine cylinder) so the player reads in 3rd person without art. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visual")
+	TObjectPtr<UStaticMeshComponent> BodyMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UArenaCollision> ArenaCollision;
@@ -196,6 +203,10 @@ public:
 	FVector GetAimDirection() const;
 
 protected:
+	/** Create Input Actions + a mapping context in code when no Editor assets are assigned. */
+	void BuildRuntimeInputDefaults();
+	/** Add DefaultMappingContext to the local player's Enhanced Input subsystem (idempotent). */
+	void EnsureMappingContext();
 	void ApplyConfigToMovement();
 	void UpdateRegen(float DeltaSeconds);
 	void UpdateRecoilRecovery(float DeltaSeconds);

@@ -40,9 +40,9 @@ One **persistent** level. Soft restart never unloads it.
   - [ ] **Two stacked** pairs → tall cover (art can read taller; query proxy half-extent Z is **120 cm** → ~240 cm full height)
   - [ ] **One angled** (~35° yaw proxy) single rack
 - [ ] Scaffold proxies already on `AOfficeArena` (query-only, hidden):
-  - [ ] `DefaultCover_RackStack_A` @ ~(450, −550) cm, extent ~90×60×120 (stacked pair proxy)
-  - [ ] `DefaultCover_RackStack_B` @ ~(−500, 450) cm, same stacked extent
-  - [ ] `DefaultCover_RackAngled` @ ~(200, 600) cm, yaw **35°**, extent ~90×60×90
+  - [ ] `DefaultCover_RackStack_A` @ ~(1500, −550) cm, extent ~90×60×120 (stacked pair proxy)
+  - [ ] `DefaultCover_RackStack_B` @ ~(−1500, 450) cm, same stacked extent
+  - [ ] `DefaultCover_RackAngled` @ ~(400, 1500) cm, yaw **35°**, extent ~90×60×90
 - [ ] Align final meshes to those proxies (or move proxies to match art)
 - [ ] Wire any extra rack collision boxes into `CoverVolumes` / `RegisterCoverVolume`
 

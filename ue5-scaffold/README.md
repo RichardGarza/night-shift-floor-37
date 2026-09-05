@@ -1,6 +1,6 @@
 # Night Shift — Floor 37 (UE5 Scaffold)
 
-This folder is a **drop-in C++/content scaffold** for Unreal Engine **5.8**. `NightShiftFloor37.uproject` + `Source/` build as a standalone game module (no Editor content yet); you can also merge `Source/` into an existing **Third Person + Enhanced Input** project.
+This folder is a **runnable Unreal Engine 5.8 project**. Everything needed to play is created from C++ at startup (input, HUD, arena greybox, lighting, FX pool, player start, config defaults), plus one generated map. Editor content in `EDITOR_DROP_IN.md` is optional polish that overrides the code-built defaults when assigned.
 
 Authoritative design numbers: `../DESIGN.md` (and mirrored in `UGameConfig` defaults).
 
@@ -14,9 +14,22 @@ Verified 2026-09-04: `NightShiftFloor37Editor` (Mac, Development) builds and lin
 "/Users/Shared/Epic Games/UE_5.8/Engine/Build/BatchFiles/Mac/Build.sh" NightShiftFloor37Editor Mac Development -Project="<path>/NightShiftFloor37.uproject"
 ```
 
-Not yet verified: Play-In-Editor. That needs the Editor content in `EDITOR_DROP_IN.md` (Data Asset, Input Actions, HUD widget, Blueprints, a level).
+## Run it
 
-## Drop-in steps
+```
+cd ue5-scaffold
+"/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor" "$PWD/NightShiftFloor37.uproject" /Game/Maps/Floor37 -game -windowed -ResX=1600 -ResY=900
+```
+
+Or open `NightShiftFloor37.uproject` in the Editor and press Play (`EditorStartupMap` is Floor37).
+
+If `Content/Maps/Floor37.umap` is missing, regenerate it headlessly:
+
+```
+"/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor-Cmd" "$PWD/NightShiftFloor37.uproject" -run=pythonscript -script=Scripts/make_floor37_map.py -unattended -nop4 -nosplash
+```
+
+## Drop-in steps (merging into an existing project instead)
 
 1. Create or open a UE 5.8 project from the **Third Person** template with **Enhanced Input** enabled.
 2. Copy `Source/NightShiftFloor37/` into your project's `Source/` (or merge classes into your primary game module and update `Build.cs` deps: `EnhancedInput`, `UMG`, `AIModule`, `NavigationSystem`).

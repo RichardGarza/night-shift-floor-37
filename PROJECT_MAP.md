@@ -28,16 +28,17 @@ night-shift-floor-37/
 │       ├── collision.js      AABB / OBB helpers, rampHeightAt.
 │       └── hud.js            DOM overlay.
 │
-└── ue5-scaffold/             UE 5.8 game module. Compiles. No Editor content yet.
+└── ue5-scaffold/             UE 5.8 project. Builds and runs standalone; everything is code-built.
     ├── README.md             Drop-in steps, module table, verified compile status.
-    ├── EDITOR_DROP_IN.md     Click-paths for every asset a human must create. THE next gate.
+    ├── EDITOR_DROP_IN.md     Optional Editor assets that override the code-built defaults.
     ├── LEVEL_SETUP_CHECKLIST.md  How to build the office/atrium level.
     ├── INPUT_MAPPING.md      8 Input Actions + IMC_NightShift key table.
     ├── NAVMESH_NOTES.md      Optional AIController MoveTo path.
     ├── PHASE0.md … PHASE5.md History of what each authoring phase shipped.
     ├── NightShiftFloor37.uproject   EngineAssociation 5.8, EnhancedInput plugin.
     ├── Config/               DefaultEngine / DefaultGame / DefaultInput merge stubs.
-    ├── Content/              Four README placeholders. Zero .uasset files.
+    ├── Content/Maps/Floor37.umap  Generated map: OfficeArena + FXPoolManager + PlayerStart.
+    ├── Scripts/make_floor37_map.py  Headless map generator (Python commandlet).
     └── Source/
         ├── NightShiftFloor37.Target.cs, NightShiftFloor37Editor.Target.cs
         └── NightShiftFloor37/
@@ -51,13 +52,13 @@ night-shift-floor-37/
 | Class | File | Owns |
 |---|---|---|
 | `UGameConfig` | `GameConfig.h/.cpp` | Every tunable as a Data Asset; `ResolveOrCreate` falls back to DESIGN defaults |
-| `AArenaGameMode` | `ArenaGameMode.h/.cpp` | Match state, timer, kills, win/lose, soft restart, alien pool, HUD creation, bounds enforcement |
-| `AOfficeArena` | `OfficeArena.h/.cpp` | Bounds + ceiling clamp, 8 spawn points, 11 cover query boxes, spawn selection |
-| `ANightShiftCharacter` | `NightShiftCharacter.h/.cpp` | Enhanced Input bindings, OTS camera + Q swap, health/regen, recoil, mantle, fall damage |
+| `AArenaGameMode` | `ArenaGameMode.h/.cpp` | Match state, timer, kills, win/lose, soft restart, alien pool, HUD creation, bounds enforcement; spawns arena / FX pool / PlayerStart if the map lacks them; default pawn + HUD classes |
+| `AOfficeArena` | `OfficeArena.h/.cpp` | Bounds + ceiling clamp, 8 spawn points, 11 cover boxes, spawn selection, **greybox geometry and lighting** (floor, walls, atrium tower with spiral ramps, cover blocks, sun, sky, fog, practicals) |
+| `ANightShiftCharacter` | `NightShiftCharacter.h/.cpp` | Enhanced Input bindings with **runtime-built actions and mapping context**, OTS camera + Q swap, health/regen, recoil, mantle, fall damage, greybox body |
 | `URifleComponent` | `RifleComponent.h/.cpp` | Fire / reload / ammo, soft-lock, visibility hitscan, FX pool calls |
 | `AAlienBot` | `AlienBot.h/.cpp` | Chase / strafe / burst state machine, hit counting, flash, death + respawn |
 | `UArenaCollision` | `ArenaCollision.h/.cpp` | Push-apart between bots, fall damage, extra traces |
-| `UHUDWidget` | `HUDWidget.h/.cpp` | Polls match state into `OnRefreshHUD` / `OnPromptChanged` BP events; click-to-start |
+| `UHUDWidget` | `HUDWidget.h/.cpp` | **Builds its own UMG tree in C++** (HP bar, ammo, kills, timer, crosshair, prompts); click-to-start; BP events still fire for custom art |
 | `AFXPoolManager`, `APooledTracerActor` | `FXPoolInterface.h/.cpp` | Pooled tracer actors and muzzle point lights |
 
 Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bots call back into GameMode on death. Character asks GameMode for pause state. Rifle finds `AFXPoolManager` by class lookup, so one must be placed in the level.
@@ -69,9 +70,9 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | DESIGN.md | Stable | Both implementations match every specified number |
 | web/ | Playable, bug-fixed | Loads clean; module-level checks pass; real playthrough after latest fixes still pending |
 | UE5 compile | **Verified** on UE 5.8 Mac | Zero errors, zero warnings, `ue5-scaffold/README.md` records the command |
-| UE5 runtime logic | Fixed, unverified in Editor | Hit channel, pause, spawn spread, bounds, dead-input gating all in source |
-| UE5 Editor content | **Not started** | `EDITOR_DROP_IN.md` 58 items, `LEVEL_SETUP_CHECKLIST.md` 63 items, 0 checked |
-| Play-In-Editor | **Blocked** on content | No level, no input assets, no HUD widget, no Data Asset |
+| UE5 standalone run | **Verified** 2026-09-04 | Launches to the start prompt with greybox arena, HUD, lighting; startup log clean |
+| UE5 gameplay | Code-complete, **not yet played through** | Shoot / pause / spawn-spread / bounds / death / win need a human at the keyboard |
+| UE5 Editor content | Optional now | Code-built defaults cover input, HUD, config, arena, map; `EDITOR_DROP_IN.md` assets override them when assigned |
 | Art / audio / packaging | Out of scope so far | DESIGN calls for Nanite + Lumen mood pass; nothing exists |
 
 ## Build and run
@@ -81,9 +82,20 @@ Web:
 cd web && python3 -m http.server 8000     # then open http://localhost:8000
 ```
 
-UE5 headless build (copy the scaffold somewhere first so build output stays out of the repo):
+UE5 build in place (`.gitignore` covers Binaries / Intermediate / Saved):
 ```
-"/Users/Shared/Epic Games/UE_5.8/Engine/Build/BatchFiles/Mac/Build.sh" NightShiftFloor37Editor Mac Development -Project="<copy>/NightShiftFloor37.uproject"
+cd ue5-scaffold
+"/Users/Shared/Epic Games/UE_5.8/Engine/Build/BatchFiles/Mac/Build.sh" NightShiftFloor37Editor Mac Development -Project="$PWD/NightShiftFloor37.uproject"
+```
+
+UE5 run standalone (or open the `.uproject` in the Editor and press Play):
+```
+"/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor" "$PWD/NightShiftFloor37.uproject" /Game/Maps/Floor37 -game -windowed -ResX=1600 -ResY=900
+```
+
+Regenerate the map if it is ever lost:
+```
+"/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor-Cmd" "$PWD/NightShiftFloor37.uproject" -run=pythonscript -script=Scripts/make_floor37_map.py -unattended -nop4 -nosplash
 ```
 Build logs: `~/Library/Application Support/Epic/UnrealBuildTool/Log.txt`.
 
@@ -95,34 +107,29 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 Ordered by what unblocks the most. Phases 6 and 7 are the critical path to a playable Unreal build. 8 and 9 can run in parallel with them.
 
-### Phase 6: Editor content and first PIE (critical path, manual, Editor only)
+### Phase 6: First playthrough (done in code; needs a human to play it)
 
-Goal: press Play and shoot an alien. Everything here is a human clicking in the Editor; the docs already spell out each step.
+The Editor checklist is no longer the gate. The C++ builds input, HUD, config, arena, lighting, FX pool, and player start at runtime, and `Content/Maps/Floor37.umap` is generated. The standalone game launches to the start prompt. What remains is a person at the keyboard running this smoke list:
 
-1. Open (or create) a UE 5.8 Third Person project and overwrite its `Source/`, `Config/`, `.uproject` with this repo's `ue5-scaffold/`. Compile from the Editor.
-2. `DA_GameConfig` Data Asset under `Content/Data/` (`EDITOR_DROP_IN.md` §Data Asset). Defaults already match DESIGN, so no values to type.
-3. Eight Input Actions plus `IMC_NightShift` under `Content/Input/` (`INPUT_MAPPING.md`). Look needs a Negate on Y if the muzzle dips instead of rises on recoil.
-4. `BP_NightShiftCharacter` with the IMC, the 8 actions, and the Data Asset assigned.
-5. `BP_ArenaGameMode` with `HUDWidgetClass`, `DefaultPawnClass`, and the Data Asset. Set it as the World Settings GameMode override.
-6. `WBP_NightShiftHUD` parented to `UHUDWidget`. Implement `OnRefreshHUD` and `OnPromptChanged`, keep it hit-testable so clicks start the match.
-7. Greybox level `Content/Maps/Floor37`: floor, perimeter, atrium tower, PlayerStart, one placed `AOfficeArena`, one placed `AFXPoolManager`, optionally 8 tagged spawn markers. Full dressing comes later; a flat floor with the arena actor is enough for the first PIE.
-8. PIE smoke, in this order. Each one tests a fix from this session:
-   - Click to play, HUD shows 30 / 90 and 0 kills.
-   - Six aliens appear at six different edge points, not one corner.
-   - Shooting an alien increments its hit counters and kills it at 3 body / 2 head.
-   - Esc freezes aliens and the gun; Esc again resumes.
-   - Walking past the arena edge clamps you back inside.
-   - Dying shows the restart prompt and ignores movement input.
-   - 25 kills shows the win screen with the time.
+- Click to play: HUD shows 30 / 90, kills 0 / 25, timer running.
+- Six green aliens come from six different edges, not one corner.
+- Shots land: alien flashes white on hit, dies at 3 body / 2 head, kill counter climbs.
+- Tracers draw from the muzzle; muzzle light flashes.
+- Esc pauses (prompt says so, aliens freeze, gun is dead); Esc again resumes.
+- Ramps are climbable; the tower top is reachable; dropping from the top hurts.
+- Walking into the perimeter stops you.
+- Dying shows the restart prompt and ignores movement; clicking restarts in place.
+- 25 kills shows the win screen with the time.
 
-Exit criterion: all seven smoke items pass. Check them off in `EDITOR_DROP_IN.md` as you go, and record the result in `README.md` under Compile status.
+Record what fails here or in `ue5-scaffold/README.md`. Anything broken goes to the top of Phase 7.
 
 ### Phase 7: Feel and visibility (UE, code plus a little content)
 
 Only after Phase 6, because every item needs PIE to judge.
 
-- Give `APooledTracerActor` a visible component. A thin scaled cube stretched between `TracerStart` and `TracerEnd` is enough; Niagara ribbon later.
-- Alien mesh plus a hit-flash material bound to `HitFlashAlpha`. Until then the bot is an invisible capsule.
+- Tune the greybox lighting in `AOfficeArena::BuildGreyboxLighting` (sun angle, fog, practicals). Auto exposure is off, so intensities are literal.
+- Camera framing: the player body sits close to centre; consider a longer boom or wider shoulder offset.
+- Replace greybox cylinders with real meshes and swap the hit flash from a colour lerp to an emissive material.
 - Cap the soft-lock overlap sphere in `RifleComponent.cpp` to about 30 m. Today it queries a 200 m radius on every shot at 600 RPM.
 - Move `AddMappingContext` from `BeginPlay` to `PossessedBy` so re-possession keeps input.
 - Decide whether recoil should accumulate. It currently self-cancels exactly. If DESIGN's "small kick that recovers" is meant literally, leave it; otherwise let a fraction persist.

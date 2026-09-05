@@ -37,6 +37,8 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	/** Falls back to a spawned APlayerStart beside the arena when the map has none. */
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
 	TObjectPtr<UGameConfig> GameConfig;
@@ -124,6 +126,8 @@ protected:
 	/** Auto-resolve GameConfig (asset or DESIGN defaults) and push to bots/player/rifle/collision. */
 	void ResolveAndPropagateGameConfig();
 	void FindOrCacheArena();
+	/** Spawn AOfficeArena / AFXPoolManager if the level has none, so an empty map still plays. */
+	void EnsureWorldActors();
 	void BuildAlienPool();
 	void SoftRestartAlienPool();
 	/** @param bShowPromptIfWaiting Show "Click to play" when leaving match in WaitingToStart. */

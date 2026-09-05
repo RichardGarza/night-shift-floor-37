@@ -14,6 +14,11 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "AIController.h"
 #include "EngineUtils.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "UObject/ConstructorHelpers.h"
 
 namespace AlienBotPrivate
 {
@@ -34,11 +39,43 @@ AAlienBot::AAlienBot()
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	ArenaCollision = CreateDefaultSubobject<UArenaCollision>(TEXT("ArenaCollision"));
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+	// Greybox visuals. Capsule 40/88: body cylinder, head sphere in the top 25%.
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMat(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	BodyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh"));
+	BodyMesh->SetupAttachment(GetCapsuleComponent());
+	BodyMesh->SetRelativeLocation(FVector(0.f, 0.f, -22.f));
+	BodyMesh->SetRelativeScale3D(FVector(0.7f, 0.7f, 1.3f));
+	HeadMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("HeadMesh"));
+	HeadMesh->SetupAttachment(GetCapsuleComponent());
+	HeadMesh->SetRelativeLocation(FVector(0.f, 0.f, 64.f));
+	HeadMesh->SetRelativeScale3D(FVector(0.48f, 0.48f, 0.48f));
+	for (UStaticMeshComponent* M : { BodyMesh.Get(), HeadMesh.Get() })
+	{
+		if (ShapeMat.Succeeded())
+		{
+			M->SetMaterial(0, ShapeMat.Object);
+		}
+		M->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		M->SetCollisionResponseToAllChannels(ECR_Ignore);
+		M->SetCastShadow(true);
+	}
+	if (CylinderMesh.Succeeded())
+	{
+		BodyMesh->SetStaticMesh(CylinderMesh.Object);
+	}
+	if (SphereMesh.Succeeded())
+	{
+		HeadMesh->SetStaticMesh(SphereMesh.Object);
+	}
 }
 
 void AAlienBot::BeginPlay()
 {
 	Super::BeginPlay();
+	ApplyFlashToMaterials(); // paints the greybox in BodyColor
 	if (GameConfig)
 	{
 		GetCharacterMovement()->MaxWalkSpeed = GameConfig->AlienMoveSpeed;
@@ -86,11 +123,36 @@ void AAlienBot::Tick(float DeltaSeconds)
 	UpdateAI(DeltaSeconds);
 }
 
+void AAlienBot::ApplyFlashToMaterials()
+{
+	if (!BodyMID && BodyMesh)
+	{
+		BodyMID = BodyMesh->CreateAndSetMaterialInstanceDynamic(0);
+	}
+	if (!HeadMID && HeadMesh)
+	{
+		HeadMID = HeadMesh->CreateAndSetMaterialInstanceDynamic(0);
+	}
+	const FLinearColor C = FMath::Lerp(BodyColor, FLinearColor::White, FMath::Clamp(HitFlashAlpha, 0.f, 1.f));
+	if (BodyMID)
+	{
+		BodyMID->SetVectorParameterValue(TEXT("Color"), C);
+	}
+	if (HeadMID)
+	{
+		HeadMID->SetVectorParameterValue(TEXT("Color"), C);
+	}
+}
+
 void AAlienBot::UpdateHitFlash(float DeltaSeconds)
 {
 	if (HitFlashTimeRemaining <= 0.f)
 	{
-		HitFlashAlpha = 0.f;
+		if (HitFlashAlpha > 0.f)
+		{
+			HitFlashAlpha = 0.f;
+			ApplyFlashToMaterials();
+		}
 		return;
 	}
 	HitFlashTimeRemaining -= DeltaSeconds;
@@ -109,6 +171,7 @@ void AAlienBot::UpdateHitFlash(float DeltaSeconds)
 			OnHitFlash.Broadcast(false);
 		}
 	}
+	ApplyFlashToMaterials();
 }
 
 void AAlienBot::SetTarget(ANightShiftCharacter* InTarget)
@@ -407,6 +470,7 @@ void AAlienBot::PlayHitFlash()
 	const float Ms = GameConfig ? GameConfig->HitFlashDurationMs : 80.f;
 	HitFlashTimeRemaining = Ms * 0.001f;
 	HitFlashAlpha = 1.f;
+	ApplyFlashToMaterials();
 	if (!bIsFlashing)
 	{
 		bIsFlashing = true;

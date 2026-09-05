@@ -5,6 +5,9 @@
 #include "GameFramework/Character.h"
 #include "AlienBot.generated.h"
 
+class UStaticMeshComponent;
+class UMaterialInstanceDynamic;
+
 class UGameConfig;
 class ANightShiftCharacter;
 class UArenaCollision;
@@ -41,6 +44,16 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
 	TObjectPtr<UGameConfig> GameConfig;
+
+	/** Greybox body + head (engine cylinder / sphere) in one bright bio colour. Head = top 25%. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visual")
+	TObjectPtr<UStaticMeshComponent> BodyMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visual")
+	TObjectPtr<UStaticMeshComponent> HeadMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visual")
+	FLinearColor BodyColor = FLinearColor(0.35f, 1.0f, 0.3f);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UArenaCollision> ArenaCollision;
@@ -116,6 +129,14 @@ protected:
 	void ScheduleRespawn();
 	void PlayHitFlash();
 	void UpdateHitFlash(float DeltaSeconds);
+	/** Push HitFlashAlpha into the greybox materials (white flash). */
+	void ApplyFlashToMaterials();
+
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> BodyMID;
+
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> HeadMID;
 	bool HasLineOfSightToTarget() const;
 	float DistanceToTargetMeters() const;
 	AOfficeArena* FindArena() const;
