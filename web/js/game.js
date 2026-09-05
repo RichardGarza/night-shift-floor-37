@@ -50,8 +50,9 @@ export class Game {
     this._worldShotCols = [];
     for (let i = 0; i < this.solids.length; i++) {
       const s = this.solids[i];
-      if (!s.mesh || !s.blockXZ) continue;
-      if (s.max.y - s.min.y < 0.8) continue;
+      // Every solid with a mesh stops bullets — atrium platforms and ramps included.
+      // Only the invisible ceiling is skipped.
+      if (!s.mesh || s.ceiling) continue;
       this._worldShotCols.push({ mesh: s.mesh, kind: 'world' });
     }
 
@@ -231,7 +232,7 @@ export class Game {
       this.elapsed += dt;
 
       // Soft lock before movement camera update
-      this.player.applySoftLock(this.aliens.aliens);
+      this.player.applySoftLock(this.aliens.aliens, dt);
 
       this.player.update(dt, this.input, this.solids, this.half);
 
@@ -243,7 +244,7 @@ export class Game {
           cols.length = 0;
           const aliens = this.aliens.getColliders();
           for (let i = 0; i < aliens.length; i++) cols.push(aliens[i]);
-          // Block bullets with tall cover / walls (prebuilt; skip thin platforms)
+          // World geometry (prebuilt list)
           for (let i = 0; i < this._worldShotCols.length; i++) {
             cols.push(this._worldShotCols[i]);
           }

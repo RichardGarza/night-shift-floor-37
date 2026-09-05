@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
-import { overlapsSolidXZ, resolveSolidAxis } from './collision.js';
+import { overlapsSolidXZ, resolveSolidAxis, rampHeightAt } from './collision.js';
 
 const _to = new THREE.Vector3();
 const _side = new THREE.Vector3();
@@ -38,18 +38,6 @@ function ensureShared() {
   _flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 }
 
-function rampHeightAt(b, x, z) {
-  const dx = x - b.x0;
-  const dz = z - b.z0;
-  const along = dx * b.dirX + dz * b.dirZ;
-  if (along < -0.05 || along > b.len + 0.05) return null;
-  const lat = -dx * b.dirZ + dz * b.dirX;
-  const hw = b.width * 0.5;
-  if (lat < -hw - 0.05 || lat > hw + 0.05) return null;
-  const t = Math.max(0, Math.min(1, along / b.len));
-  return b.y0 + (b.y1 - b.y0) * t;
-}
-
 export class Alien {
   constructor(scene) {
     ensureShared();
@@ -80,7 +68,7 @@ export class Alien {
     this.burstCd = 0;
     this.shotCd = 0;
     this.flashT = 0;
-    this.respawnAt = 0;
+    this.respawnTimer = 0;
     this._baseBodyMat = this.body.material;
     this._baseHeadMat = this.headMesh.material;
     this._stuckT = 0;
@@ -131,7 +119,7 @@ export class Alien {
   kill() {
     this.alive = false;
     this.root.visible = false;
-    this.respawnAt = performance.now() / 1000 + CONFIG.alien.respawnDelay;
+    this.respawnTimer = CONFIG.alien.respawnDelay;
   }
 
   /** @returns true if killed */
@@ -348,7 +336,8 @@ export class Alien {
       for (let i = 0; i < solids.length; i++) {
         const b = solids[i];
         if (!b.blockXZ || b.ramp || b.ceiling) continue;
-        if (b.max.y - b.min.y < 1.4) continue;
+        // Ignore only knee-high solids; cubicle panels (1.15 m) must block alien fire
+        if (b.max.y - b.min.y < 1.0) continue;
         if (y > b.min.y && y < b.max.y && overlapsSolidXZ(b, x, z, 0)) {
           return false;
         }
@@ -410,48 +399,77 @@ export class AlienManager {
     this.aliens = [];
     /** Reused each getColliders() call — avoid per-shot array alloc */
     this._colliderBuf = [];
+    /** Reused spawn-index scratch list */
+    this._usedBuf = [];
     for (let i = 0; i < CONFIG.alien.count; i++) {
       this.aliens.push(new Alien(scene));
     }
   }
 
-  farthestSpawn(playerPos) {
-    let best = this.spawnPoints[0];
+  /** Index of the spawn point farthest from playerPos, skipping indices in `used` (any point if all used). */
+  _pickSpawnIndex(playerPos, used) {
+    let best = -1;
     let bestD = -1;
-    for (let i = 0; i < this.spawnPoints.length; i++) {
-      const p = this.spawnPoints[i];
-      const d = p.distanceToSquared(playerPos);
-      if (d > bestD) {
-        bestD = d;
-        best = p;
+    for (let pass = 0; pass < 2 && best < 0; pass++) {
+      for (let i = 0; i < this.spawnPoints.length; i++) {
+        if (pass === 0 && used.indexOf(i) !== -1) continue;
+        const d = this.spawnPoints[i].distanceToSquared(playerPos);
+        if (d > bestD) {
+          bestD = d;
+          best = i;
+        }
       }
     }
-    return best.clone();
+    return best;
+  }
+
+  /** Spawn indices with a living alien within 3 m, so single respawns do not stack on a corner. */
+  _occupiedSpawns(out) {
+    out.length = 0;
+    for (let i = 0; i < this.spawnPoints.length; i++) {
+      const p = this.spawnPoints[i];
+      for (let j = 0; j < this.aliens.length; j++) {
+        const a = this.aliens[j];
+        if (a.alive && a.position.distanceToSquared(p) < 9) {
+          out.push(i);
+          break;
+        }
+      }
+    }
+    return out;
+  }
+
+  _spawnAlienAt(a, idx, jitter) {
+    a.spawnAt(this.spawnPoints[idx]);
+    a.position.x += (Math.random() - 0.5) * jitter;
+    a.position.z += (Math.random() - 0.5) * jitter;
   }
 
   softReset(playerPos) {
-    const now = performance.now() / 1000;
+    // Spread the batch across distinct spawn points (farthest-first, no repeats).
+    const used = this._usedBuf;
+    used.length = 0;
     for (let i = 0; i < this.aliens.length; i++) {
       const a = this.aliens[i];
       a.kill();
-      a.respawnAt = now + i * 0.15;
-    }
-    for (let i = 0; i < this.aliens.length; i++) {
-      this.aliens[i].spawnAt(this.farthestSpawn(playerPos));
-      this.aliens[i].position.x += (Math.random() - 0.5) * 2;
-      this.aliens[i].position.z += (Math.random() - 0.5) * 2;
+      const idx = this._pickSpawnIndex(playerPos, used);
+      used.push(idx);
+      this._spawnAlienAt(a, idx, 2);
     }
   }
 
   update(dt, player, solids, combat, half) {
-    const now = performance.now() / 1000;
     for (let i = 0; i < this.aliens.length; i++) {
       const a = this.aliens[i];
       if (!a.alive) {
-        if (a.respawnAt > 0 && now >= a.respawnAt) {
-          a.spawnAt(this.farthestSpawn(player.position));
-          a.position.x += (Math.random() - 0.5) * 1.5;
-          a.position.z += (Math.random() - 0.5) * 1.5;
+        // dt-driven respawn timer: a pause no longer respawns every dead alien on unpause
+        if (a.respawnTimer > 0) {
+          a.respawnTimer -= dt;
+          if (a.respawnTimer <= 0) {
+            a.respawnTimer = 0;
+            const idx = this._pickSpawnIndex(player.position, this._occupiedSpawns(this._usedBuf));
+            this._spawnAlienAt(a, idx, 1.5);
+          }
         }
         continue;
       }

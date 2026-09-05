@@ -1,10 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 
-const _origin = new THREE.Vector3();
-const _dir = new THREE.Vector3();
 const _end = new THREE.Vector3();
-const _n = new THREE.Vector3();
 
 /** Shared hitscan + pooled tracers / muzzle flashes / hit feedback */
 export class CombatSystem {
@@ -13,11 +10,10 @@ export class CombatSystem {
     this.raycaster = new THREE.Raycaster();
     this.tracers = [];
     this.muzzles = [];
-    this.hitMarkerUntil = 0;
+    this.hitMarkerT = 0;
     this.vignette = 0;
     /** Reused each hitscan — avoid per-shot mesh list alloc */
     this._meshList = [];
-    this._tracerGeo = new THREE.BufferGeometry();
     this._tracerMat = new THREE.LineBasicMaterial({
       color: 0xffeeaa,
       transparent: true,
@@ -74,7 +70,7 @@ export class CombatSystem {
   }
 
   showHitMarker() {
-    this.hitMarkerUntil = performance.now() + CONFIG.feedback.hitMarkerMs;
+    this.hitMarkerT = CONFIG.feedback.hitMarkerMs / 1000;
   }
 
   addDamageVignette(amount = 0.7) {
@@ -137,7 +133,7 @@ export class CombatSystem {
   }
 
   update(dt) {
-    const now = performance.now();
+    if (this.hitMarkerT > 0) this.hitMarkerT = Math.max(0, this.hitMarkerT - dt);
     for (let i = 0; i < this.tracers.length; i++) {
       const tr = this.tracers[i];
       if (tr.t <= 0) continue;
@@ -165,10 +161,8 @@ export class CombatSystem {
       this.vignette = Math.max(0, this.vignette - CONFIG.feedback.vignetteDecay * dt);
     }
     return {
-      hitMarker: now < this.hitMarkerUntil,
+      hitMarker: this.hitMarkerT > 0,
       vignette: this.vignette,
     };
   }
 }
-
-export { _origin, _dir, _end, _n };

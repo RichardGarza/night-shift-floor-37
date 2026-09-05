@@ -73,3 +73,16 @@ export function resolveSolidAxis(pos, r, b, axis) {
     pos.z = pos.z < cz ? minZ : maxZ;
   }
 }
+
+/** Surface height of a ramp solid at (x,z), or null if outside its footprint (shared by player + aliens). */
+export function rampHeightAt(b, x, z) {
+  const dx = x - b.x0;
+  const dz = z - b.z0;
+  const along = dx * b.dirX + dz * b.dirZ;
+  if (along < -0.05 || along > b.len + 0.05) return null;
+  const lat = -dx * b.dirZ + dz * b.dirX;
+  const hw = b.width * 0.5;
+  if (lat < -hw - 0.05 || lat > hw + 0.05) return null;
+  const t = Math.max(0, Math.min(1, along / b.len));
+  return b.y0 + (b.y1 - b.y0) * t;
+}

@@ -84,6 +84,8 @@ html, body {
   text-shadow: 0 2px 8px #000;
 }
 #ammo .reserve { font-size: 16px; opacity: 0.7; font-weight: 400; }
+#ammo.empty { color: #ff5a5a; }
+#ammo.empty::after { content: 'OUT OF AMMO'; display: block; font-size: 12px; letter-spacing: 0.12em; text-align: right; }
 #top-right {
   position: absolute;
   right: 24px; top: 20px;

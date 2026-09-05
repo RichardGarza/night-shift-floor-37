@@ -13,6 +13,9 @@ export class HUD {
     this.overlay = document.getElementById('overlay');
     this.overlayHint = document.getElementById('overlay-hint');
     this.overlayTitle = this.overlay.querySelector('h1');
+    this.ammoWrap = document.getElementById('ammo');
+    const winKills = document.getElementById('win-kills');
+    if (winKills) winKills.textContent = CONFIG.match.winKills;
     this._mode = 'start'; // start | playing | paused | dead | win
   }
 
@@ -35,7 +38,7 @@ export class HUD {
     } else if (mode === 'win') {
       this.overlayTitle.textContent = 'Floor cleared';
       const t = extra.time || 0;
-      this.overlayHint.textContent = `25 kills in ${formatTime(t)} — click to play again`;
+      this.overlayHint.textContent = `${CONFIG.match.winKills} kills in ${formatTime(t)} — click to play again`;
     }
   }
 
@@ -49,6 +52,8 @@ export class HUD {
     this.hpNum.textContent = Math.ceil(player.hp);
     this.mag.textContent = rifle.mag;
     this.reserve.textContent = rifle.reserve;
+    // Surface the dry-gun state instead of silently ignoring LMB
+    this.ammoWrap.classList.toggle('empty', rifle.mag <= 0 && rifle.reserve <= 0 && !rifle.reloading);
     this.kills.textContent = kills;
     this.timer.textContent = formatTime(elapsed);
 

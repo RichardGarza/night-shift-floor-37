@@ -40,10 +40,8 @@ export const CONFIG = Object.freeze({
     magSize: 30,
     reserve: 90,
     rpm: 600,
-    // Rifle damage stats (feedback/UI). Alien death uses hit-counts per DESIGN
-    // "3 body or 2 headshots" — independent pools; mixed hits do not combine.
-    bodyDmg: 25,
-    headDmg: 50,
+    // DESIGN lists 25 body / 50 head damage; alien death is hit-count based here
+    // ("3 body or 2 headshots" — independent pools; mixed hits do not combine), see alien.js.
     reloadTime: 1.5,
     recoilPitch: 0.018,
     recoilYaw: 0.01,

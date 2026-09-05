@@ -1,4 +1,7 @@
+import * as THREE from 'three';
 import { CONFIG } from './config.js';
+
+const _muzzleDir = new THREE.Vector3();
 
 export class Rifle {
   constructor(player, combat) {
@@ -63,16 +66,24 @@ export class Rifle {
     this.fireCooldown = this.fireInterval;
     this.player.applyRecoil();
 
+    // Aim ray: from the camera (reticle-aligned, OTS) along the recoil-kicked look direction.
     const { origin, dir } = this.player.getAimRay();
-    // Prefer camera-forward for hitscan (OTS)
-    const cam = this.player.camera;
-    origin.copy(cam.position);
-    cam.getWorldDirection(dir);
+    origin.copy(this.player.camera.position);
 
     const colliders = getColliders();
-    const result = this.combat.hitscan(origin, dir, colliders);
+    let result = this.combat.hitscan(origin, dir, colliders);
 
+    // Re-trace from the muzzle to the camera hit: if geometry sits between the gun and that
+    // point, the bullet stops there instead of landing around a corner the character cannot see past.
     const muzzle = this.player.muzzleWorld;
+    _muzzleDir.copy(result.point).sub(muzzle);
+    const muzzleDist = _muzzleDir.length();
+    if (muzzleDist > 0.1) {
+      _muzzleDir.multiplyScalar(1 / muzzleDist);
+      const check = this.combat.hitscan(muzzle, _muzzleDir, colliders, muzzleDist - 0.05);
+      if (check.hit) result = check;
+    }
+
     this.combat.spawnMuzzleFlash(muzzle);
     this.combat.spawnTracer(muzzle, result.point);
 

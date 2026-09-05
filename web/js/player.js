@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
-import { overlapsSolidXZ, resolveSolidAxis } from './collision.js';
+import { overlapsSolidXZ, resolveSolidAxis, rampHeightAt } from './collision.js';
 
 const _fwd = new THREE.Vector3();
 const _right = new THREE.Vector3();
@@ -14,18 +14,6 @@ const _back = new THREE.Vector3();
 const _camRight = new THREE.Vector3();
 const _aimRay = { origin: _aimOrigin, dir: _aimDir };
 
-function rampHeightAt(b, x, z) {
-  const dx = x - b.x0;
-  const dz = z - b.z0;
-  const along = dx * b.dirX + dz * b.dirZ;
-  if (along < -0.05 || along > b.len + 0.05) return null;
-  const lat = -dx * b.dirZ + dz * b.dirX;
-  const hw = b.width * 0.5;
-  if (lat < -hw - 0.05 || lat > hw + 0.05) return null;
-  const t = Math.max(0, Math.min(1, along / b.len));
-  return b.y0 + (b.y1 - b.y0) * t;
-}
-
 
 export class Player {
   constructor(scene) {
@@ -36,7 +24,7 @@ export class Player {
     this.velocity = new THREE.Vector3();
     this.onGround = true;
     this.hp = CONFIG.player.hpMax;
-    this.lastDamageAt = -Infinity;
+    this.timeSinceDamage = Infinity;
     this.alive = true;
     this.airborneFromY = 0;
     this.shake = 0;
@@ -110,7 +98,7 @@ export class Player {
     this.yaw = Math.PI;
     this.pitch = 0;
     this.hp = CONFIG.player.hpMax;
-    this.lastDamageAt = -Infinity;
+    this.timeSinceDamage = Infinity;
     this.alive = true;
     this.onGround = true;
     this.airborneFromY = 0;
@@ -123,7 +111,7 @@ export class Player {
   takeDamage(amount) {
     if (!this.alive) return;
     this.hp = Math.max(0, this.hp - amount);
-    this.lastDamageAt = performance.now() / 1000;
+    this.timeSinceDamage = 0;
     this.shake = Math.min(0.35, this.shake + 0.12);
     if (this.hp <= 0) {
       this.alive = false;
@@ -137,7 +125,7 @@ export class Player {
   }
 
   /** Soft-lock: bias pitch/yaw toward nearest alien in cone */
-  applySoftLock(aliens, strength = CONFIG.camera.softLockStrength) {
+  applySoftLock(aliens, dt, strength = CONFIG.camera.softLockStrength) {
     const cone = (CONFIG.camera.softLockConeDeg * Math.PI) / 180;
     let best = null;
     let bestAng = cone;
@@ -163,8 +151,10 @@ export class Player {
     let dy = targetYaw - this.yaw;
     while (dy > Math.PI) dy -= Math.PI * 2;
     while (dy < -Math.PI) dy += Math.PI * 2;
-    this.yaw += dy * strength;
-    this.pitch += (targetPitch - this.pitch) * strength;
+    // `strength` is the per-frame blend at 60 Hz; rescale by dt so aim assist is framerate-independent
+    const k = 1 - Math.pow(1 - strength, dt * 60);
+    this.yaw += dy * k;
+    this.pitch += (targetPitch - this.pitch) * k;
   }
 
   _eyePoint() {
@@ -292,9 +282,9 @@ export class Player {
     // Face movement / aim yaw
     this.root.rotation.y = this.yaw;
 
-    // Regen
-    const now = performance.now() / 1000;
-    if (this.hp < CONFIG.player.hpMax && now - this.lastDamageAt >= CONFIG.player.regenDelay) {
+    // Regen — dt-driven so a pause cannot silently complete the delay
+    this.timeSinceDamage += dt;
+    if (this.hp < CONFIG.player.hpMax && this.timeSinceDamage >= CONFIG.player.regenDelay) {
       this.hp = Math.min(CONFIG.player.hpMax, this.hp + CONFIG.player.regenRate * dt);
     }
 
