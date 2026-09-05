@@ -31,5 +31,5 @@ Scaffold root: this directory (`ue5-scaffold/`).
 
 - Compilable binary / cooked build on this machine
 - Art, audio, Niagara assets, marketplace packs
-- Full NavMesh AI MoveTo implementation (stub steering + TODOs)
-- Concrete pool actor implementations (interface + manager stub only)
+- Full NavMesh AI MoveTo implementation — *superseded in Phase 5* (`bPreferNavMeshMoveTo` + `TryNavMeshMoveToTarget`)
+- Concrete pool actor implementations — *superseded in Phase 1* (`AFXPoolManager`, `APooledTracerActor`)

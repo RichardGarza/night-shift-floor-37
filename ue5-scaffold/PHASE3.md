@@ -89,7 +89,7 @@ Existing aliens category plus:
 
 1. Place `AOfficeArena` (or BP) once; prefer 8 real spawn markers → `SpawnPointActors` (procedural edge defaults still work).
 2. Assign `UGameConfig` data asset on GameMode / bots.
-3. Build NavMesh on the office floor + atrium stairs/ramps; wire `AAIController` **MoveTo** in `ChasePlayer` (commented TODO).
+3. Build NavMesh on the office floor + atrium stairs/ramps; enable `bPreferNavMeshMoveTo` so `ChasePlayer` uses `AAIController::MoveTo` (shipped in Phase 5).
 4. Optional: waypoint graph if MoveTo fails on tower climbs.
 5. Material hook for `OnHitFlash` / white emissive overlay (TODO in `PlayHitFlash`).
 6. Optional alien muzzle tracer FX.

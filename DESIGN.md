@@ -2,7 +2,7 @@
 
 Hyper-real 3rd-person arena shooter for Unreal Engine. Small map. Dreary futuristic-punk office. Aliens.
 
-This is the original Three.js FPS spec rewritten for UE. It is a design document, not a project. No `.uproject` ships from this file.
+This is the original Three.js FPS spec rewritten for UE. It is the shared design contract for the two implementations in this repo: `web/` (playable Three.js prototype, see `web/README.md`) and `ue5-scaffold/` (UE 5.8 C++ module plus Editor drop-in docs, see `ue5-scaffold/README.md`).
 
 ---
 
@@ -208,6 +208,6 @@ Plain actors and components over deep class trees. Nothing important hanging off
 
 ## What this is not
 
-Not a cooked Unreal build. Not C++ you can compile from this chat. Not a marketplace pack list.
+Not a cooked Unreal build and not a marketplace pack list. `ue5-scaffold/` is source only: it ships no `.uasset` content, so the Editor assets in `ue5-scaffold/EDITOR_DROP_IN.md` still have to be created by hand.
 
-If you need something playable in a browser tonight, rebuild this same spec in Three.js (3rd person, office floor, aliens) instead.
+If you need something playable in a browser right now, serve `web/` (same spec, Three.js, 3rd person, office floor, aliens).

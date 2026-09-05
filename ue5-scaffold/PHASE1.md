@@ -9,7 +9,7 @@ Hardened existing Phase 1 Character + Rifle paths (did not rewrite Enhanced Inpu
 | Area | Change |
 |---|---|
 | **Recoil** | `Look()` is mouse-axis only. `AddRecoilKick` accumulates `RecoilOffsetDegrees` **and** immediately `AddControllerPitch/YawInput`. Tick `UpdateRecoilRecovery` Interps residual to zero with `RecoilRecoverySpeed` and applies the recovered delta as reverse controller input (camera settles). `KickRecoil` still randomizes pitch/yaw within `GameConfig` maxes. |
-| **Soft-lock** | `URifleComponent::Trace` sphere-overlaps pawns in `HitscanRange`, keeps closest alive `AAlienBot` inside `SoftLockConeHalfAngle`, biases aim dir toward capsule center or head (whichever is closer to current aim). Free-aim when none in cone. Reuses member `SoftLockOverlaps` (no per-shot heap growth). |
+| **Soft-lock** | `URifleComponent::Trace` sphere-overlaps pawns in `HitscanRangeMeters`, keeps closest alive `AAlienBot` inside `SoftLockConeHalfAngle`, biases aim dir toward capsule center or head (whichever is closer to current aim). Free-aim when none in cone. Reuses member `SoftLockOverlaps` (no per-shot heap growth). |
 | **Fall damage** | Snapshot `LastGroundedZ` on leave-ground via `OnMovementModeChanged` + Tick edge detect. `Landed` still uses ArenaCollision path. Formula: **~15 HP per excess meter over 6 m** (`FallDamageHeightMeters`). |
 | **Damage feedback** | BlueprintAssignable: `OnDamaged(amount)`, `OnDied`, `OnHealthChanged(health, max)` — broadcast from `TakeDamage` / regen / `SoftResetPlayerState` / heal. |
 | **FX pools** | Concrete `AFXPoolManager` + `APooledTracerActor`: preallocates `TracerPoolSize` / `MuzzleLightPoolSize` in `BeginPlay`/`WarmPools`. Ring Acquire/Release; no `SpawnActor`/`NewObject` on fire hot path after warmup. Rifle resolves pool via soft ref or `GetActorOfClass`. |
@@ -38,7 +38,7 @@ Hardened existing Phase 1 Character + Rifle paths (did not rewrite Enhanced Inpu
 
 ## Not in this phase
 
-- Full NavMesh MoveTo AI (steering stub remains)
+- Full NavMesh MoveTo AI (steering stub remains; shipped later in Phase 5)
 - Cooked / packaged build
 - Art / audio / marketplace packs
 

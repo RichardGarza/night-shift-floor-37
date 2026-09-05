@@ -1,0 +1,19 @@
+# Unreal Engine generated / machine-local
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+*.VC.db
+*.opensdf
+*.opendb
+*.sdf
+*.sln
+*.xcodeproj
+*.xcworkspace
+.vs/
+.idea/
+.vscode/
+
+# macOS
+.DS_Store

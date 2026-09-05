@@ -1,12 +1,22 @@
 # Night Shift — Floor 37 (UE5 Scaffold)
 
-This folder is a **drop-in C++/content scaffold** for Unreal Engine 5.x. It is **not** a compilable shipped `.uproject` on this machine. Coding should merge it into an existing **Third Person + Enhanced Input** project.
+This folder is a **drop-in C++/content scaffold** for Unreal Engine **5.8**. `NightShiftFloor37.uproject` + `Source/` build as a standalone game module (no Editor content yet); you can also merge `Source/` into an existing **Third Person + Enhanced Input** project.
 
 Authoritative design numbers: `../DESIGN.md` (and mirrored in `UGameConfig` defaults).
 
+## Compile status
+
+Verified 2026-09-04: `NightShiftFloor37Editor` (Mac, Development) builds and links against **UE 5.8** with zero errors and zero warnings via
+
+```
+"/Users/Shared/Epic Games/UE_5.8/Engine/Build/BatchFiles/Mac/Build.sh" NightShiftFloor37Editor Mac Development -Project="<path>/NightShiftFloor37.uproject"
+```
+
+Not yet verified: Play-In-Editor. That needs the Editor content in `EDITOR_DROP_IN.md` (Data Asset, Input Actions, HUD widget, Blueprints, a level).
+
 ## Drop-in steps
 
-1. Create or open a UE5.4+ project from the **Third Person** template with **Enhanced Input** enabled.
+1. Create or open a UE 5.8 project from the **Third Person** template with **Enhanced Input** enabled.
 2. Copy `Source/NightShiftFloor37/` into your project's `Source/` (or merge classes into your primary game module and update `Build.cs` deps: `EnhancedInput`, `UMG`, `AIModule`, `NavigationSystem`).
 3. Either:
    - Use `NightShiftFloor37.uproject` as a reference for module/plugin entries, **or**

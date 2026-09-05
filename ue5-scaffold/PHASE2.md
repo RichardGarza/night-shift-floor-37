@@ -79,7 +79,7 @@ Pawn->SetActorLocation(Arena->ClampToBounds(Pawn->GetActorLocation()));
 ```
 
 - `BoundsVolume` half-extent XY synced to `ArenaSizeMeters * 50` cm.
-- `CeilingClamp` sits at `AtriumTowerHeightCm + 200`.
+- `CeilingClamp` sits at `AtriumTowerHeightCm + 200` (arena actor field, synced from `UGameConfig::AtriumTowerHeightMeters`).
 
 ## Editor-only leftovers
 
@@ -92,7 +92,7 @@ Pawn->SetActorLocation(Arena->ClampToBounds(Pawn->GetActorLocation()));
 
 ## Not in this phase
 
-- Full NavMesh MoveTo AI
+- Full NavMesh MoveTo AI (shipped later in Phase 5)
 - Cooked build / art / audio
 - GameMode population wiring beyond existing stubs
 - Chaos / physics beyond CMC + cover query boxes

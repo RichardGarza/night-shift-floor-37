@@ -1,6 +1,6 @@
 # Editor Drop-In — Night Shift Floor 37
 
-**Audience:** Richard / Account Setup after the C++ scaffold is merged into a **UE5.4+ Third Person + Enhanced Input** project.
+**Audience:** Richard / Account Setup after the C++ scaffold is merged into a **UE 5.8 Third Person + Enhanced Input** project.
 
 **Scope:** Exact Editor click-paths for Audit/Boss blockers. This scaffold ships **C++ + markdown only** — no `.uasset` binaries. You create Data Assets, Input Actions, Blueprints, and the HUD Widget Blueprint in the Editor.
 

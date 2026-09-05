@@ -1,6 +1,6 @@
 # Phase 5 — Polish (code)
 
-Canonical: `/home/box/sand-data/projects/night-shift-floor-37/ue5-scaffold/`
+Scaffold root: this directory (`ue5-scaffold/`)
 
 ## Checklist (Audit scope)
 
@@ -11,7 +11,7 @@ Canonical: `/home/box/sand-data/projects/night-shift-floor-37/ue5-scaffold/`
 | (2) Alien hit-flash 80ms | **Done** — `HitFlashAlpha` + `OnHitFlash`; bind mesh emissive in Editor MID |
 | (3) NavMesh MoveTo notes/stubs | **Done** — `bPreferNavMeshMoveTo` + `TryNavMeshMoveToTarget`; see `NAVMESH_NOTES.md` |
 | (4) Optional mantle | **Done** — Space → `TryJumpOrMantle` (ledge teleport stub) |
-| Pause gate InProgress | **Done** |
+| Pause gate InProgress | **Done** — `bMatchPaused` gates GameMode tick, `AAlienBot::Tick`, `URifleComponent::TickComponent`, and character Move / Fire / Jump |
 | EDITOR_DROP_IN.md | **Present** (Coding Bot) |
 
 ## Editor leftovers

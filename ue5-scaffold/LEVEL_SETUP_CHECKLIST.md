@@ -20,7 +20,7 @@ One **persistent** level. Soft restart never unloads it.
 ### Editor placement notes — atrium
 
 - [ ] Place atrium tower at arena origin (world XY of `AOfficeArena`)
-- [ ] Height target **~1400 cm** (`AtriumTowerHeightCm` / DESIGN 14 m); 3 open platforms + ramps/stairs between
+- [ ] Height target **~1400 cm** (`UGameConfig::AtriumTowerHeightMeters` → arena `AtriumTowerHeightCm` / DESIGN 14 m); 3 open platforms + ramps/stairs between
 - [ ] **No railings** on platforms or stairs — fall risk is intentional
 - [ ] Ensure any atrium drop **> 6 m** still triggers fall damage (`FallDamageHeightMeters`)
 - [ ] Keep top platform inside `CeilingClamp` (sits at tower height + ~2 m headroom)
