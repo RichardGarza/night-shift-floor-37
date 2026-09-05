@@ -4,6 +4,8 @@ Last updated: 2026-09-04. Keep this file current when a phase closes or a tree c
 
 One spec, two implementations. `DESIGN.md` is the contract. `web/` is the playable reference. `ue5-scaffold/` is the real target.
 
+Lineage: `DESIGN.md` is a rewrite of an earlier Three.js FPS prompt (desert oil-field arena, first-person) re-themed to the Floor 37 office and third-person camera. The same numbers (100 HP, 30/90, 600 RPM, 6 bots, 25 kills) carry through from that prompt. A copy of the original DESIGN.md text also sits outside the repo at `../night-shift-floor-37.md`; the repo copy is the maintained one.
+
 ```
 night-shift-floor-37/
 ├── DESIGN.md                 The spec. Every number in both implementations traces here.
