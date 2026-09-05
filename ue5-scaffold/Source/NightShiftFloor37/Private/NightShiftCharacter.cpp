@@ -12,6 +12,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "Kismet/GameplayStatics.h"
 #include "Camera/CameraShakeBase.h"
+#include "Engine/DamageEvents.h"
 #include "GameFramework/PlayerController.h"
 
 ANightShiftCharacter::ANightShiftCharacter()
@@ -232,8 +233,18 @@ void ANightShiftCharacter::ConfigureCapsuleFromConfig()
 	GetCapsuleComponent()->SetCapsuleSize(GameConfig->CapsuleRadiusCm, GameConfig->CapsuleHalfHeightCm);
 }
 
+bool ANightShiftCharacter::IsMatchPaused() const
+{
+	const AArenaGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<AArenaGameMode>() : nullptr;
+	return GM && GM->IsMatchPaused();
+}
+
 void ANightShiftCharacter::Move(const FInputActionValue& Value)
 {
+	if (!IsAlive() || IsMatchPaused())
+	{
+		return;
+	}
 	// WASD — Axis2D
 	const FVector2D Axis = Value.Get<FVector2D>();
 	if (Controller && (Axis.X != 0.f || Axis.Y != 0.f))
@@ -279,6 +290,10 @@ void ANightShiftCharacter::UpdateSprintSpeed()
 
 void ANightShiftCharacter::SwapShoulder()
 {
+	if (!IsAlive())
+	{
+		return;
+	}
 	// Q — shoulder swap (DESIGN: right default)
 	bRightShoulder = !bRightShoulder;
 	ApplyShoulderOffset();
@@ -296,6 +311,10 @@ void ANightShiftCharacter::ApplyShoulderOffset()
 
 void ANightShiftCharacter::StartFire()
 {
+	if (!IsAlive() || IsMatchPaused())
+	{
+		return;
+	}
 	if (Rifle)
 	{
 		Rifle->Fire();
@@ -321,6 +340,10 @@ void ANightShiftCharacter::RequestReload()
 
 void ANightShiftCharacter::TryJumpOrMantle()
 {
+	if (!IsAlive() || IsMatchPaused())
+	{
+		return;
+	}
 	if (TryMantleOverLedge())
 	{
 		return;

@@ -103,6 +103,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Spawns")
 	FTransform GetFarthestSpawnFrom(const FVector& WorldLocation) const;
 
+	/**
+	 * Like GetFarthestSpawnFrom, but skips indices in ExcludeIndices so a batch of activations
+	 * spreads across distinct points (otherwise every bot lands on the same corner). Falls back to
+	 * the unfiltered pick when every index is excluded. OutIndex = chosen index, -1 if no spawns.
+	 */
+	FTransform GetFarthestUnusedSpawnFrom(const FVector& WorldLocation, const TArray<int32>& ExcludeIndices, int32& OutIndex) const;
+
 	UFUNCTION(BlueprintPure, Category = "Spawns")
 	int32 GetSpawnPointCount() const;
 

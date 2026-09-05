@@ -90,6 +90,14 @@ void AFXPoolManager::WarmPools()
 		return;
 	}
 
+	// Re-warming must not orphan the previous pool.
+	for (APooledTracerActor* Old : TracerSlots)
+	{
+		if (Old)
+		{
+			Old->Destroy();
+		}
+	}
 	TracerSlots.Reset();
 	TracerSlots.Reserve(TracerPoolSize);
 	FActorSpawnParameters Params;
@@ -106,6 +114,14 @@ void AFXPoolManager::WarmPools()
 		}
 	}
 
+	for (FMuzzleSlot& Old : MuzzleSlots)
+	{
+		if (Old.Light)
+		{
+			Old.Light->DestroyComponent();
+			Old.Light = nullptr;
+		}
+	}
 	MuzzleSlots.Reset();
 	MuzzleSlots.Reserve(MuzzleLightPoolSize);
 	for (int32 i = 0; i < MuzzleLightPoolSize; ++i)

@@ -2,6 +2,7 @@
 #include "GameConfig.h"
 #include "NightShiftCharacter.h"
 #include "AlienBot.h"
+#include "ArenaGameMode.h"
 #include "FXPoolInterface.h"
 #include "NightShiftFloor37.h"
 #include "Engine/World.h"
@@ -63,6 +64,15 @@ void URifleComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 	if (DeltaTime > MaxDt)
 	{
 		DeltaTime = MaxDt;
+	}
+
+	// Esc pause freezes firing and reload timers.
+	if (const AArenaGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<AArenaGameMode>() : nullptr)
+	{
+		if (GM->IsMatchPaused())
+		{
+			return;
+		}
 	}
 
 	TimeSinceLastShot += DeltaTime;
@@ -215,7 +225,7 @@ bool URifleComponent::Trace(FHitResult& OutHit, FVector& OutStart, FVector& OutE
 
 	OutEnd = OutStart + Dir * RangeCm;
 
-	CachedQueryParams.ClearIgnoredActors();
+	CachedQueryParams.ClearIgnoredSourceObjects();
 	CachedQueryParams.AddIgnoredActor(GetOwner());
 
 	UWorld* World = GetWorld();

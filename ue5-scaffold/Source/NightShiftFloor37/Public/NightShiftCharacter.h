@@ -186,6 +186,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Health")
 	bool IsAlive() const { return Health > 0.f; }
 
+	/** True while AArenaGameMode reports the match paused (Esc). */
+	bool IsMatchPaused() const;
+
 	UFUNCTION(BlueprintPure, Category = "Camera")
 	FVector GetAimOrigin() const;
 

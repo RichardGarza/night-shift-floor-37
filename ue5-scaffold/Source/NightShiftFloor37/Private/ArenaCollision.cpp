@@ -4,6 +4,7 @@
 #include "NightShiftCharacter.h"
 #include "NightShiftFloor37.h"
 #include "Engine/World.h"
+#include "Engine/DamageEvents.h"
 #include "CollisionQueryParams.h"
 
 UArenaCollision::UArenaCollision()

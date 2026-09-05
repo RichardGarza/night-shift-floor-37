@@ -5,6 +5,20 @@
 
 namespace OfficeArenaPrivate
 {
+	/** Point-in-box test in the box's local space (UBoxComponent has no OverlapPoint). */
+	bool BoxContainsPoint(const UBoxComponent* Box, const FVector& WorldPoint)
+	{
+		if (!Box)
+		{
+			return false;
+		}
+		const FVector Local = Box->GetComponentTransform().InverseTransformPosition(WorldPoint);
+		const FVector Extent = Box->GetUnscaledBoxExtent();
+		return FMath::Abs(Local.X) <= Extent.X
+			&& FMath::Abs(Local.Y) <= Extent.Y
+			&& FMath::Abs(Local.Z) <= Extent.Z;
+	}
+
 	/** Inset from half-extent so spawns sit on walkable edge (~2300 cm for 2500 half). */
 	constexpr float SpawnEdgeInsetCm = 200.f;
 
@@ -57,13 +71,16 @@ AOfficeArena::AOfficeArena()
 	SetRootComponent(BoundsVolume);
 	// DESIGN: ~50x50 m → 2500 cm half-extent each XY axis if centered.
 	BoundsVolume->SetBoxExtent(FVector(2500.f, 2500.f, 1000.f));
-	BoundsVolume->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	// Bounds/ceiling are enforced by ClampToBounds math, not physics — keep them out of every trace.
+	BoundsVolume->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoundsVolume->SetCollisionResponseToAllChannels(ECR_Ignore);
 
 	CeilingClamp = CreateDefaultSubobject<UBoxComponent>(TEXT("CeilingClamp"));
 	CeilingClamp->SetupAttachment(BoundsVolume);
 	CeilingClamp->SetBoxExtent(FVector(2500.f, 2500.f, 50.f));
 	CeilingClamp->SetRelativeLocation(FVector(0.f, 0.f, 1600.f)); // ~ atrium + headroom
-	CeilingClamp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	CeilingClamp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CeilingClamp->SetCollisionResponseToAllChannels(ECR_Ignore);
 
 	// Cubicle maze proxies — low cover ring ~800 cm from atrium center (~1 m tall).
 	DefaultCover_CubicleN = CreateDefaultSubobject<UBoxComponent>(TEXT("DefaultCover_CubicleN"));
@@ -138,7 +155,10 @@ void AOfficeArena::SetupDefaultCoverVolumeRotated(
 	Box->SetRelativeLocation(RelativeLocation);
 	Box->SetRelativeRotation(RelativeRotation);
 	Box->SetBoxExtent(Extent);
-	Box->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	// Cover volumes are consulted only via this actor's own point/line math (IsPointInCover,
+	// DoesLineHitCover). They must never block rifle traces, alien LOS probes, or movement.
+	Box->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Box->SetCollisionResponseToAllChannels(ECR_Ignore);
 	Box->SetHiddenInGame(true);
 }
 
@@ -350,13 +370,53 @@ FTransform AOfficeArena::GetFarthestSpawnFrom(const FVector& WorldLocation) cons
 	return Best;
 }
 
+FTransform AOfficeArena::GetFarthestUnusedSpawnFrom(const FVector& WorldLocation, const TArray<int32>& ExcludeIndices, int32& OutIndex) const
+{
+	const bool bUseData = AlienSpawnPointData.Num() > 0;
+	const int32 Count = bUseData ? AlienSpawnPointData.Num() : AlienSpawnPoints.Num();
+	OutIndex = -1;
+	if (Count == 0)
+	{
+		return FTransform::Identity;
+	}
+
+	auto TransformAt = [&](int32 i) -> const FTransform&
+	{
+		return bUseData ? AlienSpawnPointData[i].Transform : AlienSpawnPoints[i];
+	};
+
+	// Pass 1: farthest point not already used this batch. Pass 2 (all excluded): farthest overall.
+	for (int32 Pass = 0; Pass < 2; ++Pass)
+	{
+		float BestDistSq = -1.f;
+		for (int32 i = 0; i < Count; ++i)
+		{
+			if (Pass == 0 && ExcludeIndices.Contains(i))
+			{
+				continue;
+			}
+			const float DistSq = FVector::DistSquared(TransformAt(i).GetLocation(), WorldLocation);
+			if (DistSq > BestDistSq)
+			{
+				BestDistSq = DistSq;
+				OutIndex = i;
+			}
+		}
+		if (OutIndex >= 0)
+		{
+			break;
+		}
+	}
+	return TransformAt(OutIndex);
+}
+
 bool AOfficeArena::IsInsideBounds(const FVector& WorldLocation) const
 {
 	if (!BoundsVolume)
 	{
 		return true;
 	}
-	return BoundsVolume->OverlapPoint(WorldLocation);
+	return OfficeArenaPrivate::BoxContainsPoint(BoundsVolume, WorldLocation);
 }
 
 FVector AOfficeArena::ClampToBounds(const FVector& WorldLocation) const
@@ -444,7 +504,7 @@ bool AOfficeArena::IsPointInCover(const FVector& WorldLocation) const
 {
 	for (const TObjectPtr<UBoxComponent>& Vol : CoverVolumes)
 	{
-		if (Vol && Vol->OverlapPoint(WorldLocation))
+		if (OfficeArenaPrivate::BoxContainsPoint(Vol, WorldLocation))
 		{
 			return true;
 		}

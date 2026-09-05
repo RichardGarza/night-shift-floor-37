@@ -9,6 +9,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
+#include "Engine/DamageEvents.h"
 #include "NavigationSystem.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "AIController.h"
@@ -26,6 +27,9 @@ AAlienBot::AAlienBot()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	GetCapsuleComponent()->InitCapsuleSize(40.f, 88.f);
+	// Rifle hitscan traces ECC_Visibility; the default Pawn profile ignores that channel,
+	// so block it explicitly or shots pass straight through the bot.
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	GetCharacterMovement()->MaxWalkSpeed = 400.f; // 4 m/s
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	ArenaCollision = CreateDefaultSubobject<UArenaCollision>(TEXT("ArenaCollision"));
@@ -56,6 +60,15 @@ void AAlienBot::Tick(float DeltaSeconds)
 	if (DeltaSeconds > MaxDt)
 	{
 		DeltaSeconds = MaxDt;
+	}
+
+	// Esc pause freezes bots (DESIGN: pause / unlock).
+	if (const AArenaGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<AArenaGameMode>() : nullptr)
+	{
+		if (GM->IsMatchPaused())
+		{
+			return;
+		}
 	}
 
 	UpdateHitFlash(DeltaSeconds);
@@ -466,11 +479,8 @@ AOfficeArena* AAlienBot::FindArena() const
 	{
 		return nullptr;
 	}
-	for (TActorIterator<AOfficeArena> It(World); It; ++It)
-	{
-		return *It;
-	}
-	return nullptr;
+	TActorIterator<AOfficeArena> It(World);
+	return It ? *It : nullptr;
 }
 
 FVector AAlienBot::GetPlayerLocationOrSelf() const

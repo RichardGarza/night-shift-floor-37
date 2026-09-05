@@ -18,8 +18,7 @@ public class NightShiftFloor37 : ModuleRules
 			"EnhancedInput",
 			"UMG",
 			"Slate",
-			"SlateCore",
-			"GameplayTags"
+			"SlateCore"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]

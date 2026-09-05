@@ -49,6 +49,27 @@ void AArenaGameMode::Tick(float DeltaSeconds)
 	}
 	MatchTimeSeconds += DeltaSeconds;
 	EnsureAlienPopulation();
+	EnforceArenaBounds();
+}
+
+void AArenaGameMode::EnforceArenaBounds()
+{
+	// DESIGN: invisible ceiling / bounds clamp so nobody leaves the floor.
+	if (!CachedArena)
+	{
+		return;
+	}
+	if (ANightShiftCharacter* Player = GetPlayerCharacter())
+	{
+		CachedArena->EnforceBoundsOnActor(Player);
+	}
+	for (AAlienBot* Bot : AlienPool)
+	{
+		if (Bot && Bot->bIsAlive)
+		{
+			CachedArena->EnforceBoundsOnActor(Bot);
+		}
+	}
 }
 
 void AArenaGameMode::ClampDelta(float& DeltaSeconds) const
@@ -103,7 +124,8 @@ void AArenaGameMode::FindOrCacheArena()
 	{
 		return;
 	}
-	for (TActorIterator<AOfficeArena> It(World); It; ++It)
+	TActorIterator<AOfficeArena> It(World);
+	if (It)
 	{
 		CachedArena = *It;
 		UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode: cached AOfficeArena %s"), *CachedArena->GetName());
@@ -144,7 +166,7 @@ void AArenaGameMode::BuildAlienPool()
 	}
 
 	// Spawn the rest into the pool (hidden until StartMatch / EnsureAlienPopulation).
-	TSubclassOf<AAlienBot> ClassToSpawn = AlienBotClass ? AlienBotClass : AAlienBot::StaticClass();
+	TSubclassOf<AAlienBot> ClassToSpawn = AlienBotClass ? *AlienBotClass : AAlienBot::StaticClass();
 	while (AlienPool.Num() < MaxLive)
 	{
 		FActorSpawnParameters Params;
@@ -245,11 +267,12 @@ void AArenaGameMode::RecordStartTransform()
 		return;
 	}
 
-	for (TActorIterator<APlayerStart> It(World); It; ++It)
+	TActorIterator<APlayerStart> StartIt(World);
+	if (StartIt)
 	{
-		StartTransform = It->GetActorTransform();
+		StartTransform = StartIt->GetActorTransform();
 		bHasStartTransform = true;
-		UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode: start transform from APlayerStart %s"), *It->GetName());
+		UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode: start transform from APlayerStart %s"), *StartIt->GetName());
 		return;
 	}
 
@@ -541,6 +564,11 @@ void AArenaGameMode::EnsureAlienPopulation()
 		return;
 	}
 
+	// Spread this pass across distinct spawn points; GetFarthestSpawnFrom alone is deterministic
+	// and would stack every bot on one corner.
+	TArray<int32> UsedSpawnIndices;
+	UsedSpawnIndices.Reserve(MaxLive);
+
 	for (AAlienBot* Bot : AlienPool)
 	{
 		if (Live >= MaxLive)
@@ -557,7 +585,12 @@ void AArenaGameMode::EnsureAlienPopulation()
 			continue;
 		}
 
-		const FTransform Spawn = CachedArena->GetFarthestSpawnFrom(PlayerLoc);
+		int32 SpawnIndex = -1;
+		const FTransform Spawn = CachedArena->GetFarthestUnusedSpawnFrom(PlayerLoc, UsedSpawnIndices, SpawnIndex);
+		if (SpawnIndex >= 0)
+		{
+			UsedSpawnIndices.Add(SpawnIndex);
+		}
 		if (Player)
 		{
 			Bot->SetTarget(Player);

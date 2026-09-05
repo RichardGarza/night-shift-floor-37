@@ -118,6 +118,8 @@ protected:
 	void SetMatchState(EArenaMatchState NewState);
 	void CheckWinCondition();
 	void EnsureAlienPopulation();
+	/** Clamp player + live bots into AOfficeArena bounds/ceiling each tick. */
+	void EnforceArenaBounds();
 	void ClampDelta(float& DeltaSeconds) const;
 	/** Auto-resolve GameConfig (asset or DESIGN defaults) and push to bots/player/rifle/collision. */
 	void ResolveAndPropagateGameConfig();
