@@ -4,6 +4,8 @@ This folder is a **drop-in C++/content scaffold** for Unreal Engine **5.8**. `Ni
 
 Authoritative design numbers: `../DESIGN.md` (and mirrored in `UGameConfig` defaults).
 
+Repo-wide layout, status board, and roadmap: `../PROJECT_MAP.md`.
+
 ## Compile status
 
 Verified 2026-09-04: `NightShiftFloor37Editor` (Mac, Development) builds and links against **UE 5.8** with zero errors and zero warnings via
