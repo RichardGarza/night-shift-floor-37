@@ -28,6 +28,8 @@ export class Game {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = CONFIG.arena.toneMappingExposure ?? 1.7;
     this.renderer.shadowMap.enabled = false;
 
     this.scene = new THREE.Scene();

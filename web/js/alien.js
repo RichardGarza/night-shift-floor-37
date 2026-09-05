@@ -26,14 +26,14 @@ function ensureShared() {
     roughness: 0.45,
     metalness: 0.1,
     emissive: CONFIG.alien.color,
-    emissiveIntensity: 0.35,
+    emissiveIntensity: 1.25,
   });
   _headMat = new THREE.MeshStandardMaterial({
     color: CONFIG.alien.headColor,
     roughness: 0.4,
     metalness: 0.15,
     emissive: CONFIG.alien.headColor,
-    emissiveIntensity: 0.5,
+    emissiveIntensity: 1.25,
   });
   _flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 }

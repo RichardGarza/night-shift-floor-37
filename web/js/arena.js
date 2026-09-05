@@ -13,54 +13,66 @@ export function buildArena(scene) {
   const shared = {
     floor: new THREE.MeshStandardMaterial({
       color: CONFIG.arena.floorColor,
-      roughness: 0.35,
-      metalness: 0.25,
+      roughness: 0.85,
+      metalness: 0.0,
+      emissive: 0x3a4a38,
+      emissiveIntensity: 0.45,
     }),
     wet: new THREE.MeshStandardMaterial({
-      color: 0x151a16,
-      roughness: 0.2,
-      metalness: 0.45,
+      color: 0x7a8a78,
+      roughness: 0.55,
+      metalness: 0.08,
+      emissive: 0x2a3a28,
+      emissiveIntensity: 0.3,
     }),
     wall: new THREE.MeshStandardMaterial({
       color: CONFIG.arena.wallColor,
-      roughness: 0.85,
-      metalness: 0.05,
+      roughness: 0.9,
+      metalness: 0.0,
+      emissive: 0x2a322c,
+      emissiveIntensity: 0.28,
     }),
     cubicle: new THREE.MeshStandardMaterial({
-      color: 0x3a4540,
-      roughness: 0.75,
-      metalness: 0.1,
+      color: 0x9aaa96,
+      roughness: 0.82,
+      metalness: 0.0,
+      emissive: 0x2a3828,
+      emissiveIntensity: 0.35,
     }),
     metal: new THREE.MeshStandardMaterial({
-      color: 0x3a4048,
-      roughness: 0.4,
-      metalness: 0.7,
+      color: 0x8a929a,
+      roughness: 0.6,
+      metalness: 0.25,
+      emissive: 0x202830,
+      emissiveIntensity: 0.22,
     }),
     resin: new THREE.MeshStandardMaterial({
-      color: 0x2a6040,
-      roughness: 0.55,
-      metalness: 0.15,
-      emissive: 0x0a2814,
-      emissiveIntensity: 0.35,
+      color: 0x4aaa60,
+      roughness: 0.5,
+      metalness: 0.05,
+      emissive: 0x2a8040,
+      emissiveIntensity: 0.9,
     }),
     amber: new THREE.MeshStandardMaterial({
       color: CONFIG.arena.accentAmber,
-      roughness: 0.5,
-      metalness: 0.2,
+      roughness: 0.45,
+      metalness: 0.1,
       emissive: CONFIG.arena.accentAmber,
-      emissiveIntensity: 0.4,
+      emissiveIntensity: 1.1,
     }),
     greenGlow: new THREE.MeshStandardMaterial({
       color: CONFIG.arena.accentGreen,
-      roughness: 0.6,
-      metalness: 0.1,
+      roughness: 0.55,
+      metalness: 0.05,
       emissive: CONFIG.arena.accentGreen,
-      emissiveIntensity: 0.55,
+      emissiveIntensity: 1.15,
     }),
     concrete: new THREE.MeshStandardMaterial({
-      color: 0x2c302c,
-      roughness: 0.9,
-      metalness: 0.05,
+      color: 0x8a9288,
+      roughness: 0.95,
+      metalness: 0.0,
+      emissive: 0x2a3028,
+      emissiveIntensity: 0.3,
     }),
   };
 
@@ -312,10 +324,10 @@ export function buildArena(scene) {
   });
   // Shared rack cluster lights (2 instead of 6) — east green / west amber
   {
-    const east = new THREE.PointLight(0x44ff66, 0.85, 9, 2);
+    const east = new THREE.PointLight(0x88ffaa, 4.0, 28, 2);
     east.position.set(18.2, 2.8, 0);
     group.add(east);
-    const west = new THREE.PointLight(0xffaa33, 0.85, 9, 2);
+    const west = new THREE.PointLight(0xffcc55, 4.5, 32, 2);
     west.position.set(-18, 2.6, -1);
     group.add(west);
   }
@@ -354,33 +366,47 @@ export function buildArena(scene) {
     }
   }
 
-  // Mood lights — sick green / amber (culled 7→3; bump range for coverage)
+  // Mood lights — heavy amber practicals for floor readability
+  const moodScale = CONFIG.arena.moodIntensityScale ?? 3.2;
   const moodLights = [
-    [0, 12, 0, 0x44aa55, 1.45, 34],       // atrium / tower core
-    [-12, 5, -8, 0xb8860b, 1.05, 22],    // SW amber wash
-    [12, 4, 10, 0x3a8a3a, 1.0, 20],     // NE green + conference pad
+    [0, 14, 0, 0x88e088, 3.0, 70],
+    [-16, 5, -12, 0xffb020, 3.2, 50],
+    [16, 5, 12, 0x66cc66, 2.6, 48],
+    [0, 3.5, 0, 0xffc033, 3.0, 45],
+    [20, 3.5, -16, 0xffaa22, 2.4, 40],
+    [-20, 3.5, 16, 0xffb040, 2.4, 40],
+    [0, 6, -20, 0xe8a010, 2.2, 42],
+    [0, 6, 20, 0x55bb66, 2.0, 42],
   ];
   for (const [x, y, z, col, int, dist] of moodLights) {
-    const pl = new THREE.PointLight(col, int, dist, 2);
+    const pl = new THREE.PointLight(col, int * moodScale, dist, 2);
     pl.position.set(x, y, z);
     group.add(pl);
   }
 
-  // Neon trim strips
+  // Neon / amber trim strips — local midtone anchors
   for (let a = 0; a < 4; a++) {
     const ang = (a / 4) * Math.PI * 2;
     const tx = Math.cos(ang) * 22;
     const tz = Math.sin(ang) * 22;
-    addBox(tx, 0.08, tz, 8, 0.06, 0.2, shared.greenGlow, { noCollide: true });
+    addBox(tx, 0.08, tz, 10, 0.08, 0.25, shared.greenGlow, { noCollide: true });
+    addBox(tx * 0.55, 0.08, tz * 0.55, 6, 0.08, 0.22, shared.amber, { noCollide: true });
   }
+  // Cross floor amber runners
+  addBox(0, 0.06, 0, 40, 0.05, 0.35, shared.amber, { noCollide: true });
+  addBox(0, 0.06, 0, 0.35, 0.05, 40, shared.amber, { noCollide: true });
 
-  // Ambient + hemi for readability
-  const hemi = new THREE.HemisphereLight(0x4a6a50, 0x1a1510, 0.45);
+  // Strong fill — must read on a normal monitor
+  const hemi = new THREE.HemisphereLight(
+    0xb0d0b0,
+    0x4a4030,
+    CONFIG.arena.hemiIntensity ?? 2.2,
+  );
   group.add(hemi);
-  const amb = new THREE.AmbientLight(0x1a2218, 0.35);
+  const amb = new THREE.AmbientLight(0x889888, CONFIG.arena.ambientIntensity ?? 2.4);
   group.add(amb);
-  const dir = new THREE.DirectionalLight(0x889977, 0.35);
-  dir.position.set(-20, 30, 10);
+  const dir = new THREE.DirectionalLight(0xe8f0d8, CONFIG.arena.dirIntensity ?? 1.8);
+  dir.position.set(-15, 40, 15);
   dir.castShadow = false;
   group.add(dir);
 

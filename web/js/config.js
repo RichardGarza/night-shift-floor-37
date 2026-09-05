@@ -81,8 +81,8 @@ export const CONFIG = Object.freeze({
     respawnDelay: 3,
     pushRadius: 0.85,
     pushStrength: 6,
-    color: 0x33ff88,
-    headColor: 0xaaffcc,
+    color: 0x66ffaa,
+    headColor: 0xccffe0,
     // Steering / anti-snag
     stuckSpeed: 0.4,
     stuckTime: 0.22,
@@ -96,18 +96,21 @@ export const CONFIG = Object.freeze({
     winKills: 25,
   },
 
-  // Arena visual
+  // Arena visual — readability-first (dreary cast, lifted blacks)
   arena: {
-    floorColor: 0x1a1e1a,
-    wallColor: 0x2a2e2c,
-    accentGreen: 0x3a6b3a,
-    accentAmber: 0xb8860b,
-    fogColor: 0x0a120c,
-    fogNear: 18,
-    fogFar: 55,
-    // Continuous ramp thickness / collision pad
+    floorColor: 0x8a9a88,
+    wallColor: 0x7a8a7e,
+    accentGreen: 0x66cc66,
+    accentAmber: 0xffc033,
+    fogColor: 0x3a4a40,
+    fogNear: 60,
+    fogFar: 120,
+    ambientIntensity: 2.4,
+    hemiIntensity: 2.2,
+    dirIntensity: 1.8,
+    moodIntensityScale: 3.2,
+    toneMappingExposure: 2.1,
     rampThickness: 0.28,
-    // Invisible ceiling (~14m atrium tower + headroom); feet clamp = ceilingHeight - height
     ceilingHeight: 16,
   },
 });
