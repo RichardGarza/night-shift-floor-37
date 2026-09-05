@@ -45,15 +45,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player")
 	float GravityScale = 1.5306f; // ~15 m/s² vs default 980 cm/s² → 15/9.8 ≈ 1.53
 
-	/** Absolute gravity magnitude used when applying custom gravity (cm/s²). DESIGN: 15 m/s². */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player")
-	float GravityMagnitude = 1500.f; // 15 m/s² in cm
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player")
 	float FallDamageHeightMeters = 6.f;
 
+	/** HP lost per metre fallen beyond FallDamageHeightMeters. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player")
-	float EyeHeightMeters = 1.8f;
+	float FallDamagePerExcessMeter = 15.f;
+
+	/** Degrees of camera turn per mouse count. Player-adjustable in the Esc menu; this is the default. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	float DefaultMouseSensitivity = 0.35f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player")
 	float CapsuleHalfHeightCm = 90.f; // ~1.8 m total height
@@ -100,6 +101,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle")
 	float SoftLockConeHalfAngle = 3.f;
 
+	/** Soft-lock search radius. Kept well under HitscanRangeMeters: it is a per-shot overlap query. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle")
+	float SoftLockRangeMeters = 30.f;
+
 	// -------------------------------------------------------------------------
 	// Aliens (DESIGN: 6 live, 4 m/s, ≤12m combat, 3-round burst / 1.5s,
 	//         30% accuracy, 10 dmg, kill 3 body or 2 head, respawn 3s, 8 spawns)
@@ -135,10 +140,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens")
 	int32 AlienHeadshotsToKill = 2;
-
-	/** Derived HP: bodyHits * bodyDmg equivalent for player rifle — bot tracks hit counts. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens")
-	float AlienMaxHealth = 75.f; // 3 * 25 body
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens")
 	float AlienRespawnSeconds = 3.f;
@@ -192,8 +193,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Feedback")
 	float MuzzleFlashDurationMs = 40.f;
 
+	/** Crosshair hit-marker flash. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Feedback")
-	float DamageVignetteDurationMs = 200.f;
+	float HitMarkerDurationMs = 120.f;
+
+	/** Red damage overlay fade on the HUD. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Feedback")
+	float DamageVignetteDurationMs = 500.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Feedback")
 	float CameraShakeScale = 0.35f;

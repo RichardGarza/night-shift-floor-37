@@ -144,6 +144,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	void Look(const FInputActionValue& Value);
 
+	/** Degrees per mouse count. Loaded from GameUserSettings.ini, default from UGameConfig. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+	float MouseSensitivity = 0.35f;
+
+	/** Clamp, apply, and persist to GameUserSettings.ini. */
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	void SetMouseSensitivity(float NewValue);
+
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	void StartSprint();
 
@@ -218,6 +226,8 @@ protected:
 
 	/** Eye / capsule ~1.8 m (DESIGN). */
 	void ConfigureCapsuleFromConfig();
+	/** Read MouseSensitivity from GameUserSettings.ini if the player has saved one. */
+	void LoadMouseSensitivity();
 
 	/** Tracks IsMovingOnGround edge for fall-height snapshot when MovementModeChanged is not enough. */
 	bool bWasMovingOnGround = true;

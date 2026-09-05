@@ -10,6 +10,13 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
+#include "Components/Border.h"
+#include "Components/Slider.h"
+#include "Components/Button.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
+#include "Components/SizeBox.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 namespace HUDPrivate
 {
@@ -42,6 +49,16 @@ void UHUDWidget::BuildNativeTree()
 	UCanvasPanel* Canvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("NativeRoot"));
 	WidgetTree->RootWidget = Canvas;
 
+	// Full-screen red overlay; alpha driven by time since last damage. Added first so it sits under everything.
+	DamageVignette = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("DamageVignette"));
+	DamageVignette->SetBrushColor(FLinearColor(0.85f, 0.06f, 0.03f, 0.f));
+	DamageVignette->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (UCanvasPanelSlot* S = Canvas->AddChildToCanvas(DamageVignette))
+	{
+		S->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
+		S->SetOffsets(FMargin(0.f));
+	}
+
 	// Bottom-left: HP label + bar
 	HPText = MakeText(Canvas, TEXT("HPText"), FVector2D(0.f, 1.f), FVector2D(0.f, 1.f), FVector2D(28.f, -58.f), 16, HUDPrivate::Dim);
 	HPBar = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("HPBar"));
@@ -68,6 +85,126 @@ void UHUDWidget::BuildNativeTree()
 	PromptText = MakeText(Canvas, TEXT("PromptText"), FVector2D(0.5f, 0.5f), FVector2D(0.5f, 0.5f), FVector2D(0.f, -70.f), 34, HUDPrivate::Green);
 	PromptHintText = MakeText(Canvas, TEXT("PromptHint"), FVector2D(0.5f, 0.5f), FVector2D(0.5f, 0.5f), FVector2D(0.f, -28.f), 14, HUDPrivate::Dim);
 	PromptHintText->SetText(FText::FromString(TEXT("WASD move · Mouse aim · LMB shoot · R reload · Shift sprint · Space jump · Q shoulder · Esc pause")));
+
+	BuildPauseMenu(Canvas);
+}
+
+void UHUDWidget::BuildPauseMenu(UCanvasPanel* Canvas)
+{
+	PausePanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("PausePanel"));
+	PausePanel->SetBrushColor(FLinearColor(0.02f, 0.05f, 0.04f, 0.88f));
+	PausePanel->SetPadding(FMargin(32.f, 24.f));
+	PausePanel->SetVisibility(ESlateVisibility::Collapsed);
+	if (UCanvasPanelSlot* S = Canvas->AddChildToCanvas(PausePanel))
+	{
+		S->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
+		S->SetAlignment(FVector2D(0.5f, 0.5f));
+		S->SetPosition(FVector2D(0.f, 0.f));
+		S->SetAutoSize(true);
+		S->SetZOrder(10);
+	}
+
+	UVerticalBox* Box = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("PauseBox"));
+	PausePanel->SetContent(Box);
+
+	auto AddRow = [Box](UWidget* W, float TopPad, EHorizontalAlignment HAlign)
+	{
+		if (UVerticalBoxSlot* S = Box->AddChildToVerticalBox(W))
+		{
+			S->SetPadding(FMargin(0.f, TopPad, 0.f, 0.f));
+			S->SetHorizontalAlignment(HAlign);
+		}
+	};
+
+	UTextBlock* Title = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("PauseTitle"));
+	{
+		FSlateFontInfo F = Title->GetFont();
+		F.Size = 30;
+		Title->SetFont(F);
+	}
+	Title->SetColorAndOpacity(FSlateColor(HUDPrivate::Green));
+	Title->SetText(FText::FromString(TEXT("Paused")));
+	AddRow(Title, 0.f, HAlign_Center);
+
+	SensitivityLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("SensitivityLabel"));
+	{
+		FSlateFontInfo F = SensitivityLabel->GetFont();
+		F.Size = 14;
+		SensitivityLabel->SetFont(F);
+	}
+	SensitivityLabel->SetColorAndOpacity(FSlateColor(HUDPrivate::Dim));
+	RefreshSensitivityLabel(0.35f);
+	AddRow(SensitivityLabel, 18.f, HAlign_Left);
+
+	USizeBox* SliderBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("SliderBox"));
+	SliderBox->SetWidthOverride(340.f);
+	SensitivitySlider = WidgetTree->ConstructWidget<USlider>(USlider::StaticClass(), TEXT("SensitivitySlider"));
+	SensitivitySlider->SetMinValue(0.05f);
+	SensitivitySlider->SetMaxValue(1.5f);
+	SensitivitySlider->SetStepSize(0.05f);
+	SensitivitySlider->SetValue(0.35f);
+	SensitivitySlider->SetSliderBarColor(FLinearColor(0.2f, 0.3f, 0.25f));
+	SensitivitySlider->SetSliderHandleColor(HUDPrivate::Green);
+	SensitivitySlider->OnValueChanged.AddDynamic(this, &UHUDWidget::HandleSensitivityChanged);
+	SliderBox->SetContent(SensitivitySlider);
+	AddRow(SliderBox, 6.f, HAlign_Fill);
+
+	UButton* Resume = MakeButton(Box, TEXT("ResumeButton"), TEXT("Resume  (Esc)"));
+	Resume->OnClicked.AddDynamic(this, &UHUDWidget::HandleResumeClicked);
+	UButton* Quit = MakeButton(Box, TEXT("QuitButton"), TEXT("Quit to desktop"));
+	Quit->OnClicked.AddDynamic(this, &UHUDWidget::HandleQuitClicked);
+}
+
+UButton* UHUDWidget::MakeButton(UVerticalBox* Box, const FName& Name, const FString& Label)
+{
+	UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), Name);
+	Button->SetBackgroundColor(FLinearColor(0.55f, 0.85f, 0.6f, 1.f));
+	UTextBlock* Text = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *(Name.ToString() + TEXT("_Label")));
+	{
+		FSlateFontInfo F = Text->GetFont();
+		F.Size = 15;
+		Text->SetFont(F);
+	}
+	Text->SetColorAndOpacity(FSlateColor(FLinearColor(0.03f, 0.08f, 0.05f)));
+	Text->SetText(FText::FromString(Label));
+	Button->AddChild(Text);
+	if (UVerticalBoxSlot* S = Box->AddChildToVerticalBox(Button))
+	{
+		S->SetPadding(FMargin(0.f, 14.f, 0.f, 0.f));
+		S->SetHorizontalAlignment(HAlign_Fill);
+	}
+	return Button;
+}
+
+void UHUDWidget::RefreshSensitivityLabel(float Value)
+{
+	if (SensitivityLabel)
+	{
+		SensitivityLabel->SetText(FText::FromString(FString::Printf(TEXT("Mouse sensitivity   %.2f"), Value)));
+	}
+}
+
+void UHUDWidget::HandleSensitivityChanged(float Value)
+{
+	if (BoundCharacter.IsValid())
+	{
+		BoundCharacter->SetMouseSensitivity(Value);
+		Value = BoundCharacter->MouseSensitivity;
+	}
+	RefreshSensitivityLabel(Value);
+}
+
+void UHUDWidget::HandleResumeClicked()
+{
+	if (BoundGameMode.IsValid())
+	{
+		BoundGameMode->PauseMatch(false);
+	}
+}
+
+void UHUDWidget::HandleQuitClicked()
+{
+	UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
 }
 
 UTextBlock* UHUDWidget::MakeText(UCanvasPanel* Canvas, const FName& Name, const FVector2D& Anchor, const FVector2D& Alignment,
@@ -152,11 +289,34 @@ void UHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	{
 		TimerText->SetText(FText::FromString(HUDPrivate::FormatTime(BoundGameMode->MatchTimeSeconds)));
 	}
+	const bool bPaused = BoundGameMode->IsMatchPaused();
+	if (PausePanel)
+	{
+		if (bPaused && !bPausePanelShown)
+		{
+			if (SensitivitySlider)
+			{
+				SensitivitySlider->SetValue(BoundCharacter->MouseSensitivity);
+			}
+			RefreshSensitivityLabel(BoundCharacter->MouseSensitivity);
+		}
+		bPausePanelShown = bPaused;
+		PausePanel->SetVisibility(bPaused ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (DamageVignette)
+	{
+		const float FadeSec = (Cfg ? Cfg->DamageVignetteDurationMs : 500.f) * 0.001f;
+		float Alpha = FadeSec > 0.f ? FMath::Clamp(1.f - BoundCharacter->TimeSinceLastDamage / FadeSec, 0.f, 1.f) * 0.45f : 0.f;
+		if (!BoundCharacter->IsAlive())
+		{
+			Alpha = 0.4f;
+		}
+		DamageVignette->SetBrushColor(FLinearColor(0.85f, 0.06f, 0.03f, Alpha));
+	}
 	if (PromptText)
 	{
-		const bool bPaused = BoundGameMode->IsMatchPaused();
-		PromptText->SetText(bPaused ? FText::FromString(TEXT("Paused — Esc to resume")) : CurrentPrompt);
-		const bool bShowPrompt = bPaused || !CurrentPrompt.IsEmpty();
+		PromptText->SetText(CurrentPrompt);
+		const bool bShowPrompt = !bPaused && !CurrentPrompt.IsEmpty();
 		PromptText->SetVisibility(bShowPrompt ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		if (PromptHintText)
 		{
@@ -164,7 +324,7 @@ void UHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		}
 		if (CrosshairText)
 		{
-			CrosshairText->SetVisibility(bShowPrompt ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+			CrosshairText->SetVisibility((bShowPrompt || bPaused) ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 		}
 	}
 
@@ -223,6 +383,7 @@ void UHUDWidget::HandlePrimaryClick()
 
 void UHUDWidget::ShowHitMarker(bool bHeadshot)
 {
-	HitMarkerTimeRemaining = 0.12f;
+	const UGameConfig* Cfg = BoundCharacter.IsValid() ? BoundCharacter->GameConfig.Get() : nullptr;
+	HitMarkerTimeRemaining = (Cfg ? Cfg->HitMarkerDurationMs : 120.f) * 0.001f;
 	bLastHitWasHeadshot = bHeadshot;
 }

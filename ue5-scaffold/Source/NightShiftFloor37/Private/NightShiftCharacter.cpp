@@ -21,6 +21,14 @@
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Misc/ConfigCacheIni.h"
+#include "DamageCameraShake.h"
+
+namespace NightShiftSettings
+{
+	const TCHAR* Section = TEXT("NightShiftFloor37.Settings");
+	const TCHAR* SensitivityKey = TEXT("MouseSensitivity");
+}
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
 
@@ -44,9 +52,9 @@ ANightShiftCharacter::ANightShiftCharacter()
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 250.f;
+	CameraBoom->TargetArmLength = 300.f;
 	CameraBoom->bUsePawnControlRotation = true;
-	CameraBoom->SocketOffset = FVector(0.f, 60.f, 60.f); // right shoulder OTS default
+	CameraBoom->SocketOffset = FVector(0.f, 70.f, 65.f); // right shoulder OTS default
 	CameraBoom->bDoCollisionTest = true;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -73,6 +81,9 @@ ANightShiftCharacter::ANightShiftCharacter()
 	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BodyMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 	BodyMesh->SetCastShadow(true);
+
+	// Small perlin shake on damage (DESIGN: red vignette + camera shake). BP may swap the class.
+	DamageCameraShake = UDamageCameraShake::StaticClass();
 }
 
 void ANightShiftCharacter::BeginPlay()
@@ -90,6 +101,8 @@ void ANightShiftCharacter::BeginPlay()
 	ApplyResolvedGameConfig();
 	Health = GameConfig ? GameConfig->PlayerMaxHealth : 100.f;
 	TimeSinceLastDamage = GameConfig ? GameConfig->PlayerRegenDelaySeconds : 5.f;
+	MouseSensitivity = GameConfig ? GameConfig->DefaultMouseSensitivity : 0.35f;
+	LoadMouseSensitivity();
 	LastGroundedZ = GetActorLocation().Z;
 	bWasMovingOnGround = GetCharacterMovement() && GetCharacterMovement()->IsMovingOnGround();
 	bRightShoulder = true;
@@ -357,6 +370,25 @@ void ANightShiftCharacter::EnsureMappingContext()
 	}
 }
 
+void ANightShiftCharacter::LoadMouseSensitivity()
+{
+	float Saved = 0.f;
+	if (GConfig && GConfig->GetFloat(NightShiftSettings::Section, NightShiftSettings::SensitivityKey, Saved, GGameUserSettingsIni) && Saved > 0.f)
+	{
+		MouseSensitivity = FMath::Clamp(Saved, 0.05f, 2.f);
+	}
+}
+
+void ANightShiftCharacter::SetMouseSensitivity(float NewValue)
+{
+	MouseSensitivity = FMath::Clamp(NewValue, 0.05f, 2.f);
+	if (GConfig)
+	{
+		GConfig->SetFloat(NightShiftSettings::Section, NightShiftSettings::SensitivityKey, MouseSensitivity, GGameUserSettingsIni);
+		GConfig->Flush(false, GGameUserSettingsIni);
+	}
+}
+
 bool ANightShiftCharacter::IsMatchPaused() const
 {
 	const AArenaGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<AArenaGameMode>() : nullptr;
@@ -392,8 +424,8 @@ void ANightShiftCharacter::Look(const FInputActionValue& Value)
 	}
 	// Mouse only — recoil is applied in AddRecoilKick + UpdateRecoilRecovery (not dribbled here).
 	const FVector2D Axis = Value.Get<FVector2D>();
-	AddControllerYawInput(Axis.X);
-	AddControllerPitchInput(Axis.Y);
+	AddControllerYawInput(Axis.X * MouseSensitivity);
+	AddControllerPitchInput(Axis.Y * MouseSensitivity);
 }
 
 void ANightShiftCharacter::StartSprint()
@@ -436,8 +468,8 @@ void ANightShiftCharacter::ApplyShoulderOffset()
 	{
 		return;
 	}
-	const float Y = bRightShoulder ? 60.f : -60.f;
-	CameraBoom->SocketOffset = FVector(0.f, Y, 60.f);
+	const float Y = bRightShoulder ? 70.f : -70.f;
+	CameraBoom->SocketOffset = FVector(0.f, Y, 65.f);
 }
 
 void ANightShiftCharacter::StartFire()
@@ -610,7 +642,7 @@ void ANightShiftCharacter::Landed(const FHitResult& Hit)
 	else if (FallMeters > Threshold)
 	{
 		const float Excess = FallMeters - Threshold;
-		TakeDamage(Excess * 15.f, FDamageEvent(), nullptr, this);
+		TakeDamage(Excess * (GameConfig ? GameConfig->FallDamagePerExcessMeter : 15.f), FDamageEvent(), nullptr, this);
 	}
 	LastGroundedZ = GetActorLocation().Z;
 	bWasMovingOnGround = true;

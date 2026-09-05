@@ -10,6 +10,10 @@ class ANightShiftCharacter;
 class UCanvasPanel;
 class UTextBlock;
 class UProgressBar;
+class UBorder;
+class USlider;
+class UButton;
+class UVerticalBox;
 
 /**
  * UMG overlay: crosshair, HP bar, ammo "30 / 90", kill count, timer,
@@ -60,6 +64,17 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "HUD")
 	void OnPromptChanged(const FText& Prompt);
 
+	// ----- Esc menu -----
+
+	UFUNCTION()
+	void HandleSensitivityChanged(float Value);
+
+	UFUNCTION()
+	void HandleResumeClicked();
+
+	UFUNCTION()
+	void HandleQuitClicked();
+
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 
@@ -94,4 +109,12 @@ protected:
 	UPROPERTY() TObjectPtr<UTextBlock> CrosshairText;
 	UPROPERTY() TObjectPtr<UTextBlock> PromptText;
 	UPROPERTY() TObjectPtr<UTextBlock> PromptHintText;
+	UPROPERTY() TObjectPtr<UBorder> DamageVignette;
+	UPROPERTY() TObjectPtr<UBorder> PausePanel;
+	UPROPERTY() TObjectPtr<USlider> SensitivitySlider;
+	UPROPERTY() TObjectPtr<UTextBlock> SensitivityLabel;
+	bool bPausePanelShown = false;
+	void BuildPauseMenu(UCanvasPanel* Canvas);
+	UButton* MakeButton(UVerticalBox* Box, const FName& Name, const FString& Label);
+	void RefreshSensitivityLabel(float Value);
 };

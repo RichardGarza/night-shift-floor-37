@@ -94,7 +94,7 @@ void UArenaCollision::ApplyFallDamageIfNeeded(ANightShiftCharacter* Character, f
 	// Applied through ANightShiftCharacter::TakeDamage so regen delay / HUD fire.
 	// -------------------------------------------------------------------------
 	const float Excess = FallMeters - ThresholdMeters;
-	const float Damage = Excess * 15.f;
+	const float Damage = Excess * (GameConfig ? GameConfig->FallDamagePerExcessMeter : 15.f);
 	UE_LOG(LogNightShift, Log, TEXT("Fall damage %.1f (fell %.1fm > %.1fm threshold)"),
 		Damage, FallMeters, ThresholdMeters);
 	Character->TakeDamage(Damage, FDamageEvent(), nullptr, Character);

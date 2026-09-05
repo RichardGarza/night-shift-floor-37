@@ -217,7 +217,8 @@ bool URifleComponent::Trace(FHitResult& OutHit, FVector& OutStart, FVector& OutE
 	FVector Dir = Char ? Char->GetAimDirection() : GetOwner()->GetActorForwardVector();
 	const float RangeCm = (Config ? Config->HitscanRangeMeters : 200.f) * 100.f;
 
-	if (AAlienBot* SoftTarget = FindSoftLockTarget(OutStart, Dir, RangeCm))
+	const float SoftLockCm = FMath::Min(RangeCm, (Config ? Config->SoftLockRangeMeters : 30.f) * 100.f);
+	if (AAlienBot* SoftTarget = FindSoftLockTarget(OutStart, Dir, SoftLockCm))
 	{
 		const FVector AimPoint = GetSoftLockAimPoint(SoftTarget, OutStart, Dir);
 		Dir = (AimPoint - OutStart).GetSafeNormal();

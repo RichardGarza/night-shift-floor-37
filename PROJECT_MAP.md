@@ -8,6 +8,7 @@ Lineage: `DESIGN.md` is a rewrite of an earlier Three.js FPS prompt (desert oil-
 
 ```
 night-shift-floor-37/
+├── README.md                 GitHub front page: what it is, build, run, controls.
 ├── DESIGN.md                 The spec. Every number in both implementations traces here.
 ├── PROJECT_MAP.md            This file: layout, status, next steps.
 ├── .gitignore                Unreal build output, IDE files, .DS_Store.
@@ -58,8 +59,9 @@ night-shift-floor-37/
 | `URifleComponent` | `RifleComponent.h/.cpp` | Fire / reload / ammo, soft-lock, visibility hitscan, FX pool calls |
 | `AAlienBot` | `AlienBot.h/.cpp` | Chase / strafe / burst state machine, hit counting, flash, death + respawn |
 | `UArenaCollision` | `ArenaCollision.h/.cpp` | Push-apart between bots, fall damage, extra traces |
-| `UHUDWidget` | `HUDWidget.h/.cpp` | **Builds its own UMG tree in C++** (HP bar, ammo, kills, timer, crosshair, prompts); click-to-start; BP events still fire for custom art |
-| `AFXPoolManager`, `APooledTracerActor` | `FXPoolInterface.h/.cpp` | Pooled tracer actors and muzzle point lights |
+| `UHUDWidget` | `HUDWidget.h/.cpp` | **Builds its own UMG tree in C++** (HP bar, ammo, kills, timer, crosshair, prompts, damage vignette, Esc menu with sensitivity slider / resume / quit); click-to-start; BP events still fire for custom art |
+| `AFXPoolManager`, `APooledTracerActor` | `FXPoolInterface.h/.cpp` | Pooled tracer actors (visible) and muzzle point lights |
+| `UDamageCameraShake` | `DamageCameraShake.h/.cpp` | Short perlin shake on player damage |
 
 Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bots call back into GameMode on death. Character asks GameMode for pause state. Rifle finds `AFXPoolManager` by class lookup, so one must be placed in the level.
 
@@ -127,14 +129,14 @@ Record what fails here or in `ue5-scaffold/README.md`. Anything broken goes to t
 
 Only after Phase 6, because every item needs PIE to judge.
 
+Done 2026-09-04: mouse sensitivity setting (default 0.35°/count, Esc-menu slider, saved to GameUserSettings.ini), Esc menu with Resume / Quit, camera boom 300 cm with 70 cm shoulder, soft-lock query capped at `SoftLockRangeMeters` (30 m), fall damage and hit-marker duration moved into `UGameConfig` and four dead tunables removed, red damage vignette on the HUD, perlin camera shake on damage, mapping context added on possession.
+
+Still open:
+
 - Tune the greybox lighting in `AOfficeArena::BuildGreyboxLighting` (sun angle, fog, practicals). Auto exposure is off, so intensities are literal.
-- Camera framing: the player body sits close to centre; consider a longer boom or wider shoulder offset.
 - Replace greybox cylinders with real meshes and swap the hit flash from a colour lerp to an emissive material.
-- Cap the soft-lock overlap sphere in `RifleComponent.cpp` to about 30 m. Today it queries a 200 m radius on every shot at 600 RPM.
-- Move `AddMappingContext` from `BeginPlay` to `PossessedBy` so re-possession keeps input.
 - Decide whether recoil should accumulate. It currently self-cancels exactly. If DESIGN's "small kick that recovers" is meant literally, leave it; otherwise let a fraction persist.
-- Fold the remaining hard-coded numbers into `UGameConfig`: fall damage per metre (two copies), hit-marker duration, mantle reach/height, muzzle light intensity. Delete the four unused tunables.
-- Camera shake and damage vignette bound to `OnDamaged`.
+- Mantle reach/height and muzzle light intensity are still literals on their classes.
 
 ### Phase 8: Level and mood (Editor content, parallel to 7)
 

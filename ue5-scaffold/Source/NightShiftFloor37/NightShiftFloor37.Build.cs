@@ -24,7 +24,8 @@ public class NightShiftFloor37 : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"AIModule",
-			"NavigationSystem"
+			"NavigationSystem",
+			"EngineCameras"
 		});
 	}
 }
