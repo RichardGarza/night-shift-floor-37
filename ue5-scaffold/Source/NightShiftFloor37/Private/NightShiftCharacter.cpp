@@ -143,6 +143,14 @@ void ANightShiftCharacter::BeginPlay()
 void ANightShiftCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (IsMatchPaused())
+	{
+		if (UCharacterMovementComponent* Move = GetCharacterMovement())
+		{
+			Move->StopMovementImmediately();
+		}
+		return;
+	}
 	// DESIGN: clamp dt spikes (~50 ms) — prefer GameMode clamp; local guard here too
 	const float MaxDt = GameConfig ? GameConfig->MaxDeltaTimeClampSeconds : 0.05f;
 	if (DeltaSeconds > MaxDt)
@@ -650,9 +658,10 @@ void ANightShiftCharacter::Landed(const FHitResult& Hit)
 
 void ANightShiftCharacter::AddRecoilKick(float PitchDegrees, float YawDegrees)
 {
-	// Accumulate residual for recovery tracking
-	RecoilOffsetDegrees.X += PitchDegrees;
-	RecoilOffsetDegrees.Y += YawDegrees;
+	// Bank the recoverable part; the persisted fraction stays as permanent climb.
+	const float Persist = GameConfig ? FMath::Clamp(GameConfig->RecoilPersistFraction, 0.f, 1.f) : 0.f;
+	RecoilOffsetDegrees.X += PitchDegrees * (1.f - Persist);
+	RecoilOffsetDegrees.Y += YawDegrees * (1.f - Persist);
 
 	// Immediate kick — snappy gunfeel (DESIGN: small random recoil)
 	AddControllerPitchInput(PitchDegrees);

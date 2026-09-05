@@ -7,6 +7,8 @@
 
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
+class UPointLightComponent;
+class AFXPoolManager;
 
 class UGameConfig;
 class ANightShiftCharacter;
@@ -54,6 +56,10 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visual")
 	FLinearColor BodyColor = FLinearColor(0.35f, 1.0f, 0.3f);
+
+	/** Point light pulsed by the hit flash so the 80 ms white pop reads from any angle. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visual")
+	TObjectPtr<UPointLightComponent> FlashLight;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UArenaCollision> ArenaCollision;
@@ -137,6 +143,9 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<UMaterialInstanceDynamic> HeadMID;
+
+	/** Shared tracer / muzzle-light pool (found once). */
+	TWeakObjectPtr<AFXPoolManager> FXPool;
 	bool HasLineOfSightToTarget() const;
 	float DistanceToTargetMeters() const;
 	AOfficeArena* FindArena() const;

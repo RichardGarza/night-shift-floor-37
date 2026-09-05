@@ -94,6 +94,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle")
 	float RecoilRecoverySpeed = 8.f;
 
+	/**
+	 * Fraction of each kick that is NOT recovered (0 = camera settles exactly back, DESIGN's
+	 * "small kick that recovers"; 0.3 = spray climbs and the player pulls down). Open design decision.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle", meta = (ClampMin = "0", ClampMax = "1"))
+	float RecoilPersistFraction = 0.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle")
 	float HitscanRangeMeters = 200.f;
 

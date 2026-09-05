@@ -13,6 +13,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Blueprint/UserWidget.h"
 #include "FXPoolInterface.h"
+#include "NightShiftSelfTest.h"
 
 AArenaGameMode::AArenaGameMode()
 {
@@ -80,6 +81,10 @@ void AArenaGameMode::BeginPlay()
 	CreateAndBindHUD();
 	SetMatchState(EArenaMatchState::WaitingToStart);
 	UpdatePlayerInputMode();
+	if (ANightShiftSelfTest::IsRequestedOnCommandLine())
+	{
+		GetWorld()->SpawnActor<ANightShiftSelfTest>();
+	}
 	UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode::BeginPlay — waiting to start (win @ %d kills, pool %d, HUD %s, config %s)"),
 		GameConfig ? GameConfig->KillsToWin : 25,
 		AlienPool.Num(),

@@ -19,6 +19,8 @@
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Components/PointLightComponent.h"
+#include "FXPoolInterface.h"
 
 namespace AlienBotPrivate
 {
@@ -70,6 +72,14 @@ AAlienBot::AAlienBot()
 	{
 		HeadMesh->SetStaticMesh(SphereMesh.Object);
 	}
+
+	FlashLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("FlashLight"));
+	FlashLight->SetupAttachment(GetCapsuleComponent());
+	FlashLight->SetRelativeLocation(FVector(0.f, 0.f, 30.f));
+	FlashLight->Intensity = 0.f;
+	FlashLight->AttenuationRadius = 350.f;
+	FlashLight->LightColor = FColor(210, 255, 220);
+	FlashLight->SetCastShadows(false);
 }
 
 void AAlienBot::BeginPlay()
@@ -99,11 +109,16 @@ void AAlienBot::Tick(float DeltaSeconds)
 		DeltaSeconds = MaxDt;
 	}
 
-	// Esc pause freezes bots (DESIGN: pause / unlock).
+	// Esc pause freezes bots (DESIGN: pause / unlock). The movement component keeps simulating
+	// on its own tick, so kill residual velocity too or bots drift a few cm while paused.
 	if (const AArenaGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<AArenaGameMode>() : nullptr)
 	{
 		if (GM->IsMatchPaused())
 		{
+			if (UCharacterMovementComponent* Move = GetCharacterMovement())
+			{
+				Move->StopMovementImmediately();
+			}
 			return;
 		}
 	}
@@ -141,6 +156,10 @@ void AAlienBot::ApplyFlashToMaterials()
 	if (HeadMID)
 	{
 		HeadMID->SetVectorParameterValue(TEXT("Color"), C);
+	}
+	if (FlashLight)
+	{
+		FlashLight->SetIntensity(FMath::Clamp(HitFlashAlpha, 0.f, 1.f) * 600.f);
 	}
 }
 
@@ -395,13 +414,35 @@ void AAlienBot::TryBurstShot()
 		return;
 	}
 	const float Accuracy = GameConfig ? GameConfig->AlienAccuracy : 0.3f; // 30%
-	if (FMath::FRand() > Accuracy)
+	const bool bHit = FMath::FRand() <= Accuracy;
+
+	// Tracer + muzzle light from the bot's muzzle to where the shot went (misses scatter around the player).
+	const FVector Muzzle = GetActorLocation() + GetActorForwardVector() * 45.f + FVector(0.f, 0.f, 30.f);
+	FVector End = TargetPlayer->GetActorLocation() + FVector(0.f, 0.f, 40.f);
+	if (!bHit)
+	{
+		End += FVector(FMath::FRandRange(-150.f, 150.f), FMath::FRandRange(-150.f, 150.f), FMath::FRandRange(-60.f, 120.f));
+	}
+	if (!FXPool.IsValid())
+	{
+		TActorIterator<AFXPoolManager> It(GetWorld());
+		if (It)
+		{
+			FXPool = *It;
+		}
+	}
+	if (FXPool.IsValid())
+	{
+		FXPool->ActivateTracer(Muzzle, End, GameConfig ? GameConfig->TracerDurationMs : 60.f);
+		FXPool->ActivateMuzzleLight(Muzzle, GameConfig ? GameConfig->MuzzleFlashDurationMs : 40.f);
+	}
+
+	if (!bHit)
 	{
 		return; // miss
 	}
 	const float Dmg = GameConfig ? GameConfig->AlienDamagePerHit : 10.f;
 	UGameplayStatics::ApplyDamage(TargetPlayer.Get(), Dmg, GetController(), this, UDamageType::StaticClass());
-	// TODO: optional tracer from alien muzzle
 }
 
 bool AAlienBot::HasLineOfSightToTarget() const

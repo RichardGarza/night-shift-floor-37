@@ -57,11 +57,12 @@ night-shift-floor-37/
 | `AOfficeArena` | `OfficeArena.h/.cpp` | Bounds + ceiling clamp, 8 spawn points, 11 cover boxes, spawn selection, **greybox geometry and lighting** (floor, walls, atrium tower with spiral ramps, cover blocks, sun, sky, fog, practicals) |
 | `ANightShiftCharacter` | `NightShiftCharacter.h/.cpp` | Enhanced Input bindings with **runtime-built actions and mapping context**, OTS camera + Q swap, health/regen, recoil, mantle, fall damage, greybox body |
 | `URifleComponent` | `RifleComponent.h/.cpp` | Fire / reload / ammo, soft-lock, visibility hitscan, FX pool calls |
-| `AAlienBot` | `AlienBot.h/.cpp` | Chase / strafe / burst state machine, hit counting, flash, death + respawn |
+| `AAlienBot` | `AlienBot.h/.cpp` | Chase / strafe / burst state machine with tracers and muzzle light, hit counting, flash (material + point light), death + respawn |
 | `UArenaCollision` | `ArenaCollision.h/.cpp` | Push-apart between bots, fall damage, extra traces |
 | `UHUDWidget` | `HUDWidget.h/.cpp` | **Builds its own UMG tree in C++** (HP bar, ammo, kills, timer, crosshair, prompts, damage vignette, Esc menu with sensitivity slider / resume / quit); click-to-start; BP events still fire for custom art |
 | `AFXPoolManager`, `APooledTracerActor` | `FXPoolInterface.h/.cpp` | Pooled tracer actors (visible) and muzzle point lights |
 | `UDamageCameraShake` | `DamageCameraShake.h/.cpp` | Short perlin shake on player damage |
+| `ANightShiftSelfTest` | `NightShiftSelfTest.h/.cpp` | Scripted match-loop test, spawned when launched with `-NightShiftSelfTest` |
 
 Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bots call back into GameMode on death. Character asks GameMode for pause state. Rifle finds `AFXPoolManager` by class lookup, so one must be placed in the level.
 
@@ -73,7 +74,8 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | web/ | Playable, bug-fixed | Loads clean; module-level checks pass; real playthrough after latest fixes still pending |
 | UE5 compile | **Verified** on UE 5.8 Mac | Zero errors, zero warnings, `ue5-scaffold/README.md` records the command |
 | UE5 standalone run | **Verified** 2026-09-04 | Launches to the start prompt with greybox arena, HUD, lighting; startup log clean |
-| UE5 gameplay | Code-complete, **not yet played through** | Shoot / pause / spawn-spread / bounds / death / win need a human at the keyboard |
+| UE5 gameplay loop | **Verified by self-test** | `-NightShiftSelfTest` drives start → hit → kill → respawn → pause → bounds → death → restart → win; all checks pass |
+| UE5 feel | Not yet judged | Sensitivity, recoil, lighting, camera framing need a human at the keyboard |
 | UE5 Editor content | Optional now | Code-built defaults cover input, HUD, config, arena, map; `EDITOR_DROP_IN.md` assets override them when assigned |
 | Art / audio / packaging | Out of scope so far | DESIGN calls for Nanite + Lumen mood pass; nothing exists |
 
@@ -109,7 +111,9 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 Ordered by what unblocks the most. Phases 6 and 7 are the critical path to a playable Unreal build. 8 and 9 can run in parallel with them.
 
-### Phase 6: First playthrough (done in code; needs a human to play it)
+### Phase 6: First playthrough (loop verified by self-test; feel needs a human)
+
+Run the self-test after any gameplay change (`README.md` has the command). It found one real bug on its first run: bots drifted a few cm while paused because the movement component kept simulating. Fixed.
 
 The Editor checklist is no longer the gate. The C++ builds input, HUD, config, arena, lighting, FX pool, and player start at runtime, and `Content/Maps/Floor37.umap` is generated. The standalone game launches to the start prompt. What remains is a person at the keyboard running this smoke list:
 

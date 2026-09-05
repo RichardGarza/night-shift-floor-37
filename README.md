@@ -53,6 +53,15 @@ If the map is ever missing, regenerate it headlessly:
 "/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor-Cmd" "$PWD/NightShiftFloor37.uproject" -run=pythonscript -script=Scripts/make_floor37_map.py -unattended -nop4 -nosplash
 ```
 
+## Automated self-test
+
+The match loop can verify itself without a human. Launch with `-NightShiftSelfTest` and the game starts a match, teleports an alien in front of the player and shoots it dead, waits for the respawn, pauses and resumes, walks out of bounds, dies, restarts, and wins, logging `SELFTEST PASS` / `SELFTEST FAIL` for each check and a summary line before exiting.
+
+```
+"/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor" "$PWD/NightShiftFloor37.uproject" /Game/Maps/Floor37 -game -nullrhi -unattended -nosplash -NightShiftSelfTest -abslog=/tmp/selftest.log
+grep -E 'SELFTEST|NIGHTSHIFT' /tmp/selftest.log
+```
+
 ## Repository layout
 
 ```
@@ -85,4 +94,4 @@ Plain actors and components, no deep class trees, no per-frame allocations in th
 
 ## Status
 
-Compiles clean on UE 5.8 and launches to the start prompt with the greybox arena, lighting, and HUD. The gameplay loop is complete in code and awaiting a full playthrough. See `PROJECT_MAP.md` for the status board and what comes next.
+Compiles clean on UE 5.8, launches to the start prompt with the greybox arena, lighting, and HUD, and the automated self-test passes every check of the match loop: spawn spread, hitscan, kill counting, respawn, pause, bounds, death, restart, win. What is left is feel, which needs a human. See `PROJECT_MAP.md` for the status board and what comes next.
