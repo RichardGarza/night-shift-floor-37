@@ -53,3 +53,20 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 ## Sprint L — cubicle-only cover stamps
 
 `ApplyConfiguredCoverMeshes` stamps `CoverPropMesh` only on volumes whose name contains `Cubicle` (N/E/S/W). Resin and rack cover volumes are query-only (no SM_Cubicle).
+
+
+## Sprint N — cubicle desk/chair dress (NumberFourCoding)
+
+`AOfficeArena::ApplyConfiguredOfficeDressMeshes` stamps **one desk + one chair** per cubicle cover volume (N/E/S/W only — same `Cubicle` name filter as Sprint L). Soft refs on `UGameConfig`:
+
+| Soft ref | Asset |
+|----------|-------|
+| `DeskPropMesh` | `/Game/Imported/Props/Office/SM_Desk` |
+| `ChairPropMesh` | `/Game/Imported/Props/Office/SM_Chair` |
+
+- Count stays low (≤8 dress meshes).
+- Soft miss → no stamp (greybox cover blocks remain).
+- Resin/rack volumes are **not** dressed.
+- Non-colliding visuals; query collision stays on cover boxes.
+- Called from `BeginPlay` + GameMode soft-reset path alongside cover/fluorescent stamps.
+

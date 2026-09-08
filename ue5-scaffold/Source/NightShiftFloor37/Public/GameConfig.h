@@ -211,6 +211,20 @@ public:
 	TSoftObjectPtr<UStaticMesh> CoverPropMesh;
 
 	/**
+	 * Sprint N — Omie SM_Desk near cubicle cover stamps (non-colliding dress).
+	 * Default: /Game/Imported/Props/Office/SM_Desk. Soft miss → skip stamp.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	TSoftObjectPtr<UStaticMesh> DeskPropMesh;
+
+	/**
+	 * Sprint N — Omie SM_Chair near cubicle desks (non-colliding dress).
+	 * Default: /Game/Imported/Props/Office/SM_Chair. Soft miss → skip stamp.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	TSoftObjectPtr<UStaticMesh> ChairPropMesh;
+
+	/**
 	 * Poly Haven mounted fluorescent (Phase 8). Import-only for Sprint G if unused in arena yet.
 	 * Expected asset: /Game/Imported/Props/Lights/SM_MountedFluorescent
 	 */

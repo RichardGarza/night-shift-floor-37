@@ -386,6 +386,111 @@ void AOfficeArena::ApplyConfiguredCoverMeshes()
 }
 
 
+
+void AOfficeArena::ApplyConfiguredOfficeDressMeshes()
+{
+	// Sprint N — Omie SM_Desk + SM_Chair near cubicle stamps only (low count).
+	// Soft miss → no stamp. Never stamp resin/rack volumes.
+	if (!GameConfig)
+	{
+		return;
+	}
+
+	UStaticMesh* DeskMesh = GameConfig->DeskPropMesh.LoadSynchronous();
+	UStaticMesh* ChairMesh = GameConfig->ChairPropMesh.LoadSynchronous();
+	if (!DeskMesh && !ChairMesh)
+	{
+		return; // greybox fallback
+	}
+
+	for (UStaticMeshComponent* Old : OfficeDressVisuals)
+	{
+		if (Old)
+		{
+			Old->DestroyComponent();
+		}
+	}
+	OfficeDressVisuals.Reset();
+
+	auto Stamp = [this](UStaticMesh* Mesh, UBoxComponent* Vol, const FVector& RelLoc, const FRotator& RelRot) -> UStaticMeshComponent*
+	{
+		if (!Mesh || !Vol)
+		{
+			return nullptr;
+		}
+		UStaticMeshComponent* Vis = NewObject<UStaticMeshComponent>(this, NAME_None, RF_Transient);
+		if (!Vis)
+		{
+			return nullptr;
+		}
+		Vis->SetStaticMesh(Mesh);
+		Vis->SetupAttachment(Vol);
+		Vis->SetRelativeLocation(RelLoc);
+		Vis->SetRelativeRotation(RelRot);
+		Vis->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Vis->SetCastShadow(true);
+		Vis->RegisterComponent();
+		OfficeDressVisuals.Add(Vis);
+		return Vis;
+	};
+
+	// One desk + one chair per cubicle side (≤8 meshes). Offset toward atrium.
+	for (UBoxComponent* Vol : CoverVolumes)
+	{
+		if (!Vol)
+		{
+			continue;
+		}
+		const FString VolName = Vol->GetName();
+		if (!VolName.Contains(TEXT("Cubicle"), ESearchCase::IgnoreCase))
+		{
+			continue;
+		}
+
+		FVector DeskOff = FVector::ZeroVector;
+		FVector ChairOff = FVector::ZeroVector;
+		FRotator FaceIn = FRotator::ZeroRotator; // yaw so props face atrium
+
+		if (VolName.Contains(TEXT("CubicleN"), ESearchCase::IgnoreCase))
+		{
+			DeskOff = FVector(0.f, -140.f, 0.f);
+			ChairOff = FVector(0.f, -230.f, 0.f);
+			FaceIn = FRotator(0.f, 180.f, 0.f); // face -Y
+		}
+		else if (VolName.Contains(TEXT("CubicleS"), ESearchCase::IgnoreCase))
+		{
+			DeskOff = FVector(0.f, 140.f, 0.f);
+			ChairOff = FVector(0.f, 230.f, 0.f);
+			FaceIn = FRotator(0.f, 0.f, 0.f); // face +Y
+		}
+		else if (VolName.Contains(TEXT("CubicleE"), ESearchCase::IgnoreCase))
+		{
+			DeskOff = FVector(-140.f, 0.f, 0.f);
+			ChairOff = FVector(-230.f, 0.f, 0.f);
+			FaceIn = FRotator(0.f, -90.f, 0.f); // face -X
+		}
+		else if (VolName.Contains(TEXT("CubicleW"), ESearchCase::IgnoreCase))
+		{
+			DeskOff = FVector(140.f, 0.f, 0.f);
+			ChairOff = FVector(230.f, 0.f, 0.f);
+			FaceIn = FRotator(0.f, 90.f, 0.f); // face +X
+		}
+		else
+		{
+			// Generic cubicle name — desk slightly toward origin in local XY of volume.
+			DeskOff = FVector(0.f, -140.f, 0.f);
+			ChairOff = FVector(0.f, -230.f, 0.f);
+		}
+
+		Stamp(DeskMesh, Vol, DeskOff, FaceIn);
+		Stamp(ChairMesh, Vol, ChairOff, FaceIn);
+	}
+
+	UE_LOG(LogNightShift, Log,
+		TEXT("AOfficeArena::ApplyConfiguredOfficeDressMeshes — stamped %d desk/chair props near cubicles."),
+		OfficeDressVisuals.Num());
+}
+
 void AOfficeArena::ApplyConfiguredFluorescentMeshes()
 {
 	// Sprint H — Poly Haven SM_MountedFluorescent; few ceiling instances for mood + perf.
@@ -463,6 +568,7 @@ void AOfficeArena::BeginPlay()
 	SyncLayoutFromConfig();
 	RefreshSpawnGather();
 	ApplyConfiguredCoverMeshes(); // Phase 8 soft ref — no-op when CoverPropMesh unset
+	ApplyConfiguredOfficeDressMeshes(); // Sprint N — desk/chair near cubicles
 	ApplyConfiguredFluorescentMeshes(); // Sprint H — few ceiling fluorescents
 }
 

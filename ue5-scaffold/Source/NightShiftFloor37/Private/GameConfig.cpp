@@ -20,6 +20,14 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	{
 		CoverPropMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Office/SM_Cubicle.SM_Cubicle")));
 	}
+	if (DeskPropMesh.IsNull())
+	{
+		DeskPropMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Office/SM_Desk.SM_Desk")));
+	}
+	if (ChairPropMesh.IsNull())
+	{
+		ChairPropMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Office/SM_Chair.SM_Chair")));
+	}
 	if (FluorescentLightMesh.IsNull())
 	{
 		FluorescentLightMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Lights/SM_MountedFluorescent.SM_MountedFluorescent")));

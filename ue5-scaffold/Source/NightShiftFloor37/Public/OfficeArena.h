@@ -124,6 +124,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lighting|Phase8")
 	TArray<TObjectPtr<UStaticMeshComponent>> FluorescentPropVisuals;
 
+	/** Sprint N — desk/chair dress near cubicle stamps only. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cover|Phase8")
+	TArray<TObjectPtr<UStaticMeshComponent>> OfficeDressVisuals;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
 	TObjectPtr<UDirectionalLightComponent> SunLight;
 
@@ -229,6 +233,14 @@ public:
 	/** Sprint H — ≤4 ceiling fluorescents from FluorescentLightMesh near practicals. */
 	UFUNCTION(BlueprintCallable, Category = "Lighting|Phase8")
 	void ApplyConfiguredFluorescentMeshes();
+
+	/**
+	 * Sprint N — stamp DeskPropMesh + ChairPropMesh near cubicle cover volumes only
+	 * (same Cubicle name filter as CoverPropMesh). Soft miss → no stamp / greybox.
+	 * Does not touch resin/rack volumes.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Cover|Phase8")
+	void ApplyConfiguredOfficeDressMeshes();
 
 protected:
 	void BuildGreybox();
