@@ -554,14 +554,14 @@ void AOfficeArena::ApplyConfiguredServerRackMeshes()
 
 void AOfficeArena::ApplyConfiguredFluorescentMeshes()
 {
-	// Sprint H — Poly Haven SM_MountedFluorescent; few ceiling instances for mood + perf.
+	// Sprint H/R — Poly Haven SM_MountedFluorescent; ≤4 ceiling mounts at true ceiling Z (not on practical PointLights).
 	if (!GameConfig)
 	{
 		return;
 	}
 	GameConfig->ResolvePhase8LoadedMeshes();
 	UStaticMesh* Fluoro = GameConfig->CachedFluorescentLightMesh.Get();
-	if (!Fluoro)
+	if (!Fluoro || !BoundsVolume)
 	{
 		return;
 	}
@@ -575,7 +575,16 @@ void AOfficeArena::ApplyConfiguredFluorescentMeshes()
 	}
 	FluorescentPropVisuals.Reset();
 
-	// Four fixtures on the six-practical ring (indices 0,2,3,5).
+	// Ceiling underside in BoundsVolume-relative space (matches SyncLayoutFromConfig / ClampToBounds).
+	float CeilingBottomRelZ = AtriumTowerHeightCm + 150.f; // fallback: tower + headroom − slab half
+	if (CeilingClamp)
+	{
+		CeilingBottomRelZ = CeilingClamp->GetRelativeLocation().Z - CeilingClamp->GetUnscaledBoxExtent().Z;
+	}
+	const float HangDropCm = 35.f; // fixture hangs just under the ceiling plane
+	const float MountZ = CeilingBottomRelZ - HangDropCm;
+
+	// Four fixtures on the six-practical ring XY (indices 0,2,3,5) — keep light mood, fix height.
 	TArray<int32> Indices;
 	const int32 PracticalCount = PracticalLights.Num();
 	if (PracticalCount >= 6)
@@ -592,27 +601,33 @@ void AOfficeArena::ApplyConfiguredFluorescentMeshes()
 
 	for (int32 Idx : Indices)
 	{
-		UPointLightComponent* Practical = PracticalLights.IsValidIndex(Idx) ? PracticalLights[Idx].Get() : nullptr;
 		UStaticMeshComponent* Vis = NewObject<UStaticMeshComponent>(this, NAME_None, RF_Transient);
 		if (!Vis)
 		{
 			continue;
 		}
 		Vis->SetStaticMesh(Fluoro);
-		if (Practical)
+		Vis->SetupAttachment(BoundsVolume);
+
+		float X = 0.f;
+		float Y = 0.f;
+		float Yaw = Idx * 90.f + 45.f + 90.f;
+		if (UPointLightComponent* Practical = PracticalLights.IsValidIndex(Idx) ? PracticalLights[Idx].Get() : nullptr)
 		{
-			Vis->SetupAttachment(Practical);
-			Vis->SetRelativeLocation(FVector(0.f, 0.f, 25.f));
-			const float Yaw = Idx * 60.f + 30.f + 90.f;
-			Vis->SetRelativeRotation(FRotator(0.f, Yaw, 0.f));
+			const FVector P = Practical->GetRelativeLocation();
+			X = P.X;
+			Y = P.Y;
+			Yaw = Idx * 60.f + 30.f + 90.f;
 		}
-		else if (BoundsVolume)
+		else
 		{
-			Vis->SetupAttachment(BoundsVolume);
 			const float A = FMath::DegreesToRadians(Idx * 90.f + 45.f);
-			Vis->SetRelativeLocation(FVector(FMath::Cos(A) * 1600.f, FMath::Sin(A) * 1600.f, 335.f));
-			Vis->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(A) + 90.f, 0.f));
+			X = FMath::Cos(A) * 1600.f;
+			Y = FMath::Sin(A) * 1600.f;
 		}
+
+		Vis->SetRelativeLocation(FVector(X, Y, MountZ));
+		Vis->SetRelativeRotation(FRotator(0.f, Yaw, 0.f));
 		Vis->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Vis->SetCastShadow(false);
 		Vis->SetMobility(EComponentMobility::Movable);
@@ -620,7 +635,8 @@ void AOfficeArena::ApplyConfiguredFluorescentMeshes()
 		FluorescentPropVisuals.Add(Vis);
 	}
 
-	UE_LOG(LogNightShift, Log, TEXT("AOfficeArena::ApplyConfiguredFluorescentMeshes — placed %d ceiling fluorescents."), FluorescentPropVisuals.Num());
+	UE_LOG(LogNightShift, Log, TEXT("AOfficeArena::ApplyConfiguredFluorescentMeshes — placed %d ceiling fluorescents at Z=%.0f (ceiling underside)."),
+		FluorescentPropVisuals.Num(), MountZ);
 }
 
 void AOfficeArena::BeginPlay()
