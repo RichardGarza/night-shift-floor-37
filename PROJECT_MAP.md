@@ -1,6 +1,6 @@
 # Night Shift — Floor 37: Project Map
 
-Last updated: 2026-09-04. Keep this file current when a phase closes or a tree changes shape.
+Last updated: 2026-09-08. Keep this file current when a phase closes or a tree changes shape.
 
 One spec, two implementations. `DESIGN.md` is the contract. `web/` is the playable reference. `ue5-scaffold/` is the real target.
 
@@ -72,12 +72,15 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 |---|---|---|
 | DESIGN.md | Stable | Both implementations match every specified number |
 | web/ | Playable, bug-fixed | Loads clean; module-level checks pass; real playthrough after latest fixes still pending |
-| UE5 compile | **Verified** on UE 5.8 Mac | Zero errors, zero warnings, `ue5-scaffold/README.md` records the command |
-| UE5 standalone run | **Verified** 2026-09-04 | Launches to the start prompt with greybox arena, HUD, lighting; startup log clean |
-| UE5 gameplay loop | **Verified by self-test** | `-NightShiftSelfTest` drives start → hit → kill → respawn → pause → bounds → death → restart → win; all checks pass |
-| UE5 feel | Not yet judged | Sensitivity, recoil, lighting, camera framing need a human at the keyboard |
-| UE5 Editor content | Optional now | Code-built defaults cover input, HUD, config, arena, map; `EDITOR_DROP_IN.md` assets override them when assigned |
-| Art / audio / packaging | Out of scope so far | DESIGN calls for Nanite + Lumen mood pass; nothing exists |
+| UE5 compile | **Verified** on UE 5.8 Mac | Soft-ref PIE green 2026-09-08 (SoftwareStarter) |
+| UE5 standalone / PIE | **Verified** 2026-09-08 | Soft refs resolve: 6× `SM_Alien`, cubicle stamps, 4 fluorescents; greybox+HUD+lighting |
+| UE5 gameplay loop | **Verified by self-test** | Start → hit → kill → respawn → pause → bounds → death → restart → win |
+| Phase 6 softer start | **Shipped** | Spawn grace 4s + `MinStartSeparation` 18m (`2e234fa` / `0fc3ad6`) |
+| Phase 7 lighting + knobs | **Shipped** | Greybox lighting tune; mantle + muzzle intensity on `UGameConfig` |
+| Phase 8 mesh wire | **Shipped (code)** | Soft paths + fluorescent placement + hit-flash/bio tint; see `PHASE8_WIRE.md` |
+| `Content/Imported` | **Local only** | FBX + `.uasset` on Desktop Test — **not** on remote tip; optional Git LFS later |
+| UE5 feel / silhouette | Needs human | Confirm Quaternius alien reads at edge spawns; feel still human-judged |
+| Art / audio / packaging | Partial art | Phase 8 imports staged; Nanite+Lumen mood + audio still open |
 
 ## Build and run
 
@@ -109,11 +112,11 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ## Next steps
 
-Ordered by what unblocks the most. Phases 6 and 7 are the critical path to a playable Unreal build. 8 and 9 can run in parallel with them.
+Phases 6–8 code shipped 2026-09-08. Critical path now: **human visual confirm** (alien silhouette at edge spawns) + optional **Git LFS** if committing `Content/Imported` `.uasset`s. Phase 9 web upkeep and Phase 10 package remain parallel/last.
 
-### Phase 6: First playthrough (loop verified by self-test; feel needs a human)
+### Phase 6: First playthrough + softer start — **SHIPPED**
 
-Run the self-test after any gameplay change (`README.md` has the command). It found one real bug on its first run: bots drifted a few cm while paused because the movement component kept simulating. Fixed.
+Self-test green. Richard feedback (“don’t die right away”) → Sprint C: spawn grace (~4s, no alien fire/aggro) + safer start spacing (`MinStartSeparationMeters` 18). Mid/late DESIGN numbers unchanged. Still wants a human smoke pass for feel.
 
 The Editor checklist is no longer the gate. The C++ builds input, HUD, config, arena, lighting, FX pool, and player start at runtime, and `Content/Maps/Floor37.umap` is generated. The standalone game launches to the start prompt. What remains is a person at the keyboard running this smoke list:
 
@@ -129,22 +132,20 @@ The Editor checklist is no longer the gate. The C++ builds input, HUD, config, a
 
 Record what fails here or in `ue5-scaffold/README.md`. Anything broken goes to the top of Phase 7.
 
-### Phase 7: Feel and visibility (UE, code plus a little content)
+### Phase 7: Feel and visibility — **SHIPPED (code)**
 
-Only after Phase 6, because every item needs PIE to judge.
+Done earlier + 2026-09-08: greybox lighting tune (`BuildGreyboxLighting`); mantle reach/height + muzzle light intensity moved into `UGameConfig`. Sensitivity / Esc menu / vignette / shake already in.
 
-Done 2026-09-04: mouse sensitivity setting (default 0.35°/count, Esc-menu slider, saved to GameUserSettings.ini), Esc menu with Resume / Quit, camera boom 300 cm with 70 cm shoulder, soft-lock query capped at `SoftLockRangeMeters` (30 m), fall damage and hit-marker duration moved into `UGameConfig` and four dead tunables removed, red damage vignette on the HUD, perlin camera shake on damage, mapping context added on possession.
+Still open (human / content):
 
-Still open:
+- Judge feel in PIE (recoil accumulate vs self-cancel still an open decision).
+- Richer materials / Lumen mood beyond greybox + imported props.
 
-- Tune the greybox lighting in `AOfficeArena::BuildGreyboxLighting` (sun angle, fog, practicals). Auto exposure is off, so intensities are literal.
-- Replace greybox cylinders with real meshes and swap the hit flash from a colour lerp to an emissive material.
-- Decide whether recoil should accumulate. It currently self-cancels exactly. If DESIGN's "small kick that recovers" is meant literally, leave it; otherwise let a fraction persist.
-- Mantle reach/height and muzzle light intensity are still literals on their classes.
+### Phase 8: Mesh wire + mood props — **SHIPPED (code); content local**
 
-### Phase 8: Level and mood (Editor content, parallel to 7)
+Soft refs via `EnsurePhase8DefaultSoftPaths`: `SM_Alien`, `SM_Cubicle`, `SM_MountedFluorescent`. Cover stamps cubicles only; ≤4 ceiling fluorescents; hit-flash/bio tint on static + skeletal. Docs: `ue5-scaffold/PHASE8_WIRE.md`.
 
-`LEVEL_SETUP_CHECKLIST.md` is the spec. Suggested order: atrium tower with ramps, cubicle maze, six server racks, four resin clusters, perimeter glass and planters, then the lighting pass (sick green / amber practicals, wet floor, volumetric fog, Lumen). Build the NavMesh last and flip `bPreferNavMeshMoveTo` on to compare against raw steering.
+**Next:** Richard visual-confirm alien silhouette (edge spawns). `Content/Imported/` stays **untracked** on Desktop Test until optional Git LFS for `.uasset`s. Further checklist items (NavMesh flip, full atrium art pass) still apply from `LEVEL_SETUP_CHECKLIST.md`.
 
 ### Phase 9: Web prototype upkeep (parallel, optional)
 
@@ -165,4 +166,4 @@ Cook a Mac Development build, confirm 60 fps on integrated graphics per DESIGN, 
 - **Recoil model**: self-cancelling vs accumulating. Affects Phase 7 and the web build equally.
 - **Ammo economy**: refill vs pickups vs larger reserve. DESIGN is silent.
 - **Alien body**: capsule mesh vs skeletal. Skeletal enables `IsHeadBone`; capsule uses the top-25% height test that already works.
-- **Where the canonical Unreal project lives**: keep building from a scratch copy, or turn `ue5-scaffold/` itself into the full project once content exists. The second option means committing `.uasset` binaries, so consider Git LFS first.
+- **Where the canonical Unreal project lives**: Desktop Test `ue5-scaffold/` is canonical. Committing Phase 8 `.uasset`s needs **Git LFS** first — until then `Content/Imported/` stays local-only.

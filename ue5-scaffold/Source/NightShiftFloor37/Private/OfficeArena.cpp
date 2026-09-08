@@ -335,8 +335,8 @@ void AOfficeArena::SetupDefaultCoverVolumeRotated(
 
 void AOfficeArena::ApplyConfiguredCoverMeshes()
 {
-	// Phase 8 prep: assign CoverPropMesh on DA_GameConfig when ModelFinder drops Content/Imported.
-	// Soft ref null → keep greybox boxes / cover volumes only (no prop stamp).
+	// Phase 8 / Sprint L: CoverPropMesh (SM_Cubicle) on cubicle volumes only.
+	// Soft ref null → no stamp. Resin/rack volumes keep greybox query boxes only.
 	if (!GameConfig)
 	{
 		return;
@@ -357,9 +357,15 @@ void AOfficeArena::ApplyConfiguredCoverMeshes()
 	}
 	CoverPropVisuals.Reset();
 
+	// Sprint L — SM_Cubicle only on cubicle volumes (not resin / racks).
 	for (UBoxComponent* Vol : CoverVolumes)
 	{
 		if (!Vol)
+		{
+			continue;
+		}
+		const FString VolName = Vol->GetName();
+		if (!VolName.Contains(TEXT("Cubicle"), ESearchCase::IgnoreCase))
 		{
 			continue;
 		}
@@ -376,7 +382,7 @@ void AOfficeArena::ApplyConfiguredCoverMeshes()
 		Vis->RegisterComponent();
 		CoverPropVisuals.Add(Vis);
 	}
-	UE_LOG(LogNightShift, Log, TEXT("AOfficeArena::ApplyConfiguredCoverMeshes — stamped %d cover props."), CoverPropVisuals.Num());
+	UE_LOG(LogNightShift, Log, TEXT("AOfficeArena::ApplyConfiguredCoverMeshes — stamped %d cubicle props (resin/racks skipped)."), CoverPropVisuals.Num());
 }
 
 
@@ -699,6 +705,29 @@ FTransform AOfficeArena::GetFarthestUnusedSpawnFrom(const FVector& WorldLocation
 		}
 	}
 	return TransformAt(OutIndex);
+}
+
+int32 AOfficeArena::FindNearestSpawnIndex(const FVector& WorldLocation) const
+{
+	const bool bUseData = AlienSpawnPointData.Num() > 0;
+	const int32 Count = bUseData ? AlienSpawnPointData.Num() : AlienSpawnPoints.Num();
+	if (Count == 0)
+	{
+		return -1;
+	}
+	int32 Best = -1;
+	float BestDistSq = TNumericLimits<float>::Max();
+	for (int32 Idx = 0; Idx < Count; ++Idx)
+	{
+		const FVector Loc = bUseData ? AlienSpawnPointData[Idx].Transform.GetLocation() : AlienSpawnPoints[Idx].GetLocation();
+		const float DistSq = FVector::DistSquared(Loc, WorldLocation);
+		if (DistSq < BestDistSq)
+		{
+			BestDistSq = DistSq;
+			Best = Idx;
+		}
+	}
+	return Best;
 }
 
 bool AOfficeArena::IsInsideBounds(const FVector& WorldLocation) const

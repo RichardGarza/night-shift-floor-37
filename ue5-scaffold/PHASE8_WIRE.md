@@ -48,3 +48,8 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 - `ApplyFlashToMaterials` drives Body/Head static MIDs **and** skeletal slot MIDs (`SkelMIDs`).
 - After any mesh swap, `InvalidateFlashMIDs` forces fresh MIDs (stale MID after `SetStaticMesh` was the SM_Alien tint gap).
 - Color params tried: `Color`, `BaseColor`, `Tint`, `DiffuseColor`; plus emissive fallbacks + stronger FlashLight (≤1400) so flash stays readable when mat pins differ.
+
+
+## Sprint L — cubicle-only cover stamps
+
+`ApplyConfiguredCoverMeshes` stamps `CoverPropMesh` only on volumes whose name contains `Cubicle` (N/E/S/W). Resin and rack cover volumes are query-only (no SM_Cubicle).

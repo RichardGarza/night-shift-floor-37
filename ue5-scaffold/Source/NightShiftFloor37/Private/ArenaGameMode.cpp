@@ -648,6 +648,25 @@ void AArenaGameMode::ApplySaferStartSpacing()
 	const FVector PlayerLoc = Player->GetActorLocation();
 
 	TArray<int32> Used;
+	// Sprint L — seed Used with spawns already occupied by far-enough bots so relocate cannot double-book.
+	for (AAlienBot* Bot : AlienPool)
+	{
+		if (!Bot || !Bot->bIsAlive)
+		{
+			continue;
+		}
+		const float DistSq = FVector::DistSquared(Bot->GetActorLocation(), PlayerLoc);
+		if (DistSq < MinCmSq)
+		{
+			continue; // will relocate below
+		}
+		const int32 Occ = CachedArena->FindNearestSpawnIndex(Bot->GetActorLocation());
+		if (Occ >= 0)
+		{
+			Used.AddUnique(Occ);
+		}
+	}
+
 	for (AAlienBot* Bot : AlienPool)
 	{
 		if (!Bot || !Bot->bIsAlive)
@@ -663,7 +682,7 @@ void AArenaGameMode::ApplySaferStartSpacing()
 		const FTransform Spawn = CachedArena->GetFarthestUnusedSpawnFrom(PlayerLoc, Used, Idx);
 		if (Idx >= 0)
 		{
-			Used.Add(Idx);
+			Used.AddUnique(Idx);
 		}
 		Bot->ActivateAtSpawn(Spawn);
 		UE_LOG(LogNightShift, Log, TEXT("Safer start: relocated close alien %s (min %.0fm)."), *Bot->GetName(), MinM);

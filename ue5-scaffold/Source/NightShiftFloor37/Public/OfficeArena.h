@@ -150,6 +150,10 @@ public:
 	 */
 	FTransform GetFarthestUnusedSpawnFrom(const FVector& WorldLocation, const TArray<int32>& ExcludeIndices, int32& OutIndex) const;
 
+	/** Nearest spawn index to WorldLocation, or -1 if none. Used to seed safer-start Used sets. */
+	UFUNCTION(BlueprintPure, Category = "Spawns")
+	int32 FindNearestSpawnIndex(const FVector& WorldLocation) const;
+
 	UFUNCTION(BlueprintPure, Category = "Spawns")
 	int32 GetSpawnPointCount() const;
 
