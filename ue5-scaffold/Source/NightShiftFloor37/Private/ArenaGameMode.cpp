@@ -417,6 +417,7 @@ void AArenaGameMode::StartMatch()
 	BeginSpawnGraceAndSafeStart();
 	EnsureAlienPopulation();
 	ApplySaferStartSpacing(); // re-push any bot that landed too close
+	OrientPlayerTowardStartFocus(); // Sprint M — silhouette in frame without closing gap
 	if (HUDWidget)
 	{
 		HUDWidget->ClearPrompt();
@@ -607,6 +608,71 @@ bool AArenaGameMode::RespawnAlien(AAlienBot* Bot)
 	return true;
 }
 
+
+
+void AArenaGameMode::OrientPlayerTowardStartFocus()
+{
+	// Sprint M — safer-start leaves aliens on far edges; yaw player/OTS camera so one silhouette reads.
+	// Does NOT move anyone — MinStartSeparation + spawn grace unchanged.
+	ANightShiftCharacter* Player = GetPlayerCharacter();
+	if (!Player)
+	{
+		return;
+	}
+
+	const FVector Eye = Player->GetActorLocation() + FVector(0.f, 0.f, 60.f);
+	FVector Focus = CachedArena ? CachedArena->GetActorLocation() : FVector::ZeroVector;
+	float BestDistSq = TNumericLimits<float>::Max();
+	AAlienBot* Nearest = nullptr;
+
+	for (AAlienBot* Bot : AlienPool)
+	{
+		if (!Bot || !Bot->bIsAlive)
+		{
+			continue;
+		}
+		const float DistSq = FVector::DistSquared(Bot->GetActorLocation(), Player->GetActorLocation());
+		if (DistSq < BestDistSq)
+		{
+			BestDistSq = DistSq;
+			Nearest = Bot;
+		}
+	}
+
+	if (Nearest)
+	{
+		Focus = Nearest->GetActorLocation() + FVector(0.f, 0.f, 40.f);
+	}
+	else if (!CachedArena)
+	{
+		UE_LOG(LogNightShift, Verbose, TEXT("OrientPlayerTowardStartFocus: no alien/arena focus."));
+		return;
+	}
+
+	FVector Delta = Focus - Eye;
+	Delta.Z = 0.f; // yaw-only so OTS pitch stays comfortable
+	if (Delta.SizeSquared() < KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+
+	const FRotator YawOnly = Delta.Rotation();
+	FRotator NewControl = YawOnly;
+	NewControl.Pitch = -8.f; // slight look-down toward floor/aliens mid-arena
+	NewControl.Roll = 0.f;
+
+	if (AController* C = Player->GetController())
+	{
+		C->SetControlRotation(NewControl);
+	}
+	Player->SetActorRotation(FRotator(0.f, NewControl.Yaw, 0.f));
+
+	const float FocusDistM = FVector::Dist(Player->GetActorLocation(), Focus) * 0.01f;
+	UE_LOG(LogNightShift, Log, TEXT("OrientPlayerTowardStartFocus — yaw %.0f toward %s (dist≈%.0fm)."),
+		NewControl.Yaw,
+		Nearest ? *Nearest->GetName() : TEXT("atrium"),
+		FocusDistM);
+}
 
 void AArenaGameMode::BeginSpawnGraceAndSafeStart()
 {

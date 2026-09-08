@@ -127,6 +127,8 @@ protected:
 	/** Begin grace timer + place player on farthest edge spawn from aliens / push aliens out. */
 	void BeginSpawnGraceAndSafeStart();
 	void ApplySaferStartSpacing();
+	/** Sprint M — yaw control toward nearest live alien (else atrium) after safer-start; no position change. */
+	void OrientPlayerTowardStartFocus();
 	void SetMatchState(EArenaMatchState NewState);
 	void CheckWinCondition();
 	void EnsureAlienPopulation();
