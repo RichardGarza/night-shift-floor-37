@@ -243,6 +243,7 @@ void AFXPoolManager::ActivateMuzzleLight(const FVector& WorldLocation, float Dur
 	}
 
 	const float DurationSec = DurationMs * 0.001f;
+	const float Intensity = GameConfig ? GameConfig->MuzzleLightIntensity : 3000.f;
 	const int32 Count = MuzzleSlots.Num();
 
 	for (int32 i = 0; i < Count; ++i)
@@ -255,7 +256,7 @@ void AFXPoolManager::ActivateMuzzleLight(const FVector& WorldLocation, float Dur
 			Slot.TimeRemaining = DurationSec;
 			Slot.Light->SetWorldLocation(WorldLocation);
 			Slot.Light->SetVisibility(true);
-			Slot.Light->SetIntensity(3000.f);
+			Slot.Light->SetIntensity(Intensity);
 			NextMuzzleIndex = (Idx + 1) % Count;
 			return;
 		}
@@ -268,7 +269,7 @@ void AFXPoolManager::ActivateMuzzleLight(const FVector& WorldLocation, float Dur
 		Steal.TimeRemaining = DurationSec;
 		Steal.Light->SetWorldLocation(WorldLocation);
 		Steal.Light->SetVisibility(true);
-		Steal.Light->SetIntensity(3000.f);
+		Steal.Light->SetIntensity(Intensity);
 		NextMuzzleIndex = (NextMuzzleIndex + 1) % Count;
 	}
 }

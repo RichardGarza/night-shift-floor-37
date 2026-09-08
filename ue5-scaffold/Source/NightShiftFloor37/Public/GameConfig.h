@@ -61,6 +61,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player")
 	float CapsuleHalfHeightCm = 90.f; // ~1.8 m total height
 
+	/** Forward probe distance for optional ledge mantle (cm). Phase 7 literal moved from character. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Movement")
+	float MantleReachCm = 80.f;
+
+	/** Max ledge height probe for mantle (cm). Phase 7 literal moved from character. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Movement")
+	float MantleHeightCm = 120.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player")
 	float CapsuleRadiusCm = 42.f;
 
@@ -256,6 +264,10 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Feedback")
 	float MuzzleFlashDurationMs = 40.f;
+
+	/** Point-light intensity when a pooled muzzle flash activates (cd). Was literal 3000. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Feedback")
+	float MuzzleLightIntensity = 3000.f;
 
 	/** Crosshair hit-marker flash. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Feedback")

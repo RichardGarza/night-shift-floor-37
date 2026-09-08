@@ -259,6 +259,8 @@ void ANightShiftCharacter::ApplyResolvedGameConfig()
 	}
 	ApplyConfigToMovement();
 	ConfigureCapsuleFromConfig();
+	MantleReachCm = GameConfig->MantleReachCm;
+	MantleHeightCm = GameConfig->MantleHeightCm;
 	if (Rifle)
 	{
 		Rifle->InitializeFromConfig(GameConfig);
@@ -532,18 +534,21 @@ bool ANightShiftCharacter::TryMantleOverLedge()
 		return false;
 	}
 
+	const float ReachCm = GameConfig ? GameConfig->MantleReachCm : MantleReachCm;
+	const float HeightCm = GameConfig ? GameConfig->MantleHeightCm : MantleHeightCm;
+
 	const FVector Start = GetActorLocation();
 	const FVector Forward = GetActorForwardVector();
 	FHitResult WallHit;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(MantleWall), false, this);
-	const FVector WallEnd = Start + Forward * MantleReachCm;
+	const FVector WallEnd = Start + Forward * ReachCm;
 	if (!World->LineTraceSingleByChannel(WallHit, Start, WallEnd, ECC_Visibility, Params))
 	{
 		return false;
 	}
 
-	const FVector TopStart = WallHit.ImpactPoint + Forward * 10.f + FVector(0.f, 0.f, MantleHeightCm);
-	const FVector TopEnd = TopStart - FVector(0.f, 0.f, MantleHeightCm + 40.f);
+	const FVector TopStart = WallHit.ImpactPoint + Forward * 10.f + FVector(0.f, 0.f, HeightCm);
+	const FVector TopEnd = TopStart - FVector(0.f, 0.f, HeightCm + 40.f);
 	FHitResult TopHit;
 	if (!World->LineTraceSingleByChannel(TopHit, TopStart, TopEnd, ECC_Visibility, Params))
 	{

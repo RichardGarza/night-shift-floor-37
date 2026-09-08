@@ -177,9 +177,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	void TryJumpOrMantle();
 
+	/** Synced from UGameConfig::MantleReachCm when config resolves; same default. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float MantleReachCm = 80.f;
 
+	/** Synced from UGameConfig::MantleHeightCm when config resolves; same default. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float MantleHeightCm = 120.f;
 
