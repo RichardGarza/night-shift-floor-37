@@ -437,6 +437,14 @@ void AAlienBot::TryBurstShot()
 	{
 		return;
 	}
+	// Defense-in-depth: never fire during spawn grace (even if chase-only path misroutes).
+	if (const AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
+	{
+		if (GM->IsSpawnGraceActive())
+		{
+			return;
+		}
+	}
 	const float Accuracy = GameConfig ? GameConfig->AlienAccuracy : 0.3f; // 30%
 	const bool bHit = FMath::FRand() <= Accuracy;
 
