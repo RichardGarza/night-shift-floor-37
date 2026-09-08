@@ -30,7 +30,8 @@ void URifleComponent::BeginPlay()
 	{
 		InitializeFromConfig(Config);
 	}
-	CachedQueryParams = FCollisionQueryParams(SCENE_QUERY_STAT(RifleHitscan), false, GetOwner());
+	// bTraceComplex: hits land on the visible body (per-poly static mesh / physics asset), not just capsules.
+	CachedQueryParams = FCollisionQueryParams(SCENE_QUERY_STAT(RifleHitscan), true, GetOwner());
 	ResolveFXPool();
 }
 
@@ -129,7 +130,13 @@ void URifleComponent::TryFireShot()
 	FVector Start, End;
 	const bool bHit = Trace(Hit, Start, End);
 
-	SpawnTracerFX(Start, bHit ? Hit.ImpactPoint : End);
+	// Tracer draws from the rifle muzzle (camera trace decides what was hit).
+	FVector TracerStart = Start;
+	if (const ANightShiftCharacter* Char = Cast<ANightShiftCharacter>(GetOwner()))
+	{
+		TracerStart = Char->GetMuzzleLocation();
+	}
+	SpawnTracerFX(TracerStart, bHit ? Hit.ImpactPoint : End);
 	SpawnMuzzleFlashFX();
 	KickRecoil();
 
@@ -345,7 +352,7 @@ void URifleComponent::SpawnMuzzleFlashFX()
 	FVector MuzzleLoc = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
 	if (const ANightShiftCharacter* Char = Cast<ANightShiftCharacter>(GetOwner()))
 	{
-		MuzzleLoc = Char->GetAimOrigin() + Char->GetAimDirection() * 40.f;
+		MuzzleLoc = Char->GetMuzzleLocation();
 	}
 	const float Ms = Config ? Config->MuzzleFlashDurationMs : 40.f;
 	FXPool->ActivateMuzzleLight(MuzzleLoc, Ms);

@@ -12,6 +12,8 @@
 #include "GameFramework/PlayerController.h"
 #include "Misc/CommandLine.h"
 #include "HAL/PlatformMisc.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 
 ANightShiftSelfTest::ANightShiftSelfTest()
 {
@@ -261,6 +263,12 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 			Check(StepTime >= 2.5f, FString::Printf(TEXT("respawn waited ~3 s (%.1f s)"), StepTime));
 			Check(FVector::Dist2D(L, DeathPos) > 500.f, TEXT("respawned away from the death spot"));
 			Check(FMath::Max(FMath::Abs(L.X), FMath::Abs(L.Y)) > 2000.f, FString::Printf(TEXT("respawned at an edge spawn (%.0f, %.0f)"), L.X, L.Y));
+			// Sprint W/X — visual wiring (soft assets must resolve in the runnable project).
+			Check(Player->bUsingSkeletalBody, TEXT("player uses the skeletal mannequin, not the greybox cylinder"));
+			Check(Player->RifleMeshComp && Player->RifleMeshComp->GetStaticMesh() != nullptr && Player->RifleMeshComp->IsVisible(), TEXT("rifle prop attached and visible"));
+			Check(TargetBot->bSkeletalActive, TEXT("alien uses the skeletal Quaternius body"));
+			Check(TargetBot->GetMesh() && TargetBot->GetMesh()->IsPlaying(), TEXT("alien skeletal animation is playing"));
+			Check(Player->GetMesh() && Player->GetMesh()->IsPlaying(), TEXT("player skeletal animation is playing"));
 			Enter(EStep::GraceWait);
 		}
 		else if (StepTime > 6.f)

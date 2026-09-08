@@ -14,6 +14,8 @@
 #include "Blueprint/UserWidget.h"
 #include "FXPoolInterface.h"
 #include "NightShiftSelfTest.h"
+#include "Misc/CommandLine.h"
+#include "TimerManager.h"
 
 AArenaGameMode::AArenaGameMode()
 {
@@ -84,6 +86,13 @@ void AArenaGameMode::BeginPlay()
 	if (ANightShiftSelfTest::IsRequestedOnCommandLine())
 	{
 		GetWorld()->SpawnActor<ANightShiftSelfTest>();
+	}
+	// -NightShiftAutoStart: skip Click-to-play after 1.5 s (screenshots / smoke runs without a mouse).
+	if (FParse::Param(FCommandLine::Get(), TEXT("NightShiftAutoStart")))
+	{
+		FTimerHandle AutoStartHandle;
+		GetWorldTimerManager().SetTimer(AutoStartHandle, this, &AArenaGameMode::RequestStartOrRestart, 1.5f, false);
+		UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode: -NightShiftAutoStart — match starts in 1.5 s."));
 	}
 	UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode::BeginPlay — waiting to start (win @ %d kills, pool %d, HUD %s, config %s)"),
 		GameConfig ? GameConfig->KillsToWin : 25,

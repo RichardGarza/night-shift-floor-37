@@ -17,7 +17,11 @@
 #include "InputMappingContext.h"
 #include "InputModifiers.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/SkeletalMesh.h"
+#include "Animation/AnimSequence.h"
+#include "Animation/AnimSingleNodeInstance.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
@@ -81,6 +85,27 @@ ANightShiftCharacter::ANightShiftCharacter()
 	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BodyMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 	BodyMesh->SetCastShadow(true);
+
+	// Sprint W — rifle prop; attached to the skeletal mesh socket once PlayerSkeletalMesh resolves.
+	RifleMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RifleMesh"));
+	RifleMeshComp->SetupAttachment(GetMesh());
+	RifleMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RifleMeshComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+	RifleMeshComp->SetCastShadow(true);
+	RifleMeshComp->SetVisibility(false);
+	RifleMeshComp->SetHiddenInGame(true);
+
+	// Character mesh: hidden until a skeletal mesh is assigned; blocks Visibility so alien LOS
+	// and rifle traces see the body, not just the capsule.
+	if (USkeletalMeshComponent* CharMesh = GetMesh())
+	{
+		CharMesh->SetVisibility(false);
+		CharMesh->SetHiddenInGame(true);
+		CharMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		CharMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+		CharMesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+		CharMesh->SetCastShadow(true);
+	}
 
 	// Small perlin shake on damage (DESIGN: red vignette + camera shake). BP may swap the class.
 	DamageCameraShake = UDamageCameraShake::StaticClass();
@@ -167,6 +192,7 @@ void ANightShiftCharacter::Tick(float DeltaSeconds)
 	UpdateRegen(DeltaSeconds);
 	UpdateRecoilRecovery(DeltaSeconds);
 	UpdateSprintSpeed();
+	UpdateLocomotionAnim(DeltaSeconds);
 }
 
 void ANightShiftCharacter::SnapshotGroundedZIfNeeded()
@@ -269,6 +295,210 @@ void ANightShiftCharacter::ApplyResolvedGameConfig()
 	{
 		ArenaCollision->GameConfig = GameConfig;
 	}
+	ApplyConfiguredPlayerVisuals();
+}
+
+void ANightShiftCharacter::ApplyConfiguredPlayerVisuals()
+{
+	if (!GameConfig)
+	{
+		return;
+	}
+	GameConfig->ResolvePhase8LoadedMeshes();
+
+	// Exposure: the project runs with auto-exposure off, so lift the fixed exposure here.
+	if (FollowCamera)
+	{
+		FollowCamera->PostProcessSettings.bOverride_AutoExposureBias = true;
+		FollowCamera->PostProcessSettings.AutoExposureBias = GameConfig->ExposureBiasEV;
+	}
+
+	USkeletalMeshComponent* CharMesh = GetMesh();
+	USkeletalMesh* Skel = GameConfig->CachedPlayerSkeletalMesh.Get();
+	if (!CharMesh || !Skel)
+	{
+		return; // soft-miss → keep the greybox cylinder
+	}
+
+	if (CharMesh->GetSkeletalMeshAsset() != Skel)
+	{
+		CharMesh->SetSkeletalMesh(Skel);
+		// Template mannequin: feet at capsule bottom, faces +X after -90 yaw.
+		const float HalfH = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		CharMesh->SetRelativeLocation(FVector(0.f, 0.f, -HalfH));
+		CharMesh->SetRelativeRotation(FRotator(0.f, GameConfig->PlayerMeshYawDegrees, 0.f));
+		CharMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		CharMesh->SetVisibility(true);
+		CharMesh->SetHiddenInGame(false);
+		// Third-person: the owner sees their own body (OTS camera), so no owner-no-see.
+		CharMesh->bOwnerNoSee = false;
+	}
+	if (BodyMesh)
+	{
+		BodyMesh->SetVisibility(false);
+		BodyMesh->SetHiddenInGame(true);
+	}
+	bUsingSkeletalBody = true;
+
+	if (RifleMeshComp)
+	{
+		if (UStaticMesh* RifleSM = GameConfig->CachedRifleMesh.Get())
+		{
+			if (RifleMeshComp->GetStaticMesh() != RifleSM)
+			{
+				RifleMeshComp->SetStaticMesh(RifleSM);
+			}
+			const FName Socket = GameConfig->RifleSocketName;
+			if (CharMesh->DoesSocketExist(Socket))
+			{
+				RifleMeshComp->AttachToComponent(CharMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, Socket);
+			}
+			else
+			{
+				RifleMeshComp->AttachToComponent(CharMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("hand_r"));
+				UE_LOG(LogNightShift, Warning, TEXT("Player mesh has no socket %s — rifle attached to hand_r."), *Socket.ToString());
+			}
+			RifleMeshComp->SetVisibility(true);
+			RifleMeshComp->SetHiddenInGame(false);
+		}
+	}
+
+	if (CurrentAnim == nullptr)
+	{
+		PlayBodyAnim(GameConfig->CachedPlayerAnims.Idle, true);
+	}
+	UE_LOG(LogNightShift, Log, TEXT("ANightShiftCharacter::ApplyConfiguredPlayerVisuals — skeletal body %s, rifle %s, idle anim %s."),
+		*Skel->GetName(),
+		(RifleMeshComp && RifleMeshComp->GetStaticMesh()) ? *RifleMeshComp->GetStaticMesh()->GetName() : TEXT("none"),
+		GameConfig->CachedPlayerAnims.Idle ? TEXT("ok") : TEXT("missing"));
+}
+
+FVector ANightShiftCharacter::GetMuzzleLocation() const
+{
+	if (RifleMeshComp && RifleMeshComp->GetStaticMesh() && RifleMeshComp->IsVisible())
+	{
+		if (RifleMeshComp->DoesSocketExist(TEXT("Muzzle")))
+		{
+			return RifleMeshComp->GetSocketLocation(TEXT("Muzzle"));
+		}
+		// No socket: push to the front edge of the prop along its forward axis.
+		const FBoxSphereBounds B = RifleMeshComp->Bounds;
+		const FVector Fwd = RifleMeshComp->GetForwardVector();
+		const float HalfLen = FVector::DotProduct(B.BoxExtent, Fwd.GetAbs());
+		return B.Origin + Fwd * HalfLen;
+	}
+	return GetAimOrigin() + GetAimDirection() * 40.f;
+}
+
+void ANightShiftCharacter::PlayBodyAnim(UAnimSequence* Seq, bool bLoop, float Rate)
+{
+	USkeletalMeshComponent* CharMesh = GetMesh();
+	if (!CharMesh || !Seq)
+	{
+		return;
+	}
+	if (CurrentAnim == Seq)
+	{
+		CharMesh->SetPlayRate(Rate);
+		return;
+	}
+	CurrentAnim = Seq;
+	CharMesh->PlayAnimation(Seq, bLoop);
+	CharMesh->SetPlayRate(Rate);
+}
+
+float ANightShiftCharacter::StartOneShot(UAnimSequence* Seq, EPlayerAnimState NewState, float Rate)
+{
+	if (!Seq || !bUsingSkeletalBody)
+	{
+		return 0.f;
+	}
+	CurrentAnim = nullptr; // force restart even if the same clip was active
+	PlayBodyAnim(Seq, false, Rate);
+	AnimState = NewState;
+	OneShotRemaining = Seq->GetPlayLength() / FMath::Max(Rate, 0.01f);
+	return OneShotRemaining;
+}
+
+void ANightShiftCharacter::UpdateLocomotionAnim(float DeltaSeconds)
+{
+	if (!bUsingSkeletalBody || !GameConfig)
+	{
+		return;
+	}
+	const FNightShiftPlayerAnimCache& A = GameConfig->CachedPlayerAnims;
+	const UCharacterMovementComponent* Move = GetCharacterMovement();
+	const bool bFalling = Move && Move->IsFalling();
+
+	// One-shots run to completion (Death holds its last frame).
+	if (AnimState == EPlayerAnimState::Death)
+	{
+		return;
+	}
+	if (AnimState == EPlayerAnimState::Reload)
+	{
+		OneShotRemaining -= DeltaSeconds;
+		const bool bStillReloading = Rifle && Rifle->bIsReloading;
+		if (OneShotRemaining > 0.f && bStillReloading && !bFalling)
+		{
+			return;
+		}
+		AnimState = EPlayerAnimState::Locomotion;
+	}
+	if (AnimState == EPlayerAnimState::JumpStart || AnimState == EPlayerAnimState::Land)
+	{
+		OneShotRemaining -= DeltaSeconds;
+		if (OneShotRemaining > 0.f && (AnimState == EPlayerAnimState::Land ? !bFalling : true))
+		{
+			return;
+		}
+		AnimState = bFalling ? EPlayerAnimState::FallLoop : EPlayerAnimState::Locomotion;
+	}
+
+	if (bFalling)
+	{
+		AnimState = EPlayerAnimState::FallLoop;
+		PlayBodyAnim(A.FallLoop ? A.FallLoop.Get() : A.Idle.Get(), true);
+		return;
+	}
+	AnimState = EPlayerAnimState::Locomotion;
+
+	// Reload starts while grounded → play the clip once.
+	if (Rifle && Rifle->bIsReloading && A.Reload)
+	{
+		const float Dur = FMath::Max(A.Reload->GetPlayLength(), 0.1f);
+		const float Rate = Dur / FMath::Max(GameConfig->ReloadSeconds, 0.2f); // fit clip to reload time
+		StartOneShot(A.Reload, EPlayerAnimState::Reload, Rate);
+		return;
+	}
+
+	const FVector Vel = GetVelocity();
+	const float Speed = Vel.Size2D();
+	if (Speed < 15.f)
+	{
+		PlayBodyAnim(A.Idle, true);
+		return;
+	}
+
+	// Direction in actor space (yaw follows the camera, so strafing reads as left/right).
+	const FVector Local = GetActorTransform().InverseTransformVectorNoScale(Vel.GetSafeNormal2D());
+	const float AngleDeg = FMath::RadiansToDegrees(FMath::Atan2(Local.Y, Local.X)); // 0 fwd, +90 right
+	const bool bJog = Speed >= GameConfig->PlayerWalkJogSplitSpeed;
+	UAnimSequence* Fwd = bJog ? A.JogFwd.Get() : A.WalkFwd.Get();
+	UAnimSequence* Bwd = bJog ? A.JogBwd.Get() : A.WalkBwd.Get();
+	UAnimSequence* Left = bJog ? A.JogLeft.Get() : A.WalkLeft.Get();
+	UAnimSequence* Right = bJog ? A.JogRight.Get() : A.WalkRight.Get();
+	UAnimSequence* Pick = Fwd;
+	if (AngleDeg > 135.f || AngleDeg < -135.f)      { Pick = Bwd ? Bwd : Fwd; }
+	else if (AngleDeg > 45.f)                        { Pick = Right ? Right : Fwd; }
+	else if (AngleDeg < -45.f)                       { Pick = Left ? Left : Fwd; }
+	if (!Pick)
+	{
+		Pick = A.Idle;
+	}
+	const float Ref = bJog ? GameConfig->PlayerJogAnimRefSpeed : GameConfig->PlayerWalkAnimRefSpeed;
+	const float Rate = FMath::Clamp(Speed / FMath::Max(Ref, 1.f), 0.7f, 1.9f);
+	PlayBodyAnim(Pick, true, Rate);
 }
 
 void ANightShiftCharacter::ApplyConfigToMovement()
@@ -522,6 +752,10 @@ void ANightShiftCharacter::TryJumpOrMantle()
 		return;
 	}
 	Jump();
+	if (GameConfig && GetCharacterMovement() && GetCharacterMovement()->IsMovingOnGround())
+	{
+		StartOneShot(GameConfig->CachedPlayerAnims.JumpStart, EPlayerAnimState::JumpStart);
+	}
 }
 
 bool ANightShiftCharacter::TryMantleOverLedge()
@@ -616,6 +850,10 @@ float ANightShiftCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
 
 	if (Health <= 0.f)
 	{
+		if (GameConfig)
+		{
+			StartOneShot(GameConfig->CachedPlayerAnims.Death, EPlayerAnimState::Death);
+		}
 		OnDied.Broadcast();
 		if (AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
 		{
@@ -673,6 +911,10 @@ void ANightShiftCharacter::Landed(const FHitResult& Hit)
 	}
 	LastGroundedZ = GetActorLocation().Z;
 	bWasMovingOnGround = true;
+	if (GameConfig && IsAlive())
+	{
+		StartOneShot(GameConfig->CachedPlayerAnims.Land, EPlayerAnimState::Land, 1.4f);
+	}
 }
 
 void ANightShiftCharacter::AddRecoilKick(float PitchDegrees, float YawDegrees)
@@ -720,6 +962,13 @@ void ANightShiftCharacter::SoftResetPlayerState()
 		Rifle->SoftResetAmmo();
 	}
 	StopFire();
+	AnimState = EPlayerAnimState::Locomotion;
+	OneShotRemaining = 0.f;
+	CurrentAnim = nullptr;
+	if (GameConfig && bUsingSkeletalBody)
+	{
+		PlayBodyAnim(GameConfig->CachedPlayerAnims.Idle, true);
+	}
 	BroadcastHealthChanged();
 }
 

@@ -10,6 +10,9 @@ class USkeletalMeshComponent;
 class UMaterialInstanceDynamic;
 class UPointLightComponent;
 class AFXPoolManager;
+class UAnimSequence;
+class UMaterialInterface;
+class USkeletalMesh;
 
 class UGameConfig;
 class ANightShiftCharacter;
@@ -76,6 +79,10 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
 	bool bIsAlive = true;
+
+	/** Sprint X — true once AlienSkeletalMesh replaced the greybox / static body. */
+	UPROPERTY(BlueprintReadOnly, Category = "Visual")
+	bool bSkeletalActive = false;
 
 	/** Remaining hit-flash time in seconds (DESIGN: 80 ms → 0.08 s). */
 	UPROPERTY(BlueprintReadOnly, Category = "FX")
@@ -190,4 +197,20 @@ protected:
 	/** Reused chase / LOS traces — no per-frame heap in AI tick. */
 	mutable FHitResult SteerHitScratch;
 	mutable FHitResult LosHitScratch;
+
+	// ----- Sprint X code-driven animation + death / flash on the skeletal body -----
+	UPROPERTY() TObjectPtr<UAnimSequence> CurrentAnim;
+	/** Original per-slot materials of GetMesh(), restored after the white flash swap. */
+	UPROPERTY() TArray<TObjectPtr<UMaterialInterface>> SkelOriginalMaterials;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> FlashSwapMID;
+	bool bFlashSwapActive = false;
+	float AttackAnimRemaining = 0.f;
+	/** > 0 while the death clip plays; actor hides when it reaches 0 (respawn timer runs in parallel). */
+	float DeathHideRemaining = 0.f;
+	void PlayAlienAnim(UAnimSequence* Seq, bool bLoop, float Rate = 1.f);
+	void UpdateAlienAnim(float DeltaSeconds);
+	/** Scale + place the skeletal mesh and refit the capsule to its bounds (feet at capsule bottom). */
+	void FitSkeletalBody(USkeletalMesh* Skel);
+	void BeginFlashSwap();
+	void EndFlashSwap();
 };

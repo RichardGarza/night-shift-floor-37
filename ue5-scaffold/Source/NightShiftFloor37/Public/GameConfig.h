@@ -6,7 +6,80 @@
 #include "Engine/DataAsset.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/SkeletalMesh.h"
+#include "Animation/AnimSequence.h"
 #include "GameConfig.generated.h"
+
+/** Sprint W — rifle-carry animation set for the player mannequin (code-driven, no AnimBP). */
+USTRUCT(BlueprintType)
+struct FNightShiftPlayerAnimSet
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> Idle;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> WalkFwd;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> WalkBwd;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> WalkLeft;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> WalkRight;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> JogFwd;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> JogBwd;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> JogLeft;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> JogRight;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> JumpStart;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> FallLoop;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> Land;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> Reload;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> Death;
+};
+
+/** Sprint X — animation set for the skeletal alien (Quaternius Alien.fbx takes). */
+USTRUCT(BlueprintType)
+struct FNightShiftAlienAnimSet
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> Idle;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> Walk;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> Run;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> Attack;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> HitReact;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Anim") TSoftObjectPtr<UAnimSequence> Death;
+};
+
+/** Resolved (loaded) mirror of FNightShiftPlayerAnimSet. Transient. */
+USTRUCT(BlueprintType)
+struct FNightShiftPlayerAnimCache
+{
+	GENERATED_BODY()
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> Idle;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> WalkFwd;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> WalkBwd;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> WalkLeft;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> WalkRight;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> JogFwd;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> JogBwd;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> JogLeft;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> JogRight;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> JumpStart;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> FallLoop;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> Land;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> Reload;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> Death;
+};
+
+/** Resolved (loaded) mirror of FNightShiftAlienAnimSet. Transient. */
+USTRUCT(BlueprintType)
+struct FNightShiftAlienAnimCache
+{
+	GENERATED_BODY()
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> Idle;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> Walk;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> Run;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> Attack;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> HitReact;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> Death;
+};
 
 /**
  * Single source of truth for every gameplay tunable.
@@ -204,6 +277,61 @@ public:
 	TSoftObjectPtr<USkeletalMesh> AlienSkeletalMesh;
 
 	/**
+	 * Sprint X — uniform scale applied to AlienSkeletalMesh (Quaternius "Big" alien is ~3.5 m
+	 * at native scale; 0.55 → ~1.9 m). Capsule is refit to the scaled mesh bounds.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float AlienMeshScale = 0.55f;
+
+	/** Sprint X — mesh yaw so the alien faces +X (FBX/Blender exports usually need -90). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float AlienMeshYawDegrees = -90.f;
+
+	/** Sprint X — alien animation takes. Default: /Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_*. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	FNightShiftAlienAnimSet AlienAnims;
+
+	/**
+	 * Sprint W — player skeletal mesh (UE template Manny). When resolved, hides the greybox
+	 * cylinder and drives ACharacter::GetMesh(). Default: /Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	TSoftObjectPtr<USkeletalMesh> PlayerSkeletalMesh;
+
+	/** Sprint W — mesh yaw so the mannequin faces +X (template convention -90). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float PlayerMeshYawDegrees = -90.f;
+
+	/**
+	 * Sprint W — rifle static mesh attached to the player mesh socket RifleSocketName.
+	 * Default: /Game/Weapons/Rifle/Meshes/SM_Rifle. Null / soft-miss → no rifle prop (hitscan still works).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	TSoftObjectPtr<UStaticMesh> RifleMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	FName RifleSocketName = TEXT("HandGrip_R");
+
+	/** Sprint W — player rifle-carry animation takes (template Mannequins/Anims/Rifle + Death). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	FNightShiftPlayerAnimSet PlayerAnims;
+
+	/** Sprint W — reference speeds (cm/s) at which the walk / jog clips play at rate 1.0. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float PlayerWalkAnimRefSpeed = 200.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float PlayerJogAnimRefSpeed = 450.f;
+
+	/** Below this ground speed the player plays Walk clips; above, Jog clips. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float PlayerWalkJogSplitSpeed = 320.f;
+
+	/** Sprint X — alien Run clip plays at rate 1.0 at this speed (cm/s). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float AlienRunAnimRefSpeed = 350.f;
+
+	/**
 	 * Omie SM_Cubicle stamped at cover volume centers (non-colliding visual).
 	 * Default soft path: /Game/Imported/Props/Office/SM_Cubicle. Collision stays on cover boxes.
 	 */
@@ -316,6 +444,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Feedback")
 	float CameraShakeScale = 0.35f;
 
+	/**
+	 * Sprint X — exposure compensation (EV) on the player camera. Project has auto-exposure off,
+	 * so this is the single "lighten it up" knob on top of the greybox light intensities.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Feedback")
+	float ExposureBiasEV = 0.6f;
+
 	/** Object-pool sizes — avoid per-frame allocs (DESIGN performance rules). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pools")
 	int32 TracerPoolSize = 32;
@@ -362,6 +497,18 @@ public:
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
 	TObjectPtr<UStaticMesh> CachedFluorescentLightMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<USkeletalMesh> CachedPlayerSkeletalMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedRifleMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	FNightShiftPlayerAnimCache CachedPlayerAnims;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	FNightShiftAlienAnimCache CachedAlienAnims;
 
 	bool bPhase8MeshesResolved = false;
 };

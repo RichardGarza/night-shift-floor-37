@@ -189,10 +189,11 @@ UStaticMeshComponent* AOfficeArena::AddGreyboxRamp(const FString& Name, const FV
 void AOfficeArena::BuildGreybox()
 {
 	// Colours: wet office floor, dirty glass perimeter, concrete tower. Cover is coloured in SetupDefaultCoverVolumeRotated.
-	const FLinearColor Floor(0.07f, 0.09f, 0.08f);
-	const FLinearColor Glass(0.10f, 0.15f, 0.17f);
-	const FLinearColor Concrete(0.30f, 0.30f, 0.28f);
-	const FLinearColor Steel(0.22f, 0.24f, 0.26f);
+	// Sprint X — lifted albedos (Richard: "don't want it so dark"); still wet/dirty, not white.
+	const FLinearColor Floor(0.20f, 0.23f, 0.22f);
+	const FLinearColor Glass(0.16f, 0.22f, 0.25f);
+	const FLinearColor Concrete(0.42f, 0.42f, 0.40f);
+	const FLinearColor Steel(0.32f, 0.34f, 0.36f);
 	const float Half = 2500.f; // ctor default; SyncLayoutFromConfig rescales the bounds, not the greybox
 
 	AddGreyboxBox(TEXT("GB_Floor"), FVector(0.f, 0.f, -10.f), FVector(Half * 2.f, Half * 2.f, 20.f), FRotator::ZeroRotator, Floor);
@@ -226,33 +227,33 @@ void AOfficeArena::BuildGreybox()
 
 void AOfficeArena::BuildGreyboxLighting()
 {
-	// Sprint V — bigger readability lift than Sprint B (still dreary punk, not washed-out).
-	// DESIGN mood kept: dying sun, dusty fog, sick green/amber practicals — just less crushed.
+	// Sprint X — third lift (V was not enough): brighter key + fill, thin fog, hot practicals,
+	// plus UGameConfig::ExposureBiasEV on the player camera. Mood kept via colour, not darkness.
 	SkyAtmosphere = CreateDefaultSubobject<USkyAtmosphereComponent>(TEXT("GB_SkyAtmosphere"));
 	SkyAtmosphere->SetupAttachment(BoundsVolume);
 
 	SunLight = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("GB_Sun"));
 	SunLight->SetupAttachment(BoundsVolume);
 	// Slightly higher late-day angle — fewer crushed floor pools, still long shadows.
-	SunLight->SetRelativeRotation(FRotator(-18.f, 38.f, 0.f));
-	SunLight->Intensity = 3.25f; // was 2.15 (Sprint B); below original 3.5 wash
-	SunLight->LightColor = FColor(255, 178, 125); // slightly cleaner warm key
+	SunLight->SetRelativeRotation(FRotator(-24.f, 38.f, 0.f));
+	SunLight->Intensity = 5.0f; // Sprint X — was 3.25
+	SunLight->LightColor = FColor(255, 190, 145);
 	SunLight->bAtmosphereSunLight = true;
 	SunLight->SetCastShadows(true);
 
 	SkyLight = CreateDefaultSubobject<USkyLightComponent>(TEXT("GB_SkyLight"));
 	SkyLight->SetupAttachment(BoundsVolume);
 	SkyLight->bRealTimeCapture = true;
-	SkyLight->Intensity = 0.9f; // was 0.55 — fill so aliens/cover read
+	SkyLight->Intensity = 1.6f; // Sprint X — was 0.9; fill lifts the shadow sides of cover
 
 	Fog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("GB_Fog"));
 	Fog->SetupAttachment(BoundsVolume);
-	Fog->FogDensity = 0.016f; // was 0.028 — less murk
-	Fog->FogHeightFalloff = 0.4f;
-	Fog->FogInscatteringLuminance = FLinearColor(0.22f, 0.32f, 0.26f);
+	Fog->FogDensity = 0.009f; // Sprint X — was 0.016
+	Fog->FogHeightFalloff = 0.45f;
+	Fog->FogInscatteringLuminance = FLinearColor(0.30f, 0.40f, 0.34f);
 	Fog->bEnableVolumetricFog = true;
-	Fog->VolumetricFogExtinctionScale = 0.7f; // was 1.05 — less mid-range crush
-	Fog->VolumetricFogAlbedo = FColor(180, 200, 185);
+	Fog->VolumetricFogExtinctionScale = 0.45f; // Sprint X — was 0.7
+	Fog->VolumetricFogAlbedo = FColor(195, 210, 200);
 
 	// Six practicals: brighter sick green / amber accents, no shadows (perf).
 	for (int32 i = 0; i < 6; ++i)
@@ -261,8 +262,8 @@ void AOfficeArena::BuildGreyboxLighting()
 		UPointLightComponent* L = CreateDefaultSubobject<UPointLightComponent>(*FString::Printf(TEXT("GB_Practical_%d"), i));
 		L->SetupAttachment(BoundsVolume);
 		L->SetRelativeLocation(FVector(FMath::Cos(A) * 1600.f, FMath::Sin(A) * 1600.f, 310.f));
-		L->Intensity = 380.f; // was 200 — local readability lift
-		L->AttenuationRadius = 1250.f;
+		L->Intensity = 600.f; // Sprint X — was 380
+		L->AttenuationRadius = 1500.f;
 		L->SetCastShadows(false);
 		L->LightColor = (i % 2 == 0) ? FColor(110, 235, 155) : FColor(255, 175, 90);
 		PracticalLights.Add(L);

@@ -16,6 +16,7 @@ class UInputAction;
 class UArenaCollision;
 class UCameraShakeBase;
 class UStaticMeshComponent;
+class UAnimSequence;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDamaged, float, Amount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDied);
@@ -58,6 +59,25 @@ public:
 	/** Greybox body (engine cylinder) so the player reads in 3rd person without art. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visual")
 	TObjectPtr<UStaticMeshComponent> BodyMesh;
+
+	/** Sprint W — rifle prop attached to the mannequin's HandGrip_R socket (visual only). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visual")
+	TObjectPtr<UStaticMeshComponent> RifleMeshComp;
+
+	/** True once PlayerSkeletalMesh resolved and replaced the greybox cylinder. */
+	UPROPERTY(BlueprintReadOnly, Category = "Visual")
+	bool bUsingSkeletalBody = false;
+
+	/**
+	 * Sprint W — swap the greybox cylinder for UGameConfig::PlayerSkeletalMesh, attach RifleMesh,
+	 * apply ExposureBiasEV to the follow camera. Safe to call repeatedly (idempotent).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Visual")
+	void ApplyConfiguredPlayerVisuals();
+
+	/** World-space muzzle of the rifle prop (falls back to camera aim origin + 40 cm). */
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	FVector GetMuzzleLocation() const;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UArenaCollision> ArenaCollision;
@@ -233,4 +253,16 @@ protected:
 
 	/** Tracks IsMovingOnGround edge for fall-height snapshot when MovementModeChanged is not enough. */
 	bool bWasMovingOnGround = true;
+
+	// ----- Sprint W code-driven animation (single-node, no AnimBP) -----
+	enum class EPlayerAnimState : uint8 { Locomotion, JumpStart, FallLoop, Land, Reload, Death };
+	EPlayerAnimState AnimState = EPlayerAnimState::Locomotion;
+	UPROPERTY() TObjectPtr<UAnimSequence> CurrentAnim;
+	float OneShotRemaining = 0.f;
+	/** Pick and play the clip for the current movement / rifle state. */
+	void UpdateLocomotionAnim(float DeltaSeconds);
+	/** Play Seq on GetMesh() unless it is already the active clip (looping clips never restart). */
+	void PlayBodyAnim(UAnimSequence* Seq, bool bLoop, float Rate = 1.f);
+	/** Start a non-looping clip and return its duration at Rate (0 if null). */
+	float StartOneShot(UAnimSequence* Seq, EPlayerAnimState NewState, float Rate = 1.f);
 };

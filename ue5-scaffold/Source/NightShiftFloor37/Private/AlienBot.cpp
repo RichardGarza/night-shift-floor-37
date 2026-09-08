@@ -23,6 +23,8 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Components/PointLightComponent.h"
 #include "FXPoolInterface.h"
+#include "Animation/AnimSequence.h"
+#include "PhysicsEngine/PhysicsAsset.h"
 
 namespace AlienBotPrivate
 {
@@ -98,10 +100,25 @@ void AAlienBot::ApplyConfiguredMeshes()
 
 	if (USkeletalMesh* Skel = GameConfig->CachedAlienSkeletalMesh.Get())
 	{
-		InvalidateFlashMIDs();
-		if (USkeletalMeshComponent* CharMesh = GetMesh())
+		USkeletalMeshComponent* CharMesh = GetMesh();
+		const bool bFirstApply = CharMesh && CharMesh->GetSkeletalMeshAsset() != Skel;
+		if (bFirstApply)
 		{
+			InvalidateFlashMIDs();
+			EndFlashSwap();
 			CharMesh->SetSkeletalMesh(Skel);
+			CharMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+			// Body blocks Visibility when it has a physics asset (per-body hits + bone names);
+			// otherwise the refit capsule is the hit volume.
+			CharMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+			CharMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+			CharMesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+			CharMesh->SetCastShadow(true);
+			FitSkeletalBody(Skel);
+			SkelOriginalMaterials.Reset();
+		}
+		if (CharMesh)
+		{
 			CharMesh->SetVisibility(true);
 			CharMesh->SetHiddenInGame(false);
 		}
@@ -115,8 +132,29 @@ void AAlienBot::ApplyConfiguredMeshes()
 			HeadMesh->SetVisibility(false);
 			HeadMesh->SetHiddenInGame(true);
 		}
-		ApplyFlashToMaterials(); // Sprint I — bio tint + flash MIDs on skeletal slots
-		UE_LOG(LogNightShift, Log, TEXT("AAlienBot::ApplyConfiguredMeshes — skeletal override + flash MIDs applied."));
+		bSkeletalActive = true;
+		ApplyFlashToMaterials(); // creates per-slot MIDs (params are a no-op on the atlas material)
+		if (CharMesh && SkelOriginalMaterials.Num() == 0)
+		{
+			for (int32 Slot = 0; Slot < CharMesh->GetNumMaterials(); ++Slot)
+			{
+				SkelOriginalMaterials.Add(CharMesh->GetMaterial(Slot));
+			}
+		}
+		CurrentAnim = nullptr;
+		AttackAnimRemaining = 0.f;
+		DeathHideRemaining = 0.f;
+		PlayAlienAnim(GameConfig->CachedAlienAnims.Idle, true);
+		if (bFirstApply)
+		{
+			UE_LOG(LogNightShift, Log, TEXT("AAlienBot::ApplyConfiguredMeshes — skeletal %s scale %.2f, capsule r=%.0f h=%.0f, physics asset %s, anims idle=%s run=%s death=%s."),
+				*Skel->GetName(), GameConfig->AlienMeshScale,
+				GetCapsuleComponent()->GetScaledCapsuleRadius(), GetCapsuleComponent()->GetScaledCapsuleHalfHeight(),
+				Skel->GetPhysicsAsset() ? TEXT("yes") : TEXT("no"),
+				GameConfig->CachedAlienAnims.Idle ? TEXT("ok") : TEXT("null"),
+				GameConfig->CachedAlienAnims.Run ? TEXT("ok") : TEXT("null"),
+				GameConfig->CachedAlienAnims.Death ? TEXT("ok") : TEXT("null"));
+		}
 		return;
 	}
 
@@ -154,6 +192,137 @@ void AAlienBot::ApplyConfiguredMeshes()
 		// Bright bio-readable tint + flash-ready MIDs (Color/BaseColor/Emissive fallbacks).
 		ApplyFlashToMaterials();
 		UE_LOG(LogNightShift, Log, TEXT("AAlienBot::ApplyConfiguredMeshes — static mesh override(s) + flash MIDs applied."));
+	}
+}
+
+void AAlienBot::FitSkeletalBody(USkeletalMesh* Skel)
+{
+	USkeletalMeshComponent* CharMesh = GetMesh();
+	if (!CharMesh || !Skel)
+	{
+		return;
+	}
+	const float S = GameConfig ? FMath::Max(GameConfig->AlienMeshScale, 0.05f) : 1.f;
+	const float Yaw = GameConfig ? GameConfig->AlienMeshYawDegrees : -90.f;
+	const FBoxSphereBounds B = Skel->GetBounds(); // ref-pose bounds in mesh space
+	const float HalfH = FMath::Max(B.BoxExtent.Z * S, 30.f);
+	const float Radius = FMath::Clamp(FMath::Min(B.BoxExtent.X, B.BoxExtent.Y) * S, 25.f, HalfH * 0.75f);
+	GetCapsuleComponent()->SetCapsuleSize(Radius, HalfH);
+	// Feet (bounds bottom) sit on the capsule bottom.
+	const float MeshBottom = (B.Origin.Z - B.BoxExtent.Z) * S;
+	CharMesh->SetRelativeScale3D(FVector(S));
+	CharMesh->SetRelativeLocation(FVector(0.f, 0.f, -HalfH - MeshBottom));
+	CharMesh->SetRelativeRotation(FRotator(0.f, Yaw, 0.f));
+	if (FlashLight)
+	{
+		FlashLight->SetRelativeLocation(FVector(0.f, 0.f, HalfH * 0.3f));
+	}
+}
+
+void AAlienBot::PlayAlienAnim(UAnimSequence* Seq, bool bLoop, float Rate)
+{
+	USkeletalMeshComponent* CharMesh = GetMesh();
+	if (!CharMesh || !Seq || !bSkeletalActive)
+	{
+		return;
+	}
+	if (CurrentAnim == Seq)
+	{
+		CharMesh->SetPlayRate(Rate);
+		return;
+	}
+	CurrentAnim = Seq;
+	CharMesh->PlayAnimation(Seq, bLoop);
+	CharMesh->SetPlayRate(Rate);
+}
+
+void AAlienBot::UpdateAlienAnim(float DeltaSeconds)
+{
+	if (!bSkeletalActive || !GameConfig)
+	{
+		return;
+	}
+	const FNightShiftAlienAnimCache& A = GameConfig->CachedAlienAnims;
+	if (!bIsAlive)
+	{
+		return; // Death clip plays to its last frame; Tick handles the hide timer
+	}
+	if (AttackAnimRemaining > 0.f)
+	{
+		AttackAnimRemaining -= DeltaSeconds;
+		if (AttackAnimRemaining > 0.f)
+		{
+			return;
+		}
+		CurrentAnim = nullptr;
+	}
+	const float Speed = GetVelocity().Size2D();
+	switch (CombatState)
+	{
+	case EAlienCombatState::Chase:
+	{
+		const float Ref = FMath::Max(GameConfig->AlienRunAnimRefSpeed, 1.f);
+		if (Speed < 20.f) { PlayAlienAnim(A.Idle, true); }
+		else { PlayAlienAnim(A.Run ? A.Run.Get() : A.Walk.Get(), true, FMath::Clamp(Speed / Ref, 0.6f, 1.8f)); }
+		break;
+	}
+	case EAlienCombatState::StrafeBurst:
+		if (Speed < 20.f) { PlayAlienAnim(A.Idle, true); }
+		else { PlayAlienAnim(A.Walk ? A.Walk.Get() : A.Run.Get(), true, FMath::Clamp(Speed / 180.f, 0.6f, 1.6f)); }
+		break;
+	default:
+		PlayAlienAnim(A.Idle, true);
+		break;
+	}
+}
+
+void AAlienBot::BeginFlashSwap()
+{
+	USkeletalMeshComponent* CharMesh = GetMesh();
+	if (!bSkeletalActive || !CharMesh || bFlashSwapActive)
+	{
+		return;
+	}
+	if (!FlashSwapMID)
+	{
+		UMaterialInterface* Base = BodyMesh ? BodyMesh->GetMaterial(0) : nullptr;
+		if (Base)
+		{
+			FlashSwapMID = UMaterialInstanceDynamic::Create(Base, this);
+			FlashSwapMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 1.f, 1.f));
+		}
+	}
+	if (!FlashSwapMID)
+	{
+		return;
+	}
+	if (SkelOriginalMaterials.Num() == 0)
+	{
+		for (int32 Slot = 0; Slot < CharMesh->GetNumMaterials(); ++Slot)
+		{
+			SkelOriginalMaterials.Add(CharMesh->GetMaterial(Slot));
+		}
+	}
+	for (int32 Slot = 0; Slot < CharMesh->GetNumMaterials(); ++Slot)
+	{
+		CharMesh->SetMaterial(Slot, FlashSwapMID);
+	}
+	bFlashSwapActive = true;
+}
+
+void AAlienBot::EndFlashSwap()
+{
+	if (!bFlashSwapActive)
+	{
+		return;
+	}
+	bFlashSwapActive = false;
+	if (USkeletalMeshComponent* CharMesh = GetMesh())
+	{
+		for (int32 Slot = 0; Slot < SkelOriginalMaterials.Num() && Slot < CharMesh->GetNumMaterials(); ++Slot)
+		{
+			CharMesh->SetMaterial(Slot, SkelOriginalMaterials[Slot]);
+		}
 	}
 }
 
@@ -203,6 +372,14 @@ void AAlienBot::Tick(float DeltaSeconds)
 
 	if (!bIsAlive)
 	{
+		if (DeathHideRemaining > 0.f)
+		{
+			DeathHideRemaining -= DeltaSeconds;
+			if (DeathHideRemaining <= 0.f)
+			{
+				SetActorHiddenInGame(true);
+			}
+		}
 		return;
 	}
 
@@ -212,6 +389,7 @@ void AAlienBot::Tick(float DeltaSeconds)
 	}
 
 	UpdateAI(DeltaSeconds);
+	UpdateAlienAnim(DeltaSeconds);
 }
 
 void AAlienBot::InvalidateFlashMIDs()
@@ -303,6 +481,7 @@ void AAlienBot::UpdateHitFlash(float DeltaSeconds)
 			HitFlashAlpha = 0.f;
 			ApplyFlashToMaterials();
 		}
+		EndFlashSwap();
 		return;
 	}
 	HitFlashTimeRemaining -= DeltaSeconds;
@@ -369,6 +548,8 @@ void AAlienBot::SoftDespawn()
 	BurstCooldownRemaining = 0.f;
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
+	DeathHideRemaining = 0.f;
+	EndFlashSwap();
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{
 		Move->StopMovementImmediately();
@@ -549,6 +730,12 @@ void AAlienBot::StrafeAndBurst(float DeltaSeconds)
 		BurstShotsRemaining = BurstCount;
 		BurstIntraShotRemaining = 0.f; // first shot fires this frame (after tick delay below)
 		StrafeSign *= -1.f;
+		if (bSkeletalActive && GameConfig && GameConfig->CachedAlienAnims.Attack)
+		{
+			CurrentAnim = nullptr;
+			PlayAlienAnim(GameConfig->CachedAlienAnims.Attack, false, 1.2f);
+			AttackAnimRemaining = GameConfig->CachedAlienAnims.Attack->GetPlayLength() / 1.2f;
+		}
 	}
 
 	// Fire remaining burst shots with short intra-burst delay — never dump all 3 in one Tick.
@@ -686,6 +873,7 @@ void AAlienBot::PlayHitFlash()
 	HitFlashTimeRemaining = Ms * 0.001f;
 	HitFlashAlpha = 1.f;
 	ApplyFlashToMaterials();
+	BeginFlashSwap();
 	if (!bIsFlashing)
 	{
 		bIsFlashing = true;
@@ -703,9 +891,22 @@ void AAlienBot::Die()
 	{
 		Move->StopMovementImmediately();
 	}
-	// v1: collapse / hide / respawn — no ragdoll required
+	// Skeletal body: play the Death clip and stay visible until it ends (or just before respawn).
 	SetActorEnableCollision(false);
-	SetActorHiddenInGame(true);
+	EndFlashSwap();
+	UAnimSequence* DeathAnim = (bSkeletalActive && GameConfig) ? GameConfig->CachedAlienAnims.Death.Get() : nullptr;
+	if (DeathAnim)
+	{
+		CurrentAnim = nullptr;
+		AttackAnimRemaining = 0.f;
+		PlayAlienAnim(DeathAnim, false);
+		const float Respawn = GameConfig ? GameConfig->AlienRespawnSeconds : 3.f;
+		DeathHideRemaining = FMath::Clamp(DeathAnim->GetPlayLength(), 0.3f, FMath::Max(Respawn - 0.25f, 0.3f));
+	}
+	else
+	{
+		SetActorHiddenInGame(true);
+	}
 
 	if (AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
 	{

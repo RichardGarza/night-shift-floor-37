@@ -2,13 +2,13 @@
 
 Third-person arena shooter for Unreal Engine 5.8. One rainy night on an abandoned office floor. Wet tile, dying fluorescents, alien resin on the cubicles. Clear the floor. They keep coming.
 
-![Greybox arena: atrium tower, ramps, cover, HUD](docs/greybox.png)
+![Mannequin with rifle facing three animated aliens in the greybox arena](docs/sprintx_mannequin_aliens.png)
 
 ## What it is
 
 A small, tight arena: a 50 × 50 m office floor around a three-storey open atrium tower. Six aliens are alive at any time. They chase at 4 m/s, stop inside 12 m with line of sight, strafe, and fire three-round bursts. Three body hits or two headshots kill one; a dead alien is back in three seconds from the edge farthest from you. Win at 25 kills, and the timer is your score.
 
-Everything the game needs is created from C++ at startup. There are no Blueprints, no Data Assets, no hand-built level. The one asset in the repo is a generated map with three actors in it. Editor content can be layered on later and overrides the code-built defaults.
+Everything the game needs is created from C++ at startup. There are no Blueprints, no Data Assets, no hand-built level. The map is generated. The only content is meshes and animation clips: the Unreal template mannequin and rifle for the player, and a Quaternius alien (CC0) with its animation takes for the enemies. Animation is driven from C++ with plain clip switching, no AnimBlueprint. Editor content can be layered on later and overrides the code-built defaults.
 
 ## Controls
 

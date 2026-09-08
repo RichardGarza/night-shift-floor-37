@@ -1,6 +1,6 @@
 # Night Shift — Floor 37: Project Map
 
-Last updated: 2026-09-08. Keep this file current when a phase closes or a tree changes shape.
+Last updated: 2026-09-08 (Sprints V, W, X). Keep this file current when a phase closes or a tree changes shape.
 
 One spec, two implementations. `DESIGN.md` is the contract. `web/` is the playable reference. `ue5-scaffold/` is the real target.
 
@@ -39,7 +39,11 @@ night-shift-floor-37/
     ├── NightShiftFloor37.uproject   EngineAssociation 5.8, EnhancedInput plugin.
     ├── Config/               DefaultEngine / DefaultGame / DefaultInput merge stubs.
     ├── Content/Maps/Floor37.umap  Generated map: OfficeArena + FXPoolManager + PlayerStart.
+    ├── Content/Characters/Mannequins/  UE template Manny/Quinn + rifle/death/unarmed anims (Sprint W, committed).
+    ├── Content/Weapons/Rifle/     UE template SM_Rifle / SKM_Rifle (Sprint W, committed).
+    ├── Content/Imported/Aliens/Skel/  Quaternius Alien as SK_Alien + 14 anim takes + atlas (Sprint X, committed).
     ├── Scripts/make_floor37_map.py  Headless map generator (Python commandlet).
+    ├── Scripts/import_alien_skeletal.py  Headless FBX → skeletal mesh + anims import (Sprint X).
     └── Source/
         ├── NightShiftFloor37.Target.cs, NightShiftFloor37Editor.Target.cs
         └── NightShiftFloor37/
@@ -55,9 +59,9 @@ night-shift-floor-37/
 | `UGameConfig` | `GameConfig.h/.cpp` | Every tunable as a Data Asset; `ResolveOrCreate` falls back to DESIGN defaults |
 | `AArenaGameMode` | `ArenaGameMode.h/.cpp` | Match state, timer, kills, win/lose, soft restart, alien pool, HUD creation, bounds enforcement; spawns arena / FX pool / PlayerStart if the map lacks them; default pawn + HUD classes |
 | `AOfficeArena` | `OfficeArena.h/.cpp` | Bounds + ceiling clamp, 8 spawn points, 11 cover boxes, spawn selection, **greybox geometry and lighting** (floor, walls, atrium tower with spiral ramps, cover blocks, sun, sky, fog, practicals) |
-| `ANightShiftCharacter` | `NightShiftCharacter.h/.cpp` | Enhanced Input bindings with **runtime-built actions and mapping context**, OTS camera + Q swap, health/regen, recoil, mantle, fall damage, greybox body |
-| `URifleComponent` | `RifleComponent.h/.cpp` | Fire / reload / ammo, soft-lock, visibility hitscan, FX pool calls |
-| `AAlienBot` | `AlienBot.h/.cpp` | Chase / strafe / burst state machine with tracers and muzzle light, hit counting, flash (material + point light), death + respawn |
+| `ANightShiftCharacter` | `NightShiftCharacter.h/.cpp` | Enhanced Input bindings with **runtime-built actions and mapping context**, OTS camera + Q swap, health/regen, recoil, mantle, fall damage; **skeletal mannequin body + rifle prop + code-driven rifle anims** (Sprint W), exposure bias on the camera |
+| `URifleComponent` | `RifleComponent.h/.cpp` | Fire / reload / ammo, soft-lock, **complex-collision** visibility hitscan from the camera, tracer from the rifle muzzle, FX pool calls |
+| `AAlienBot` | `AlienBot.h/.cpp` | Chase / strafe / burst state machine with tracers and muzzle light, hit counting, death + respawn; **skeletal body fitted to the capsule, Idle/Run/Walk/Attack/Death clips, white material-swap hit flash** (Sprint X) |
 | `UArenaCollision` | `ArenaCollision.h/.cpp` | Push-apart between bots, fall damage, extra traces |
 | `UHUDWidget` | `HUDWidget.h/.cpp` | **Builds its own UMG tree in C++** (HP bar, ammo, kills, timer, crosshair, prompts, damage vignette, Esc menu with sensitivity slider / resume / quit); click-to-start; BP events still fire for custom art |
 | `AFXPoolManager`, `APooledTracerActor` | `FXPoolInterface.h/.cpp` | Pooled tracer actors (visible) and muzzle point lights |
@@ -84,11 +88,15 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint Q server racks | **Shipped** | `ServerRackPropMesh` on Rack* volumes; Kenney CC0 — `/Game/Imported/Props/Office/SM_ServerRack` **imported** |
 | Sprint R ceiling fluorescents | **Shipped** | Mount Z = CeilingClamp underside − 35cm (`3ac5f1a`) |
 | Sprint V softer start + readability | **Shipped** | Grace 7s, `MinStartSeparation` 24m, `PostGraceAlienFireDelaySeconds` 1.5s (chase OK, no fire); brighter sun/sky, thinner fog, stronger practicals. Self-test waits out grace. `Saved/sprintv_lighting_start.png` |
-| Sprint W player body + rifle mesh | **Not started** | Stub removed from `UGameConfig`; needs assets under `Content/Imported/Player` + `Weapons/SM_Rifle` and a character-side swap with cylinder fallback |
-| `Content/Imported` | **Local only** | Includes `SM_ServerRack.uasset` + alien/office/lights — optional Git LFS to commit remote |
+| Sprint W player body + rifle | **Shipped** | UE template `SKM_Manny_Simple` on `GetMesh()`, `SM_Rifle` on `HandGrip_R`, single-node clips (idle ADS, walk/jog ×4 dirs, jump/fall/land, reload, death) driven from C++; cylinder stays as soft-miss fallback |
+| Sprint X animated aliens | **Shipped** | `SK_Alien` (Quaternius, 0.55 scale ≈ 1.9 m) with Idle/Run/Walk/Punch/Death takes; capsule refit to mesh bounds so shots hit what you see; death clip plays before hide |
+| Sprint X shooting fix | **Shipped** | Rifle trace uses complex collision + player/alien meshes block Visibility; tracer starts at the rifle muzzle. Root cause of "shots do nothing": hits only registered on the capsule, which no longer matched the visible body |
+| Sprint X lighting lift | **Shipped** | Sun 5.0 / sky 1.6 / fog 0.009, practicals 600 cd, floor/concrete albedo ×2.5, `ExposureBiasEV` 0.6 on the camera. `docs/sprintx_mannequin_aliens.png` |
+| Self-test | 31 / 31 | Adds skeletal body, rifle prop, alien body + anim playing checks |
+| `Content/Imported` | **Partly committed** | `Aliens/Skel/` (SK_Alien + anims) is committed; office props / fluorescents / `SM_Alien` remain local-only on the Desktop copy — optional Git LFS |
 | UE5 feel | Needs human | Recoil accumulate vs self-cancel still open |
-| Silhouette | **Confirmed** | `ue5-scaffold/Saved/sprintm_aliens_in_frame.png` |
-| Art / audio / packaging | Partial art | Nanite+Lumen mood + audio still open |
+| Silhouette | **Confirmed** | `docs/sprintx_mannequin_aliens.png` (mannequin + rifle + three aliens in frame) |
+| Art / audio / packaging | Partial art | Player + aliens are real rigged meshes; arena is still greybox + props. Nanite+Lumen mood + audio still open |
 
 ## Build and run
 
@@ -107,6 +115,12 @@ UE5 run standalone (or open the `.uproject` in the Editor and press Play):
 ```
 "/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor" "$PWD/NightShiftFloor37.uproject" /Game/Maps/Floor37 -game -windowed -ResX=1600 -ResY=900
 ```
+Flags: `-NightShiftAutoStart` skips Click-to-play after 1.5 s (screenshots); `-NightShiftSelfTest` runs the scripted 31-check match loop (`-LogCmds="LogNightShift Verbose"` adds per-hit damage lines).
+
+Re-import the alien if the skeletal assets are ever lost (FBX from https://quaternius.com/packs/ultimatemonsters.html, CC0):
+```
+NS_ALIEN_FBX=/path/to/Alien.fbx "/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor-Cmd" "$PWD/NightShiftFloor37.uproject" -run=pythonscript -script="$PWD/Scripts/import_alien_skeletal.py" -unattended -nop4 -nosplash
+```
 
 Regenerate the map if it is ever lost:
 ```
@@ -120,7 +134,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ## Next steps
 
-Phases 6–8 + Sprints M/N/O/Q/R/V shipped 2026-09-08. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
+Phases 6–8 + Sprints M/N/O/Q/R/V/W/X shipped 2026-09-08. Player is the UE mannequin with a rifle; aliens are animated Quaternius creatures; hitscan hits the visible bodies. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
 
 ### Phase 6: First playthrough + softer start — **SHIPPED**
 
@@ -147,7 +161,9 @@ Done earlier + 2026-09-08: greybox lighting tune (`BuildGreyboxLighting`); mantl
 Still open (human / content):
 
 - Judge feel in PIE — **recoil** accumulate vs self-cancel still an open decision.
-- Sprint V lighting lift is a first pass; judge readability at the Click-to-play frame (`Saved/sprintv_lighting_start.png`) and in motion.
+- Sprint X lighting is the third lift; judge in motion. Next knob if still dark: `UGameConfig::ExposureBiasEV` (0.6).
+- Animation is single-node clip switching (no blends). If pops between clips bother you, the next step is an AnimBlueprint with a blendspace (template `ABP_Unarmed` shows the pattern) — the clips are already in `Content/Characters/Mannequins/Anims`.
+- Alien facing: `AlienMeshYawDegrees` (-90) if they run sideways. Alien size: `AlienMeshScale` (0.55).
 - Richer materials / Lumen mood beyond greybox + imported props.
 
 ### Phase 8: Mesh wire + mood props — **SHIPPED; visual unlock confirmed**
@@ -174,5 +190,5 @@ Cook a Mac Development build, confirm 60 fps on integrated graphics per DESIGN, 
 
 - **Recoil model**: self-cancelling vs accumulating. Affects Phase 7 and the web build equally.
 - **Ammo economy**: refill vs pickups vs larger reserve. DESIGN is silent.
-- **Alien body**: capsule mesh vs skeletal. Skeletal enables `IsHeadBone`; capsule uses the top-25% height test that already works.
-- **Where the canonical Unreal project lives**: Desktop Test `ue5-scaffold/` is canonical. Committing Phase 8 `.uasset`s needs **Git LFS** first — until then `Content/Imported/` stays local-only.
+- **Alien body**: resolved — skeletal `SK_Alien`. No physics asset was generated on import, so hits use the refit capsule and headshots use the top-25% test; generating `PA_Alien` in the Editor would enable per-bone hits.
+- **Where the canonical Unreal project lives**: Desktop Test `ue5-scaffold/` is canonical. ~120 MB of template + alien `.uasset`s are now committed without LFS (largest file < 20 MB); office props / fluorescents remain local-only.
