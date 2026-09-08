@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/SkeletalMesh.h"
 #include "GameConfig.generated.h"
 
 /**
@@ -166,6 +168,39 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens")
 	float AlienPushApartRadiusCm = 80.f;
+
+	// -------------------------------------------------------------------------
+	// Art | Phase 8 mesh swap (ModelFinder → Content/Imported). Soft refs; null = greybox.
+	// Next sprint wires real assets; ResolveOrCreate defaults leave these unset.
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Optional body static mesh override for AAlienBot (replaces BasicShapes Cylinder).
+	 * Leave unset to keep greybox cylinders.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	TSoftObjectPtr<UStaticMesh> AlienBodyMesh;
+
+	/**
+	 * Optional head static mesh override for AAlienBot (replaces BasicShapes Sphere).
+	 * Leave unset to keep greybox spheres.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	TSoftObjectPtr<UStaticMesh> AlienHeadMesh;
+
+	/**
+	 * Optional skeletal mesh for AAlienBot. When resolved, hides Body/Head static greybox
+	 * and drives the character mesh. Prefer this once ModelFinder drops a skinned alien.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	TSoftObjectPtr<USkeletalMesh> AlienSkeletalMesh;
+
+	/**
+	 * Optional decorative static mesh stamped at cover volume centers (non-colliding visual).
+	 * Collision/query stays on UBoxComponent cover volumes. Null = no prop swap.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	TSoftObjectPtr<UStaticMesh> CoverPropMesh;
 
 	// -------------------------------------------------------------------------
 	// Match (DESIGN: win at 25 kills, soft restart)

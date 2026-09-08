@@ -15,7 +15,9 @@
 #include "AIController.h"
 #include "EngineUtils.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/SkeletalMesh.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
@@ -82,6 +84,66 @@ AAlienBot::AAlienBot()
 	FlashLight->SetCastShadows(false);
 }
 
+
+void AAlienBot::ApplyConfiguredMeshes()
+{
+	// Phase 8 prep: ModelFinder assets under Content/Imported → assign on DA_GameConfig.
+	// Soft refs default null → keep constructor greybox cylinder/sphere.
+	if (!GameConfig)
+	{
+		return;
+	}
+
+	if (USkeletalMesh* Skel = GameConfig->AlienSkeletalMesh.LoadSynchronous())
+	{
+		if (USkeletalMeshComponent* CharMesh = GetMesh())
+		{
+			CharMesh->SetSkeletalMesh(Skel);
+			CharMesh->SetVisibility(true);
+			CharMesh->SetHiddenInGame(false);
+		}
+		if (BodyMesh)
+		{
+			BodyMesh->SetVisibility(false);
+			BodyMesh->SetHiddenInGame(true);
+		}
+		if (HeadMesh)
+		{
+			HeadMesh->SetVisibility(false);
+			HeadMesh->SetHiddenInGame(true);
+		}
+		UE_LOG(LogNightShift, Log, TEXT("AAlienBot::ApplyConfiguredMeshes — skeletal override applied."));
+		return;
+	}
+
+	bool bSwapped = false;
+	if (BodyMesh)
+	{
+		if (UStaticMesh* Body = GameConfig->AlienBodyMesh.LoadSynchronous())
+		{
+			BodyMesh->SetStaticMesh(Body);
+			BodyMesh->SetVisibility(true);
+			BodyMesh->SetHiddenInGame(false);
+			bSwapped = true;
+		}
+	}
+	if (HeadMesh)
+	{
+		if (UStaticMesh* Head = GameConfig->AlienHeadMesh.LoadSynchronous())
+		{
+			HeadMesh->SetStaticMesh(Head);
+			HeadMesh->SetVisibility(true);
+			HeadMesh->SetHiddenInGame(false);
+			bSwapped = true;
+		}
+	}
+	if (bSwapped)
+	{
+		ApplyFlashToMaterials();
+		UE_LOG(LogNightShift, Log, TEXT("AAlienBot::ApplyConfiguredMeshes — static mesh override(s) applied."));
+	}
+}
+
 void AAlienBot::BeginPlay()
 {
 	Super::BeginPlay();
@@ -95,6 +157,7 @@ void AAlienBot::BeginPlay()
 			ArenaCollision->GameConfig = GameConfig;
 		}
 	}
+	ApplyConfiguredMeshes(); // Phase 8 soft refs — no-op when unset
 	BurstCooldownRemaining = 0.f;
 	BurstShotsRemaining = 0;
 	BurstIntraShotRemaining = 0.f;
@@ -214,6 +277,7 @@ void AAlienBot::ActivateAtSpawn(const FTransform& SpawnTransform)
 	BodyHitCount = 0;
 	HeadHitCount = 0;
 	CombatState = EAlienCombatState::Chase;
+	ApplyConfiguredMeshes();
 	BurstCooldownRemaining = 0.f;
 	BurstShotsRemaining = 0;
 	BurstIntraShotRemaining = 0.f;

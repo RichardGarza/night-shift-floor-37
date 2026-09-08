@@ -152,6 +152,7 @@ void AArenaGameMode::ResolveAndPropagateGameConfig()
 	if (CachedArena && GameConfig)
 	{
 		CachedArena->GameConfig = GameConfig;
+		CachedArena->ApplyConfiguredCoverMeshes();
 	}
 
 	for (AAlienBot* Bot : AlienPool)
@@ -161,6 +162,7 @@ void AArenaGameMode::ResolveAndPropagateGameConfig()
 			continue;
 		}
 		Bot->GameConfig = GameConfig;
+		Bot->ApplyConfiguredMeshes();
 		if (Bot->ArenaCollision)
 		{
 			Bot->ArenaCollision->GameConfig = GameConfig;

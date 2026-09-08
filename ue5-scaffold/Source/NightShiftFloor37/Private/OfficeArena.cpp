@@ -332,12 +332,60 @@ void AOfficeArena::SetupDefaultCoverVolumeRotated(
 	AddGreyboxBox(BoxName + TEXT("_Mesh"), RelativeLocation, Extent * 2.f, RelativeRotation, Color);
 }
 
+
+void AOfficeArena::ApplyConfiguredCoverMeshes()
+{
+	// Phase 8 prep: assign CoverPropMesh on DA_GameConfig when ModelFinder drops Content/Imported.
+	// Soft ref null → keep greybox boxes / cover volumes only (no prop stamp).
+	if (!GameConfig)
+	{
+		return;
+	}
+	UStaticMesh* CoverMesh = GameConfig->CoverPropMesh.LoadSynchronous();
+	if (!CoverMesh)
+	{
+		return;
+	}
+
+	// Clear prior stamp (soft restart / re-apply).
+	for (UStaticMeshComponent* Old : CoverPropVisuals)
+	{
+		if (Old)
+		{
+			Old->DestroyComponent();
+		}
+	}
+	CoverPropVisuals.Reset();
+
+	for (UBoxComponent* Vol : CoverVolumes)
+	{
+		if (!Vol)
+		{
+			continue;
+		}
+		UStaticMeshComponent* Vis = NewObject<UStaticMeshComponent>(this, NAME_None, RF_Transient);
+		if (!Vis)
+		{
+			continue;
+		}
+		Vis->SetStaticMesh(CoverMesh);
+		Vis->SetupAttachment(Vol);
+		Vis->SetRelativeLocation(FVector::ZeroVector);
+		Vis->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Vis->SetCastShadow(true);
+		Vis->RegisterComponent();
+		CoverPropVisuals.Add(Vis);
+	}
+	UE_LOG(LogNightShift, Log, TEXT("AOfficeArena::ApplyConfiguredCoverMeshes — stamped %d cover props."), CoverPropVisuals.Num());
+}
+
 void AOfficeArena::BeginPlay()
 {
 	Super::BeginPlay();
 	ApplyGreyboxColors();
 	SyncLayoutFromConfig();
 	RefreshSpawnGather();
+	ApplyConfiguredCoverMeshes(); // Phase 8 soft ref — no-op when CoverPropMesh unset
 }
 
 void AOfficeArena::SyncLayoutFromConfig()

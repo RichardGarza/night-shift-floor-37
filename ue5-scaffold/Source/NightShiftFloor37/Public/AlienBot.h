@@ -6,6 +6,7 @@
 #include "AlienBot.generated.h"
 
 class UStaticMeshComponent;
+class USkeletalMeshComponent;
 class UMaterialInstanceDynamic;
 class UPointLightComponent;
 class AFXPoolManager;
@@ -110,6 +111,13 @@ public:
 	/** Called by respawn timer or GameMode — farthest edge spawn from player. */
 	UFUNCTION(BlueprintCallable, Category = "AI")
 	void PerformRespawn();
+
+	/**
+	 * Phase 8 — apply UGameConfig soft mesh overrides when present; else keep greybox
+	 * cylinder/sphere. Safe to call after GameConfig is assigned (BeginPlay / pool activate).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Visual|Phase8")
+	void ApplyConfiguredMeshes();
 
 	UFUNCTION(BlueprintPure, Category = "Combat")
 	bool IsLocationOnHead(const FVector& WorldLocation) const;

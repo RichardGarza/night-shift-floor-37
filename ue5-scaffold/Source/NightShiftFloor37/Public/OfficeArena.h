@@ -116,6 +116,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
 	TArray<TObjectPtr<UStaticMeshComponent>> GreyboxMeshes;
 
+	/** Phase 8 optional cover prop visuals (from GameConfig::CoverPropMesh). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cover|Phase8")
+	TArray<TObjectPtr<UStaticMeshComponent>> CoverPropVisuals;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
 	TObjectPtr<UDirectionalLightComponent> SunLight;
 
@@ -212,6 +216,13 @@ protected:
 	void BuildGreyboxLighting();
 	/** Create the MIDs that colour the greybox (BeginPlay; MIDs cannot exist in the constructor). */
 	void ApplyGreyboxColors();
+
+	/**
+	 * Phase 8 — if UGameConfig::CoverPropMesh soft ref resolves, stamp non-colliding visuals
+	 * at each cover volume. Null soft ref = greybox-only (current behavior).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Cover|Phase8")
+	void ApplyConfiguredCoverMeshes();
 	UStaticMeshComponent* AddGreyboxBox(const FString& Name, const FVector& Center, const FVector& Size, const FRotator& Rot, const FLinearColor& Color);
 	/** Sloped box whose top surface runs from SurfaceStart to SurfaceEnd (world-relative cm). */
 	UStaticMeshComponent* AddGreyboxRamp(const FString& Name, const FVector& SurfaceStart, const FVector& SurfaceEnd, float Width, const FLinearColor& Color);
