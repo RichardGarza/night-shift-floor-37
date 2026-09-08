@@ -599,6 +599,8 @@ float ANightShiftCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
 
 	if (Applied > 0.f)
 	{
+		UE_LOG(LogNightShift, Verbose, TEXT("Player damaged %.0f by %s (HP %.0f)"),
+			Applied, DamageCauser ? *DamageCauser->GetName() : TEXT("none"), Health);
 		OnDamaged.Broadcast(Applied);
 		// Camera shake (optional class). Vignette: WBP binds to OnDamaged.
 		if (DamageCameraShake)

@@ -124,6 +124,10 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 	// Six bots converge on a stationary player; keep it alive until the Death step is deliberate.
 	if (Player.IsValid() && Step < EStep::Death && Player->Health < MaxHP)
 	{
+		if (Step == EStep::GraceWait)
+		{
+			++HitsDuringGraceWait; // Sprint V: nothing should land while grace / fire lock holds
+		}
 		Player->Health = MaxHP;
 	}
 
@@ -197,7 +201,7 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 		if (!TargetBot.IsValid())
 		{
 			Fail(TEXT("no target alien available"));
-			Enter(EStep::PauseHold);
+			Enter(EStep::GraceWait);
 			break;
 		}
 		if (bFirst)
@@ -229,7 +233,7 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 		{
 			Fail(TEXT("no rifle hits registered on the alien within 2 s"));
 			if (Player->Rifle) { Player->Rifle->StopFire(); }
-			Enter(EStep::PauseHold);
+			Enter(EStep::GraceWait);
 		}
 		break;
 
@@ -246,7 +250,7 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 		{
 			Fail(FString::Printf(TEXT("alien did not die within 4 s of sustained fire (body %d, head %d)"), TargetBot->BodyHitCount, TargetBot->HeadHitCount));
 			if (Player->Rifle) { Player->Rifle->StopFire(); }
-			Enter(EStep::PauseHold);
+			Enter(EStep::GraceWait);
 		}
 		break;
 
@@ -257,11 +261,31 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 			Check(StepTime >= 2.5f, FString::Printf(TEXT("respawn waited ~3 s (%.1f s)"), StepTime));
 			Check(FVector::Dist2D(L, DeathPos) > 500.f, TEXT("respawned away from the death spot"));
 			Check(FMath::Max(FMath::Abs(L.X), FMath::Abs(L.Y)) > 2000.f, FString::Printf(TEXT("respawned at an edge spawn (%.0f, %.0f)"), L.X, L.Y));
-			Enter(EStep::PauseHold);
+			Enter(EStep::GraceWait);
 		}
 		else if (StepTime > 6.f)
 		{
 			Fail(TEXT("alien never respawned"));
+			Enter(EStep::GraceWait);
+		}
+		break;
+
+	case EStep::GraceWait:
+		// Sprint V — grace (aliens idle, player immune) then fire lock (chase OK, no shots).
+		// Pause / death checks below need live, armed aliens, so wait for both to elapse.
+		if (!GM->IsAlienFireLocked())
+		{
+			const float GraceS = GM->GameConfig ? GM->GameConfig->SpawnGraceSeconds : 7.f;
+			const float LockS = GM->GameConfig ? GM->GameConfig->PostGraceAlienFireDelaySeconds : 1.5f;
+			Check(GM->MatchTimeSeconds >= GraceS + LockS - 0.1f,
+				FString::Printf(TEXT("spawn grace + fire lock elapsed (match t=%.1f s, want >= %.1f s)"), GM->MatchTimeSeconds, GraceS + LockS));
+			Check(HitsDuringGraceWait == 0,
+				FString::Printf(TEXT("no alien damage landed before the fire lock ended (%d hits)"), HitsDuringGraceWait));
+			Enter(EStep::PauseHold);
+		}
+		else if (StepTime > 20.f)
+		{
+			Fail(TEXT("spawn grace / fire lock never released within 20 s"));
 			Enter(EStep::PauseHold);
 		}
 		break;

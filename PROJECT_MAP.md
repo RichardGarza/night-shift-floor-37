@@ -74,8 +74,8 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | web/ | Playable, bug-fixed | Loads clean; module-level checks pass; real playthrough after latest fixes still pending |
 | UE5 compile | **Verified** on UE 5.8 Mac | Soft-ref PIE + Sprint O mesh cache |
 | UE5 standalone / PIE | **Visual unlock confirmed** | SoftwareStarter: green Quaternius `SM_Alien` ×6 (not greybox capsules), cubicle stamps, 4 fluorescents |
-| UE5 gameplay loop | **Verified by self-test** | Start → hit → kill → respawn → pause → bounds → death → restart → win |
-| Phase 6 softer start | **Shipped** | Spawn grace 4s + `MinStartSeparation` 18m |
+| UE5 gameplay loop | **Verified by self-test** | Start → hit → kill → respawn → grace+fire-lock wait → pause → bounds → death → restart → win (26/26, `Saved/selftest-sprintv.log`) |
+| Phase 6 softer start | **Shipped** | Spawn grace 4s + `MinStartSeparation` 18m (superseded by Sprint V) |
 | Phase 7 lighting + knobs | **Shipped** | Greybox lighting; mantle + muzzle intensity on `UGameConfig` |
 | Phase 8 mesh wire | **Shipped** | Soft paths + bio tint/flash; cubicle-only cover; fluorescents; desk/chair dress (N) |
 | Sprint M demo facing | **Shipped** | `OrientPlayerTowardStartFocus` — yaw to nearest alien/atrium after safer-start |
@@ -83,6 +83,8 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint O mesh cache | **Shipped** | `ResolvePhase8LoadedMeshes` — one LoadSynchronous batch; Cached* reuse |
 | Sprint Q server racks | **Shipped** | `ServerRackPropMesh` on Rack* volumes; Kenney CC0 — `/Game/Imported/Props/Office/SM_ServerRack` **imported** |
 | Sprint R ceiling fluorescents | **Shipped** | Mount Z = CeilingClamp underside − 35cm (`3ac5f1a`) |
+| Sprint V softer start + readability | **Shipped** | Grace 7s, `MinStartSeparation` 24m, `PostGraceAlienFireDelaySeconds` 1.5s (chase OK, no fire); brighter sun/sky, thinner fog, stronger practicals. Self-test waits out grace. `Saved/sprintv_lighting_start.png` |
+| Sprint W player body + rifle mesh | **Not started** | Stub removed from `UGameConfig`; needs assets under `Content/Imported/Player` + `Weapons/SM_Rifle` and a character-side swap with cylinder fallback |
 | `Content/Imported` | **Local only** | Includes `SM_ServerRack.uasset` + alien/office/lights — optional Git LFS to commit remote |
 | UE5 feel | Needs human | Recoil accumulate vs self-cancel still open |
 | Silhouette | **Confirmed** | `ue5-scaffold/Saved/sprintm_aliens_in_frame.png` |
@@ -118,11 +120,11 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ## Next steps
 
-Phases 6–8 + Sprints M/N/O/Q/R shipped 2026-09-08 (tip `c506d4b`). **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
+Phases 6–8 + Sprints M/N/O/Q/R/V shipped 2026-09-08. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
 
 ### Phase 6: First playthrough + softer start — **SHIPPED**
 
-Self-test green. Richard feedback (“don’t die right away”) → Sprint C: spawn grace (~4s, no alien fire/aggro) + safer start spacing (`MinStartSeparationMeters` 18). Mid/late DESIGN numbers unchanged. Still wants a human smoke pass for feel.
+Self-test green. Richard feedback (“don’t die right away”) → Sprint C: spawn grace (~4s, no alien fire/aggro) + safer start spacing (`MinStartSeparationMeters` 18). Sprint V (2026-09-08, “too hard off the bat”): grace 7s, separation 24m, plus a 1.5s post-grace fire lock so aliens close in before they shoot. Mid/late DESIGN numbers unchanged. Still wants a human smoke pass for feel.
 
 The Editor checklist is no longer the gate. The C++ builds input, HUD, config, arena, lighting, FX pool, and player start at runtime, and `Content/Maps/Floor37.umap` is generated. The standalone game launches to the start prompt. What remains is a person at the keyboard running this smoke list:
 
@@ -145,6 +147,7 @@ Done earlier + 2026-09-08: greybox lighting tune (`BuildGreyboxLighting`); mantl
 Still open (human / content):
 
 - Judge feel in PIE — **recoil** accumulate vs self-cancel still an open decision.
+- Sprint V lighting lift is a first pass; judge readability at the Click-to-play frame (`Saved/sprintv_lighting_start.png`) and in motion.
 - Richer materials / Lumen mood beyond greybox + imported props.
 
 ### Phase 8: Mesh wire + mood props — **SHIPPED; visual unlock confirmed**

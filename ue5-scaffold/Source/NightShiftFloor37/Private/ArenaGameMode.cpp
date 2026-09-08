@@ -106,7 +106,17 @@ void AArenaGameMode::Tick(float DeltaSeconds)
 		SpawnGraceRemaining = FMath::Max(0.f, SpawnGraceRemaining - DeltaSeconds);
 		if (SpawnGraceRemaining <= 0.f)
 		{
-			UE_LOG(LogNightShift, Log, TEXT("Spawn grace ended — aliens may engage."));
+			const float FireDelay = GameConfig ? GameConfig->PostGraceAlienFireDelaySeconds : 1.5f;
+			AlienFireLockRemaining = FMath::Max(0.f, FireDelay);
+			UE_LOG(LogNightShift, Log, TEXT("Spawn grace ended — chase OK; fire locked %.1fs."), AlienFireLockRemaining);
+		}
+	}
+	else if (AlienFireLockRemaining > 0.f)
+	{
+		AlienFireLockRemaining = FMath::Max(0.f, AlienFireLockRemaining - DeltaSeconds);
+		if (AlienFireLockRemaining <= 0.f)
+		{
+			UE_LOG(LogNightShift, Log, TEXT("Post-grace fire lock ended — aliens may shoot."));
 		}
 	}
 	EnsureAlienPopulation();
@@ -494,6 +504,7 @@ void AArenaGameMode::SoftRestartInternal(bool bShowPromptIfWaiting)
 	MatchTimeSeconds = 0.f;
 	bMatchPaused = false;
 	SpawnGraceRemaining = 0.f;
+	AlienFireLockRemaining = 0.f;
 	SetMatchState(EArenaMatchState::WaitingToStart);
 
 	ResetPlayerTransform();
@@ -682,8 +693,9 @@ void AArenaGameMode::OrientPlayerTowardStartFocus()
 
 void AArenaGameMode::BeginSpawnGraceAndSafeStart()
 {
-	const float Grace = GameConfig ? GameConfig->SpawnGraceSeconds : 4.f;
+	const float Grace = GameConfig ? GameConfig->SpawnGraceSeconds : 7.f;
 	SpawnGraceRemaining = FMath::Max(0.f, Grace);
+	AlienFireLockRemaining = 0.f; // fire stays blocked via grace until PostGrace delay arms
 
 	FindOrCacheArena();
 	ANightShiftCharacter* Player = GetPlayerCharacter();

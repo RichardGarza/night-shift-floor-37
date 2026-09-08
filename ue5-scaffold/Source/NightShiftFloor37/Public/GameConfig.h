@@ -248,10 +248,10 @@ public:
 
 	/**
 	 * Sprint C — seconds after Click-to-play / SoftRestart→StartMatch before aliens fire or chase.
-	 * Mid/late DESIGN numbers unchanged; grace is early-game only. Default 4s (range 3–5).
+	 * Mid/late DESIGN numbers unchanged; grace is early-game only. Default 7s (Sprint V; was 4).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|EarlyGame")
-	float SpawnGraceSeconds = 4.f;
+	float SpawnGraceSeconds = 7.f; // Sprint V — was 4 (3–5 range); Richard: too hard off the bat
 
 	/** During grace, aliens stay Idle (no chase). If false, they may move but still cannot fire. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|EarlyGame")
@@ -266,7 +266,14 @@ public:
 	 * EnsureAlienPopulation already prefers farthest edge spawns — this is a hard floor.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|EarlyGame")
-	float MinStartSeparationMeters = 18.f;
+	float MinStartSeparationMeters = 24.f; // Sprint V — was 18
+
+	/**
+	 * Sprint V — after spawn grace ends, aliens may chase but cannot fire for this many seconds.
+	 * Mid/late damage/accuracy unchanged.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|EarlyGame")
+	float PostGraceAlienFireDelaySeconds = 1.5f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match")
 	float MaxDeltaTimeClampSeconds = 0.05f; // treat spikes above ~50 ms as 50 ms

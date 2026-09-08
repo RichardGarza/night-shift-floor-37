@@ -12,7 +12,8 @@ class AAlienBot;
 /**
  * Spawned by AArenaGameMode when the process was launched with -NightShiftSelfTest.
  * Starts the match, teleports an alien in front of the player and fires until it dies,
- * waits for the respawn, pauses, clamps bounds, kills the player, restarts, and wins.
+ * waits for the respawn, waits out spawn grace + the post-grace fire lock (Sprint V),
+ * pauses, clamps bounds, kills the player, restarts, and wins.
  * Every check logs "SELFTEST PASS/FAIL: ..." and the run ends with a summary + RequestExit.
  *
  *   UnrealEditor <proj>.uproject /Game/Maps/Floor37 -game -nullrhi -unattended -NightShiftSelfTest -abslog=<file>
@@ -31,7 +32,7 @@ public:
 protected:
 	enum class EStep : uint8
 	{
-		Boot, Start, Spawns, Aim, Fire, Kill, Respawn, PauseHold, PauseResume, Bounds, Death, Restart, Win, Done, Exit
+		Boot, Start, Spawns, Aim, Fire, Kill, Respawn, GraceWait, PauseHold, PauseResume, Bounds, Death, Restart, Win, Done, Exit
 	};
 
 	EStep Step = EStep::Boot;
@@ -49,6 +50,7 @@ protected:
 	FVector DeathPos = FVector::ZeroVector;
 	float PausedTime = 0.f;
 	int32 KillsAtFireStart = 0;
+	int32 HitsDuringGraceWait = 0;
 
 	void Enter(EStep Next);
 	void Check(bool bCondition, const FString& What);

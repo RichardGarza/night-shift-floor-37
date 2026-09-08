@@ -120,6 +120,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Match|EarlyGame")
 	bool IsSpawnGraceActive() const { return SpawnGraceRemaining > 0.f && MatchState == EArenaMatchState::InProgress; }
 
+	/** Grace or post-grace fire lock — aliens must not shoot. */
+	UFUNCTION(BlueprintPure, Category = "Match|EarlyGame")
+	bool IsAlienFireLocked() const
+	{
+		return MatchState == EArenaMatchState::InProgress
+			&& (SpawnGraceRemaining > 0.f || AlienFireLockRemaining > 0.f);
+	}
+
 	UFUNCTION(BlueprintPure, Category = "Match|EarlyGame")
 	float GetSpawnGraceRemaining() const { return SpawnGraceRemaining; }
 
@@ -167,4 +175,7 @@ protected:
 
 	/** Countdown after StartMatch — aliens idle/no-fire while > 0 (Sprint C). */
 	float SpawnGraceRemaining = 0.f;
+
+	/** Countdown after grace — chase OK, fire blocked (Sprint V). */
+	float AlienFireLockRemaining = 0.f;
 };

@@ -435,6 +435,16 @@ void AAlienBot::UpdateAI(float DeltaSeconds)
 		}
 	}
 
+	// Sprint V — post-grace fire lock: chase OK, no burst progress.
+	if (const AArenaGameMode* GMFire = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
+	{
+		if (GMFire->IsAlienFireLocked() && !GMFire->IsSpawnGraceActive())
+		{
+			BurstShotsRemaining = 0;
+			BurstIntraShotRemaining = 0.f;
+		}
+	}
+
 	const float Range = GameConfig ? GameConfig->AlienCombatRangeMeters : 12.f;
 	const float Dist = DistanceToTargetMeters();
 	BurstCooldownRemaining = FMath::Max(0.f, BurstCooldownRemaining - DeltaSeconds);
@@ -572,7 +582,7 @@ void AAlienBot::TryBurstShot()
 	// Defense-in-depth: never fire during spawn grace (even if chase-only path misroutes).
 	if (const AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
 	{
-		if (GM->IsSpawnGraceActive())
+		if (GM->IsAlienFireLocked())
 		{
 			return;
 		}

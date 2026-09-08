@@ -226,45 +226,45 @@ void AOfficeArena::BuildGreybox()
 
 void AOfficeArena::BuildGreyboxLighting()
 {
-	// Phase 7 — dreary but readable (DESIGN: dying sun, dusty fog, sick green/amber practicals).
-	// Goal: long soft shadows, midtones that read cover/aliens; not washed by fill, not crushed by fog.
+	// Sprint V — bigger readability lift than Sprint B (still dreary punk, not washed-out).
+	// DESIGN mood kept: dying sun, dusty fog, sick green/amber practicals — just less crushed.
 	SkyAtmosphere = CreateDefaultSubobject<USkyAtmosphereComponent>(TEXT("GB_SkyAtmosphere"));
 	SkyAtmosphere->SetupAttachment(BoundsVolume);
 
 	SunLight = CreateDefaultSubobject<UDirectionalLightComponent>(TEXT("GB_Sun"));
 	SunLight->SetupAttachment(BoundsVolume);
-	// Low late-day angle through dirty glass — longer shadows across the floor.
-	SunLight->SetRelativeRotation(FRotator(-12.f, 38.f, 0.f));
-	SunLight->Intensity = 2.15f; // was 3.5 — cut wash while keeping key readable
-	SunLight->LightColor = FColor(255, 168, 110); // dirtier warm dying sun
+	// Slightly higher late-day angle — fewer crushed floor pools, still long shadows.
+	SunLight->SetRelativeRotation(FRotator(-18.f, 38.f, 0.f));
+	SunLight->Intensity = 3.25f; // was 2.15 (Sprint B); below original 3.5 wash
+	SunLight->LightColor = FColor(255, 178, 125); // slightly cleaner warm key
 	SunLight->bAtmosphereSunLight = true;
 	SunLight->SetCastShadows(true);
 
 	SkyLight = CreateDefaultSubobject<USkyLightComponent>(TEXT("GB_SkyLight"));
 	SkyLight->SetupAttachment(BoundsVolume);
 	SkyLight->bRealTimeCapture = true;
-	SkyLight->Intensity = 0.55f; // was 1.0 — less fill so sun + practicals carry mood
+	SkyLight->Intensity = 0.9f; // was 0.55 — fill so aliens/cover read
 
 	Fog = CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("GB_Fog"));
 	Fog->SetupAttachment(BoundsVolume);
-	Fog->FogDensity = 0.028f; // dusty, not a wall
-	Fog->FogHeightFalloff = 0.35f;
-	Fog->FogInscatteringLuminance = FLinearColor(0.18f, 0.28f, 0.22f); // sick green/dust
+	Fog->FogDensity = 0.016f; // was 0.028 — less murk
+	Fog->FogHeightFalloff = 0.4f;
+	Fog->FogInscatteringLuminance = FLinearColor(0.22f, 0.32f, 0.26f);
 	Fog->bEnableVolumetricFog = true;
-	Fog->VolumetricFogExtinctionScale = 1.05f; // was 1.5 — less crush at mid-range
-	Fog->VolumetricFogAlbedo = FColor(170, 190, 175);
+	Fog->VolumetricFogExtinctionScale = 0.7f; // was 1.05 — less mid-range crush
+	Fog->VolumetricFogAlbedo = FColor(180, 200, 185);
 
-	// Six practicals: muted sick green / amber accents (DESIGN), no shadows (perf).
+	// Six practicals: brighter sick green / amber accents, no shadows (perf).
 	for (int32 i = 0; i < 6; ++i)
 	{
 		const float A = FMath::DegreesToRadians(i * 60.f + 30.f);
 		UPointLightComponent* L = CreateDefaultSubobject<UPointLightComponent>(*FString::Printf(TEXT("GB_Practical_%d"), i));
 		L->SetupAttachment(BoundsVolume);
 		L->SetRelativeLocation(FVector(FMath::Cos(A) * 1600.f, FMath::Sin(A) * 1600.f, 310.f));
-		L->Intensity = 200.f; // cd — lift local readability under lower sun/skylight
-		L->AttenuationRadius = 1050.f;
+		L->Intensity = 380.f; // was 200 — local readability lift
+		L->AttenuationRadius = 1250.f;
 		L->SetCastShadows(false);
-		L->LightColor = (i % 2 == 0) ? FColor(95, 220, 140) : FColor(255, 165, 75);
+		L->LightColor = (i % 2 == 0) ? FColor(110, 235, 155) : FColor(255, 175, 90);
 		PracticalLights.Add(L);
 	}
 }
