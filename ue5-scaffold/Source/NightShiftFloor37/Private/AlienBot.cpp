@@ -279,6 +279,30 @@ void AAlienBot::UpdateAI(float DeltaSeconds)
 		return;
 	}
 
+	// Sprint C — spawn grace: never fire; optionally block chase (Idle) when bSpawnGraceBlocksAlienAggro.
+	if (const AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
+	{
+		if (GM->IsSpawnGraceActive())
+		{
+			BurstShotsRemaining = 0;
+			BurstIntraShotRemaining = 0.f;
+			const bool bBlockAggro = GameConfig ? GameConfig->bSpawnGraceBlocksAlienAggro : true;
+			if (bBlockAggro)
+			{
+				CombatState = EAlienCombatState::Idle;
+				if (UCharacterMovementComponent* Move = GetCharacterMovement())
+				{
+					Move->StopMovementImmediately();
+				}
+				return;
+			}
+			// Aggro allowed during grace: chase only — no StrafeAndBurst / fire.
+			CombatState = EAlienCombatState::Chase;
+			ChasePlayer(DeltaSeconds);
+			return;
+		}
+	}
+
 	const float Range = GameConfig ? GameConfig->AlienCombatRangeMeters : 12.f;
 	const float Dist = DistanceToTargetMeters();
 	BurstCooldownRemaining = FMath::Max(0.f, BurstCooldownRemaining - DeltaSeconds);

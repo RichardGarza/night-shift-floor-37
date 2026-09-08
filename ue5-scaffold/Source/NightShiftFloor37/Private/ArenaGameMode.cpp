@@ -101,6 +101,14 @@ void AArenaGameMode::Tick(float DeltaSeconds)
 		return;
 	}
 	MatchTimeSeconds += DeltaSeconds;
+	if (SpawnGraceRemaining > 0.f)
+	{
+		SpawnGraceRemaining = FMath::Max(0.f, SpawnGraceRemaining - DeltaSeconds);
+		if (SpawnGraceRemaining <= 0.f)
+		{
+			UE_LOG(LogNightShift, Log, TEXT("Spawn grace ended — aliens may engage."));
+		}
+	}
 	EnsureAlienPopulation();
 	EnforceArenaBounds();
 }
@@ -403,13 +411,16 @@ void AArenaGameMode::StartMatch()
 	{
 		CachedArena->RefreshSpawnGather();
 	}
+	BeginSpawnGraceAndSafeStart();
 	EnsureAlienPopulation();
+	ApplySaferStartSpacing(); // re-push any bot that landed too close
 	if (HUDWidget)
 	{
 		HUDWidget->ClearPrompt();
 	}
 	UpdatePlayerInputMode();
-	UE_LOG(LogNightShift, Log, TEXT("Match started — %d live aliens."), GetLiveAlienCount());
+	UE_LOG(LogNightShift, Log, TEXT("Match started — %d live aliens, grace %.1fs."),
+		GetLiveAlienCount(), SpawnGraceRemaining);
 }
 
 void AArenaGameMode::RequestStartOrRestart()
@@ -472,6 +483,7 @@ void AArenaGameMode::SoftRestartInternal(bool bShowPromptIfWaiting)
 	KillCount = 0;
 	MatchTimeSeconds = 0.f;
 	bMatchPaused = false;
+	SpawnGraceRemaining = 0.f;
 	SetMatchState(EArenaMatchState::WaitingToStart);
 
 	ResetPlayerTransform();
@@ -590,6 +602,69 @@ bool AArenaGameMode::RespawnAlien(AAlienBot* Bot)
 	}
 	Bot->ActivateAtSpawn(Spawn);
 	return true;
+}
+
+
+void AArenaGameMode::BeginSpawnGraceAndSafeStart()
+{
+	const float Grace = GameConfig ? GameConfig->SpawnGraceSeconds : 4.f;
+	SpawnGraceRemaining = FMath::Max(0.f, Grace);
+
+	FindOrCacheArena();
+	ANightShiftCharacter* Player = GetPlayerCharacter();
+	if (!CachedArena || !Player)
+	{
+		UE_LOG(LogNightShift, Warning, TEXT("BeginSpawnGraceAndSafeStart: missing arena/player (grace=%.1fs)."), SpawnGraceRemaining);
+		return;
+	}
+
+	// Place player on an edge spawn farthest from arena center first so aliens (farthest-from-player)
+	// land on the opposite side of the floor.
+	const FVector ArenaOrigin = CachedArena->GetActorLocation();
+	const FTransform SafePlayerXf = CachedArena->GetFarthestSpawnFrom(ArenaOrigin);
+	FVector SafeLoc = SafePlayerXf.GetLocation();
+	SafeLoc.Z = Player->GetActorLocation().Z; // keep capsule height
+	Player->SetActorLocation(SafeLoc, false, nullptr, ETeleportType::TeleportPhysics);
+	if (AController* C = Player->GetController())
+	{
+		C->SetControlRotation(SafePlayerXf.GetRotation().Rotator());
+	}
+	UE_LOG(LogNightShift, Log, TEXT("Safer start: player → edge spawn, grace %.1fs."), SpawnGraceRemaining);
+}
+
+void AArenaGameMode::ApplySaferStartSpacing()
+{
+	FindOrCacheArena();
+	ANightShiftCharacter* Player = GetPlayerCharacter();
+	if (!CachedArena || !Player)
+	{
+		return;
+	}
+	const float MinM = GameConfig ? GameConfig->MinStartSeparationMeters : 18.f;
+	const float MinCmSq = (MinM * 100.f) * (MinM * 100.f);
+	const FVector PlayerLoc = Player->GetActorLocation();
+
+	TArray<int32> Used;
+	for (AAlienBot* Bot : AlienPool)
+	{
+		if (!Bot || !Bot->bIsAlive)
+		{
+			continue;
+		}
+		const float DistSq = FVector::DistSquared(Bot->GetActorLocation(), PlayerLoc);
+		if (DistSq >= MinCmSq)
+		{
+			continue;
+		}
+		int32 Idx = -1;
+		const FTransform Spawn = CachedArena->GetFarthestUnusedSpawnFrom(PlayerLoc, Used, Idx);
+		if (Idx >= 0)
+		{
+			Used.Add(Idx);
+		}
+		Bot->ActivateAtSpawn(Spawn);
+		UE_LOG(LogNightShift, Log, TEXT("Safer start: relocated close alien %s (min %.0fm)."), *Bot->GetName(), MinM);
+	}
 }
 
 void AArenaGameMode::EnsureAlienPopulation()

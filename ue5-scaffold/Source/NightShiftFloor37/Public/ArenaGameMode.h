@@ -116,7 +116,17 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Aliens")
 	int32 GetLiveAlienCount() const;
 
+	/** True while early-game spawn grace is counting down (Sprint C). */
+	UFUNCTION(BlueprintPure, Category = "Match|EarlyGame")
+	bool IsSpawnGraceActive() const { return SpawnGraceRemaining > 0.f && MatchState == EArenaMatchState::InProgress; }
+
+	UFUNCTION(BlueprintPure, Category = "Match|EarlyGame")
+	float GetSpawnGraceRemaining() const { return SpawnGraceRemaining; }
+
 protected:
+	/** Begin grace timer + place player on farthest edge spawn from aliens / push aliens out. */
+	void BeginSpawnGraceAndSafeStart();
+	void ApplySaferStartSpacing();
 	void SetMatchState(EArenaMatchState NewState);
 	void CheckWinCondition();
 	void EnsureAlienPopulation();
@@ -152,4 +162,7 @@ protected:
 
 	bool bMatchPaused = false;
 	bool bLoggedMissingHUDClass = false;
+
+	/** Countdown after StartMatch — aliens idle/no-fire while > 0 (Sprint C). */
+	float SpawnGraceRemaining = 0.f;
 };

@@ -576,6 +576,18 @@ float ANightShiftCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
 	{
 		return 0.f;
 	}
+	// Sprint C — optional immunity during spawn grace (alien fire also suppressed).
+	if (const AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
+	{
+		if (GM->IsSpawnGraceActive())
+		{
+			const bool bImmune = GameConfig ? GameConfig->bSpawnGracePlayerDamageImmune : true;
+			if (bImmune)
+			{
+				return 0.f;
+			}
+		}
+	}
 	const float Applied = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	Health = FMath::Max(0.f, Health - Applied);
 	TimeSinceLastDamage = 0.f;

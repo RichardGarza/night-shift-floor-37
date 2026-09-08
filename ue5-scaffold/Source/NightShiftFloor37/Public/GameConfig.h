@@ -174,6 +174,28 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match")
 	int32 KillsToWin = 25;
 
+	/**
+	 * Sprint C — seconds after Click-to-play / SoftRestart→StartMatch before aliens fire or chase.
+	 * Mid/late DESIGN numbers unchanged; grace is early-game only. Default 4s (range 3–5).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|EarlyGame")
+	float SpawnGraceSeconds = 4.f;
+
+	/** During grace, aliens stay Idle (no chase). If false, they may move but still cannot fire. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|EarlyGame")
+	bool bSpawnGraceBlocksAlienAggro = true;
+
+	/** Optional brief player damage immunity during spawn grace (alien fire already blocked). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|EarlyGame")
+	bool bSpawnGracePlayerDamageImmune = true;
+
+	/**
+	 * On match start, refuse alien activations closer than this (meters) to the player;
+	 * EnsureAlienPopulation already prefers farthest edge spawns — this is a hard floor.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|EarlyGame")
+	float MinStartSeparationMeters = 18.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match")
 	float MaxDeltaTimeClampSeconds = 0.05f; // treat spikes above ~50 ms as 50 ms
 
