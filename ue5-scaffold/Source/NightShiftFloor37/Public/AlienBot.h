@@ -145,12 +145,18 @@ protected:
 	void UpdateHitFlash(float DeltaSeconds);
 	/** Push HitFlashAlpha into the greybox materials (white flash). */
 	void ApplyFlashToMaterials();
+	void InvalidateFlashMIDs();
+	void ApplyBioFlashColorToMID(UMaterialInstanceDynamic* MID, const FLinearColor& Color) const;
 
 	UPROPERTY()
 	TObjectPtr<UMaterialInstanceDynamic> BodyMID;
 
 	UPROPERTY()
 	TObjectPtr<UMaterialInstanceDynamic> HeadMID;
+
+	/** Per-slot MIDs on GetMesh() when AlienSkeletalMesh is active (Sprint I). */
+	UPROPERTY()
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> SkelMIDs;
 
 	/** Shared tracer / muzzle-light pool (found once). */
 	TWeakObjectPtr<AFXPoolManager> FXPool;

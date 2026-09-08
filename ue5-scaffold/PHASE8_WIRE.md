@@ -41,3 +41,10 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 ## Sprint H — fluorescent placement
 
 `AOfficeArena::ApplyConfiguredFluorescentMeshes` stamps ≤4 `FluorescentLightMesh` instances on the greybox practical ring (indices 0,2,3,5). No collision, no mesh shadows. Soft-load miss → no stamp.
+
+
+## Sprint I — hit-flash / bio tint
+
+- `ApplyFlashToMaterials` drives Body/Head static MIDs **and** skeletal slot MIDs (`SkelMIDs`).
+- After any mesh swap, `InvalidateFlashMIDs` forces fresh MIDs (stale MID after `SetStaticMesh` was the SM_Alien tint gap).
+- Color params tried: `Color`, `BaseColor`, `Tint`, `DiffuseColor`; plus emissive fallbacks + stronger FlashLight (≤1400) so flash stays readable when mat pins differ.

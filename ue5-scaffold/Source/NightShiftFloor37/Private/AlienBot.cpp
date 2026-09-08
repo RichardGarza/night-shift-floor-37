@@ -96,6 +96,7 @@ void AAlienBot::ApplyConfiguredMeshes()
 
 	if (USkeletalMesh* Skel = GameConfig->AlienSkeletalMesh.LoadSynchronous())
 	{
+		InvalidateFlashMIDs();
 		if (USkeletalMeshComponent* CharMesh = GetMesh())
 		{
 			CharMesh->SetSkeletalMesh(Skel);
@@ -112,7 +113,8 @@ void AAlienBot::ApplyConfiguredMeshes()
 			HeadMesh->SetVisibility(false);
 			HeadMesh->SetHiddenInGame(true);
 		}
-		UE_LOG(LogNightShift, Log, TEXT("AAlienBot::ApplyConfiguredMeshes — skeletal override applied (hit-flash materials follow-up)."));
+		ApplyFlashToMaterials(); // Sprint I — bio tint + flash MIDs on skeletal slots
+		UE_LOG(LogNightShift, Log, TEXT("AAlienBot::ApplyConfiguredMeshes — skeletal override + flash MIDs applied."));
 		return;
 	}
 
@@ -121,6 +123,7 @@ void AAlienBot::ApplyConfiguredMeshes()
 	{
 		if (UStaticMesh* Body = GameConfig->AlienBodyMesh.LoadSynchronous())
 		{
+			InvalidateFlashMIDs();
 			BodyMesh->SetStaticMesh(Body);
 			BodyMesh->SetVisibility(true);
 			BodyMesh->SetHiddenInGame(false);
@@ -137,6 +140,7 @@ void AAlienBot::ApplyConfiguredMeshes()
 	{
 		if (UStaticMesh* Head = GameConfig->AlienHeadMesh.LoadSynchronous())
 		{
+			HeadMID = nullptr;
 			HeadMesh->SetStaticMesh(Head);
 			HeadMesh->SetVisibility(true);
 			HeadMesh->SetHiddenInGame(false);
@@ -145,9 +149,9 @@ void AAlienBot::ApplyConfiguredMeshes()
 	}
 	if (bSwapped)
 	{
-		// Bright bio-readable tint (BodyColor) on imported static mats when possible.
+		// Bright bio-readable tint + flash-ready MIDs (Color/BaseColor/Emissive fallbacks).
 		ApplyFlashToMaterials();
-		UE_LOG(LogNightShift, Log, TEXT("AAlienBot::ApplyConfiguredMeshes — static mesh override(s) applied."));
+		UE_LOG(LogNightShift, Log, TEXT("AAlienBot::ApplyConfiguredMeshes — static mesh override(s) + flash MIDs applied."));
 	}
 }
 
@@ -208,28 +212,83 @@ void AAlienBot::Tick(float DeltaSeconds)
 	UpdateAI(DeltaSeconds);
 }
 
+void AAlienBot::InvalidateFlashMIDs()
+{
+	BodyMID = nullptr;
+	HeadMID = nullptr;
+	SkelMIDs.Reset();
+}
+
+void AAlienBot::ApplyBioFlashColorToMID(UMaterialInstanceDynamic* MID, const FLinearColor& Color) const
+{
+	if (!MID)
+	{
+		return;
+	}
+	// Engine BasicShape uses "Color"; imported Quaternius/Atlas mats often use BaseColor.
+	static const FName VectorNames[] = {
+		TEXT("Color"), TEXT("BaseColor"), TEXT("Tint"), TEXT("DiffuseColor")
+	};
+	for (const FName& Name : VectorNames)
+	{
+		MID->SetVectorParameterValue(Name, Color);
+	}
+	// Flash readability on mats without a Color pin — drive emissive if present.
+	const float Flash = FMath::Clamp(HitFlashAlpha, 0.f, 1.f);
+	const FLinearColor Emissive = FLinearColor(1.f, 1.f, 1.f) * (Flash * 8.f) + BodyColor * 0.35f;
+	MID->SetVectorParameterValue(TEXT("EmissiveColor"), Emissive);
+	MID->SetVectorParameterValue(TEXT("Emissive"), Emissive);
+	MID->SetScalarParameterValue(TEXT("EmissiveStrength"), Flash * 8.f + 0.35f);
+}
+
 void AAlienBot::ApplyFlashToMaterials()
 {
-	if (!BodyMID && BodyMesh)
+	const float Flash = FMath::Clamp(HitFlashAlpha, 0.f, 1.f);
+	const FLinearColor C = FMath::Lerp(BodyColor, FLinearColor::White, Flash);
+
+	// Static greybox / SM_Alien body
+	if (BodyMesh && !BodyMesh->bHiddenInGame && BodyMesh->IsVisible())
 	{
-		BodyMID = BodyMesh->CreateAndSetMaterialInstanceDynamic(0);
+		if (!BodyMID)
+		{
+			BodyMID = BodyMesh->CreateAndSetMaterialInstanceDynamic(0);
+		}
+		ApplyBioFlashColorToMID(BodyMID, C);
 	}
-	if (!HeadMID && HeadMesh)
+	if (HeadMesh && !HeadMesh->bHiddenInGame && HeadMesh->IsVisible())
 	{
-		HeadMID = HeadMesh->CreateAndSetMaterialInstanceDynamic(0);
+		if (!HeadMID)
+		{
+			HeadMID = HeadMesh->CreateAndSetMaterialInstanceDynamic(0);
+		}
+		ApplyBioFlashColorToMID(HeadMID, C);
 	}
-	const FLinearColor C = FMath::Lerp(BodyColor, FLinearColor::White, FMath::Clamp(HitFlashAlpha, 0.f, 1.f));
-	if (BodyMID)
+
+	// Skeletal path (AlienSkeletalMesh) — all material slots
+	if (USkeletalMeshComponent* CharMesh = GetMesh())
 	{
-		BodyMID->SetVectorParameterValue(TEXT("Color"), C);
+		if (CharMesh->GetSkeletalMeshAsset() && !CharMesh->bHiddenInGame && CharMesh->IsVisible())
+		{
+			if (SkelMIDs.Num() == 0)
+			{
+				const int32 NumMats = CharMesh->GetNumMaterials();
+				SkelMIDs.Reserve(NumMats);
+				for (int32 Slot = 0; Slot < NumMats; ++Slot)
+				{
+					SkelMIDs.Add(CharMesh->CreateAndSetMaterialInstanceDynamic(Slot));
+				}
+			}
+			for (UMaterialInstanceDynamic* MID : SkelMIDs)
+			{
+				ApplyBioFlashColorToMID(MID, C);
+			}
+		}
 	}
-	if (HeadMID)
-	{
-		HeadMID->SetVectorParameterValue(TEXT("Color"), C);
-	}
+
+	// Point light pop — stronger so flash reads even when mat params ignore Color.
 	if (FlashLight)
 	{
-		FlashLight->SetIntensity(FMath::Clamp(HitFlashAlpha, 0.f, 1.f) * 600.f);
+		FlashLight->SetIntensity(Flash * 1400.f);
 	}
 }
 
