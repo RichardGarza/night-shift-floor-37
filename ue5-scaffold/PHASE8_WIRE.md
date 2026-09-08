@@ -70,3 +70,17 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 - Non-colliding visuals; query collision stays on cover boxes.
 - Called from `BeginPlay` + GameMode soft-reset path alongside cover/fluorescent stamps.
 
+
+## Sprint Q — server rack stamps (NumberFourCoding)
+
+`AOfficeArena::ApplyConfiguredServerRackMeshes` stamps `ServerRackPropMesh` on cover volumes whose name contains `Rack` (`RackStack_A`, `RackStack_B`, `RackAngled` only). Parallel to Sprint L cubicle-only filter.
+
+| Soft ref | Asset |
+|----------|-------|
+| `ServerRackPropMesh` | `/Game/Imported/Props/Office/SM_ServerRack` |
+
+- Soft miss → no stamp (greybox rack blocks remain).
+- Cubicle / resin volumes are **not** stamped.
+- Cached via `UGameConfig::ResolvePhase8LoadedMeshes` (`CachedServerRackPropMesh`).
+- Stand-in mesh: Kenney Space Station Kit **CC0** (`SM_ServerRack.fbx` under `Content/Imported/Props/Office/` and `Props/Server/`). Soft miss until Editor `.uasset` import. Not expecting Sketchfab Dreadler for this sprint.
+

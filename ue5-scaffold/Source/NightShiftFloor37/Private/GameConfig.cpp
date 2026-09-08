@@ -28,6 +28,10 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	{
 		ChairPropMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Office/SM_Chair.SM_Chair")));
 	}
+	if (ServerRackPropMesh.IsNull())
+	{
+		ServerRackPropMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Office/SM_ServerRack.SM_ServerRack")));
+	}
 	if (FluorescentLightMesh.IsNull())
 	{
 		FluorescentLightMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Lights/SM_MountedFluorescent.SM_MountedFluorescent")));
@@ -49,6 +53,7 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 	CachedCoverPropMesh = CoverPropMesh.LoadSynchronous();
 	CachedDeskPropMesh = DeskPropMesh.LoadSynchronous();
 	CachedChairPropMesh = ChairPropMesh.LoadSynchronous();
+	CachedServerRackPropMesh = ServerRackPropMesh.LoadSynchronous();
 	CachedFluorescentLightMesh = FluorescentLightMesh.LoadSynchronous();
 	bPhase8MeshesResolved = true;
 	UE_LOG(LogNightShift, Log, TEXT("UGameConfig::ResolvePhase8LoadedMeshes — cached Phase 8 meshes (body=%s cover=%s fluoro=%s)."),

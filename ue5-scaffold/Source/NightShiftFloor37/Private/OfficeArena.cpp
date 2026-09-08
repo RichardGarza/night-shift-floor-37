@@ -493,6 +493,65 @@ void AOfficeArena::ApplyConfiguredOfficeDressMeshes()
 		OfficeDressVisuals.Num());
 }
 
+
+void AOfficeArena::ApplyConfiguredServerRackMeshes()
+{
+	// Sprint Q — ServerRackPropMesh on rack-named volumes only (parallel to cubicle-only).
+	// Soft miss → greybox rack blocks. Never stamp cubicles/resin.
+	if (!GameConfig)
+	{
+		return;
+	}
+
+	GameConfig->ResolvePhase8LoadedMeshes();
+	UStaticMesh* RackMesh = GameConfig->CachedServerRackPropMesh.Get();
+	if (!RackMesh)
+	{
+		return;
+	}
+
+	for (UStaticMeshComponent* Old : ServerRackPropVisuals)
+	{
+		if (Old)
+		{
+			Old->DestroyComponent();
+		}
+	}
+	ServerRackPropVisuals.Reset();
+
+	for (UBoxComponent* Vol : CoverVolumes)
+	{
+		if (!Vol)
+		{
+			continue;
+		}
+		const FString VolName = Vol->GetName();
+		if (!VolName.Contains(TEXT("Rack"), ESearchCase::IgnoreCase))
+		{
+			continue;
+		}
+
+		UStaticMeshComponent* Vis = NewObject<UStaticMeshComponent>(this, NAME_None, RF_Transient);
+		if (!Vis)
+		{
+			continue;
+		}
+		Vis->SetStaticMesh(RackMesh);
+		Vis->SetupAttachment(Vol);
+		Vis->SetRelativeLocation(FVector::ZeroVector);
+		// Preserve angled rack yaw from the cover volume.
+		Vis->SetRelativeRotation(FRotator::ZeroRotator);
+		Vis->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Vis->SetCastShadow(true);
+		Vis->RegisterComponent();
+		ServerRackPropVisuals.Add(Vis);
+	}
+
+	UE_LOG(LogNightShift, Log,
+		TEXT("AOfficeArena::ApplyConfiguredServerRackMeshes — stamped %d rack props (cubicles/resin skipped)."),
+		ServerRackPropVisuals.Num());
+}
+
 void AOfficeArena::ApplyConfiguredFluorescentMeshes()
 {
 	// Sprint H — Poly Haven SM_MountedFluorescent; few ceiling instances for mood + perf.
@@ -572,6 +631,7 @@ void AOfficeArena::BeginPlay()
 	RefreshSpawnGather();
 	ApplyConfiguredCoverMeshes(); // Phase 8 soft ref — no-op when CoverPropMesh unset
 	ApplyConfiguredOfficeDressMeshes(); // Sprint N — desk/chair near cubicles
+	ApplyConfiguredServerRackMeshes(); // Sprint Q — rack mesh on rack volumes
 	ApplyConfiguredFluorescentMeshes(); // Sprint H — few ceiling fluorescents
 }
 

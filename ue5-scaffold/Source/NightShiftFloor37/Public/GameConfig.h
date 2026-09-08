@@ -225,6 +225,14 @@ public:
 	TSoftObjectPtr<UStaticMesh> ChairPropMesh;
 
 	/**
+	 * Sprint Q — server rack visual on rack-named cover volumes only (non-colliding).
+	 * Default: /Game/Imported/Props/Office/SM_ServerRack (Dreadler CC-BY or other CC rack).
+	 * Soft miss → greybox rack blocks only.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	TSoftObjectPtr<UStaticMesh> ServerRackPropMesh;
+
+	/**
 	 * Poly Haven mounted fluorescent (Phase 8). Import-only for Sprint G if unused in arena yet.
 	 * Expected asset: /Game/Imported/Props/Lights/SM_MountedFluorescent
 	 */
@@ -341,6 +349,9 @@ public:
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
 	TObjectPtr<UStaticMesh> CachedChairPropMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedServerRackPropMesh;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
 	TObjectPtr<UStaticMesh> CachedFluorescentLightMesh;

@@ -128,6 +128,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cover|Phase8")
 	TArray<TObjectPtr<UStaticMeshComponent>> OfficeDressVisuals;
 
+	/** Sprint Q — server rack visuals on rack-named cover volumes only. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cover|Phase8")
+	TArray<TObjectPtr<UStaticMeshComponent>> ServerRackPropVisuals;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
 	TObjectPtr<UDirectionalLightComponent> SunLight;
 
@@ -241,6 +245,13 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Cover|Phase8")
 	void ApplyConfiguredOfficeDressMeshes();
+
+	/**
+	 * Sprint Q — stamp ServerRackPropMesh on cover volumes whose name contains Rack
+	 * (RackStack_A/B, RackAngled). Soft miss → greybox only. Does not touch cubicles/resin.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Cover|Phase8")
+	void ApplyConfiguredServerRackMeshes();
 
 protected:
 	void BuildGreybox();

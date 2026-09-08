@@ -34,3 +34,10 @@ Import from `Content/Imported/` into project Content (suggested folders: `Props/
 - Staged import-ready FBXs: `Imported/Aliens/Alien.fbx`, `Imported/Props/Office/SM_{Cubicle,Desk,Chair}.fbx`, `Imported/Props/Lights/SM_MountedFluorescent.fbx`
 - Soft refs default via `UGameConfig::EnsurePhase8DefaultSoftPaths` — see `ue5-scaffold/PHASE8_WIRE.md`
 - Editor `.uasset` import still required for meshes to appear in PIE (greybox until then)
+
+## 4. Server Rack (Sprint Q) — FBX STAGED (uasset import pending)
+- Soft path: `/Game/Imported/Props/Office/SM_ServerRack`
+- Staged FBX: `Props/Office/SM_ServerRack.fbx` and `Props/Server/SM_ServerRack.fbx`
+- License: **CC0** (Kenney Space Station Kit) — see `Props/Office/SM_ServerRack.ATTRIBUTION.txt`
+- Editor: import FBX → `/Game/Imported/Props/Office/SM_ServerRack` for PIE soft-ref resolve
+- Optional later: Sketchfab Dreadler Server Rack (CC-BY) if Sketchfab login available
