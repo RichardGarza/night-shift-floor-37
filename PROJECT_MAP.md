@@ -72,15 +72,18 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 |---|---|---|
 | DESIGN.md | Stable | Both implementations match every specified number |
 | web/ | Playable, bug-fixed | Loads clean; module-level checks pass; real playthrough after latest fixes still pending |
-| UE5 compile | **Verified** on UE 5.8 Mac | Soft-ref PIE green 2026-09-08 (SoftwareStarter) |
-| UE5 standalone / PIE | **Verified** 2026-09-08 | Soft refs resolve: 6× `SM_Alien`, cubicle stamps, 4 fluorescents; greybox+HUD+lighting |
+| UE5 compile | **Verified** on UE 5.8 Mac | Soft-ref PIE + Sprint O mesh cache |
+| UE5 standalone / PIE | **Visual unlock confirmed** | SoftwareStarter: green Quaternius `SM_Alien` ×6 (not greybox capsules), cubicle stamps, 4 fluorescents |
 | UE5 gameplay loop | **Verified by self-test** | Start → hit → kill → respawn → pause → bounds → death → restart → win |
-| Phase 6 softer start | **Shipped** | Spawn grace 4s + `MinStartSeparation` 18m (`2e234fa` / `0fc3ad6`) |
-| Phase 7 lighting + knobs | **Shipped** | Greybox lighting tune; mantle + muzzle intensity on `UGameConfig` |
-| Phase 8 mesh wire | **Shipped (code)** | Soft paths + fluorescent placement + hit-flash/bio tint; see `PHASE8_WIRE.md` |
-| `Content/Imported` | **Local only** | FBX + `.uasset` on Desktop Test — **not** on remote tip; optional Git LFS later |
-| UE5 feel / silhouette | Needs human | Confirm Quaternius alien reads at edge spawns; feel still human-judged |
-| Art / audio / packaging | Partial art | Phase 8 imports staged; Nanite+Lumen mood + audio still open |
+| Phase 6 softer start | **Shipped** | Spawn grace 4s + `MinStartSeparation` 18m |
+| Phase 7 lighting + knobs | **Shipped** | Greybox lighting; mantle + muzzle intensity on `UGameConfig` |
+| Phase 8 mesh wire | **Shipped** | Soft paths + bio tint/flash; cubicle-only cover; fluorescents; desk/chair dress (N) |
+| Sprint M demo facing | **Shipped** | `OrientPlayerTowardStartFocus` — yaw to nearest alien/atrium after safer-start |
+| Sprint N office dress | **Shipped** | Omie `SM_Desk`/`SM_Chair` near cubicles only (`ApplyConfiguredOfficeDressMeshes`) |
+| Sprint O mesh cache | **Shipped** | `ResolvePhase8LoadedMeshes` — one LoadSynchronous batch; Cached* reuse |
+| `Content/Imported` | **Local only** | FBX + `.uasset` on Desktop Test — optional Git LFS to commit |
+| UE5 feel | Needs human | Recoil accumulate vs self-cancel still open |
+| Art / audio / packaging | Partial art | Fluorescent ceiling sockets polish; Nanite+Lumen mood + audio still open |
 
 ## Build and run
 
@@ -112,7 +115,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ## Next steps
 
-Phases 6–8 code shipped 2026-09-08. Critical path now: **human visual confirm** (alien silhouette at edge spawns) + optional **Git LFS** if committing `Content/Imported` `.uasset`s. Phase 9 web upkeep and Phase 10 package remain parallel/last.
+Phases 6–8 + Sprints M/N/O shipped 2026-09-08. **Visual unlock confirmed** (Quaternius aliens in PIE). Open items: optional **Git LFS** for `Content/Imported`, fluorescent **ceiling sockets** polish, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
 
 ### Phase 6: First playthrough + softer start — **SHIPPED**
 
@@ -138,14 +141,15 @@ Done earlier + 2026-09-08: greybox lighting tune (`BuildGreyboxLighting`); mantl
 
 Still open (human / content):
 
-- Judge feel in PIE (recoil accumulate vs self-cancel still an open decision).
+- Judge feel in PIE — **recoil** accumulate vs self-cancel still an open decision.
+- Fluorescent **ceiling sockets** (props exist; socket alignment polish).
 - Richer materials / Lumen mood beyond greybox + imported props.
 
-### Phase 8: Mesh wire + mood props — **SHIPPED (code); content local**
+### Phase 8: Mesh wire + mood props — **SHIPPED; visual unlock confirmed**
 
-Soft refs via `EnsurePhase8DefaultSoftPaths`: `SM_Alien`, `SM_Cubicle`, `SM_MountedFluorescent`. Cover stamps cubicles only; ≤4 ceiling fluorescents; hit-flash/bio tint on static + skeletal. Docs: `ue5-scaffold/PHASE8_WIRE.md`.
+Soft refs + `ResolvePhase8LoadedMeshes` cache: `SM_Alien`, `SM_Cubicle`, desk/chair, fluorescents. Cubicle-only cover stamps; Omie desk/chair dress (Sprint N); ≤4 ceiling fluorescents; hit-flash/bio tint. Sprint M yaws start cam toward nearest alien so silhouettes read on Click-to-play. Docs: `ue5-scaffold/PHASE8_WIRE.md`.
 
-**Next:** Richard visual-confirm alien silhouette (edge spawns). `Content/Imported/` stays **untracked** on Desktop Test until optional Git LFS for `.uasset`s. Further checklist items (NavMesh flip, full atrium art pass) still apply from `LEVEL_SETUP_CHECKLIST.md`.
+**Open:** optional Git LFS to commit `Content/Imported/`; fluorescent ceiling socket placement polish; NavMesh flip / fuller atrium art from `LEVEL_SETUP_CHECKLIST.md`.
 
 ### Phase 9: Web prototype upkeep (parallel, optional)
 
