@@ -153,6 +153,7 @@ void AArenaGameMode::ResolveAndPropagateGameConfig()
 	{
 		CachedArena->GameConfig = GameConfig;
 		CachedArena->ApplyConfiguredCoverMeshes();
+		CachedArena->ApplyConfiguredFluorescentMeshes();
 	}
 
 	for (AAlienBot* Bot : AlienPool)

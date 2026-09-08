@@ -120,6 +120,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cover|Phase8")
 	TArray<TObjectPtr<UStaticMeshComponent>> CoverPropVisuals;
 
+	/** Sprint H ceiling fluorescent visuals. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lighting|Phase8")
+	TArray<TObjectPtr<UStaticMeshComponent>> FluorescentPropVisuals;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
 	TObjectPtr<UDirectionalLightComponent> SunLight;
 
@@ -211,18 +215,23 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Cover")
 	bool DoesLineHitCover(const FVector& Start, const FVector& End) const;
 
-protected:
-	void BuildGreybox();
-	void BuildGreyboxLighting();
-	/** Create the MIDs that colour the greybox (BeginPlay; MIDs cannot exist in the constructor). */
-	void ApplyGreyboxColors();
-
 	/**
 	 * Phase 8 — if UGameConfig::CoverPropMesh soft ref resolves, stamp non-colliding visuals
 	 * at each cover volume. Null soft ref = greybox-only (current behavior).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Cover|Phase8")
 	void ApplyConfiguredCoverMeshes();
+
+	/** Sprint H — ≤4 ceiling fluorescents from FluorescentLightMesh near practicals. */
+	UFUNCTION(BlueprintCallable, Category = "Lighting|Phase8")
+	void ApplyConfiguredFluorescentMeshes();
+
+protected:
+	void BuildGreybox();
+	void BuildGreyboxLighting();
+	/** Create the MIDs that colour the greybox (BeginPlay; MIDs cannot exist in the constructor). */
+	void ApplyGreyboxColors();
+
 	UStaticMeshComponent* AddGreyboxBox(const FString& Name, const FVector& Center, const FVector& Size, const FRotator& Rot, const FLinearColor& Color);
 	/** Sloped box whose top surface runs from SurfaceStart to SurfaceEnd (world-relative cm). */
 	UStaticMeshComponent* AddGreyboxRamp(const FString& Name, const FVector& SurfaceStart, const FVector& SurfaceEnd, float Width, const FLinearColor& Color);

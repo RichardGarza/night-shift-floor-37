@@ -379,6 +379,77 @@ void AOfficeArena::ApplyConfiguredCoverMeshes()
 	UE_LOG(LogNightShift, Log, TEXT("AOfficeArena::ApplyConfiguredCoverMeshes — stamped %d cover props."), CoverPropVisuals.Num());
 }
 
+
+void AOfficeArena::ApplyConfiguredFluorescentMeshes()
+{
+	// Sprint H — Poly Haven SM_MountedFluorescent; few ceiling instances for mood + perf.
+	if (!GameConfig)
+	{
+		return;
+	}
+	UStaticMesh* Fluoro = GameConfig->FluorescentLightMesh.LoadSynchronous();
+	if (!Fluoro)
+	{
+		return;
+	}
+
+	for (UStaticMeshComponent* Old : FluorescentPropVisuals)
+	{
+		if (Old)
+		{
+			Old->DestroyComponent();
+		}
+	}
+	FluorescentPropVisuals.Reset();
+
+	// Four fixtures on the six-practical ring (indices 0,2,3,5).
+	TArray<int32> Indices;
+	const int32 PracticalCount = PracticalLights.Num();
+	if (PracticalCount >= 6)
+	{
+		Indices = { 0, 2, 3, 5 };
+	}
+	else
+	{
+		for (int32 i = 0; i < PracticalCount && Indices.Num() < 4; ++i)
+		{
+			Indices.Add(i);
+		}
+	}
+
+	for (int32 Idx : Indices)
+	{
+		UPointLightComponent* Practical = PracticalLights.IsValidIndex(Idx) ? PracticalLights[Idx].Get() : nullptr;
+		UStaticMeshComponent* Vis = NewObject<UStaticMeshComponent>(this, NAME_None, RF_Transient);
+		if (!Vis)
+		{
+			continue;
+		}
+		Vis->SetStaticMesh(Fluoro);
+		if (Practical)
+		{
+			Vis->SetupAttachment(Practical);
+			Vis->SetRelativeLocation(FVector(0.f, 0.f, 25.f));
+			const float Yaw = Idx * 60.f + 30.f + 90.f;
+			Vis->SetRelativeRotation(FRotator(0.f, Yaw, 0.f));
+		}
+		else if (BoundsVolume)
+		{
+			Vis->SetupAttachment(BoundsVolume);
+			const float A = FMath::DegreesToRadians(Idx * 90.f + 45.f);
+			Vis->SetRelativeLocation(FVector(FMath::Cos(A) * 1600.f, FMath::Sin(A) * 1600.f, 335.f));
+			Vis->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(A) + 90.f, 0.f));
+		}
+		Vis->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Vis->SetCastShadow(false);
+		Vis->SetMobility(EComponentMobility::Movable);
+		Vis->RegisterComponent();
+		FluorescentPropVisuals.Add(Vis);
+	}
+
+	UE_LOG(LogNightShift, Log, TEXT("AOfficeArena::ApplyConfiguredFluorescentMeshes — placed %d ceiling fluorescents."), FluorescentPropVisuals.Num());
+}
+
 void AOfficeArena::BeginPlay()
 {
 	Super::BeginPlay();
@@ -386,6 +457,7 @@ void AOfficeArena::BeginPlay()
 	SyncLayoutFromConfig();
 	RefreshSpawnGather();
 	ApplyConfiguredCoverMeshes(); // Phase 8 soft ref — no-op when CoverPropMesh unset
+	ApplyConfiguredFluorescentMeshes(); // Sprint H — few ceiling fluorescents
 }
 
 void AOfficeArena::SyncLayoutFromConfig()

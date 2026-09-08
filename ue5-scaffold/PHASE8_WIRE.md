@@ -36,3 +36,8 @@ Also staged textures for Poly Haven under `Content/Imported/PolyHaven_MountedFlu
 ## DA_GameConfig
 
 Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` in Editor inherits CDO paths after recompile.
+
+
+## Sprint H — fluorescent placement
+
+`AOfficeArena::ApplyConfiguredFluorescentMeshes` stamps ≤4 `FluorescentLightMesh` instances on the greybox practical ring (indices 0,2,3,5). No collision, no mesh shadows. Soft-load miss → no stamp.
