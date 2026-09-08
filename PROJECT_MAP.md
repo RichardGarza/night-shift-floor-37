@@ -81,9 +81,11 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint M demo facing | **Shipped** | `OrientPlayerTowardStartFocus` — yaw to nearest alien/atrium after safer-start |
 | Sprint N office dress | **Shipped** | Omie `SM_Desk`/`SM_Chair` near cubicles only (`ApplyConfiguredOfficeDressMeshes`) |
 | Sprint O mesh cache | **Shipped** | `ResolvePhase8LoadedMeshes` — one LoadSynchronous batch; Cached* reuse |
+| Sprint Q server racks | **Shipped (code)** | `ServerRackPropMesh` on Rack* volumes; Kenney CC0 stand-in — **`.uasset` import still open** |
+| Sprint R ceiling fluorescents | **Shipped** | Mount Z = CeilingClamp underside − 35cm (`3ac5f1a`) |
 | `Content/Imported` | **Local only** | FBX + `.uasset` on Desktop Test — optional Git LFS to commit |
 | UE5 feel | Needs human | Recoil accumulate vs self-cancel still open |
-| Art / audio / packaging | Partial art | Fluorescent ceiling sockets polish; Nanite+Lumen mood + audio still open |
+| Art / audio / packaging | Partial art | Server-rack `.uasset` import still open; Nanite+Lumen mood + audio still open |
 
 ## Build and run
 
@@ -115,7 +117,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ## Next steps
 
-Phases 6–8 + Sprints M/N/O shipped 2026-09-08. **Visual unlock confirmed** (Quaternius aliens in PIE). Open items: optional **Git LFS** for `Content/Imported`, fluorescent **ceiling sockets** polish, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
+Phases 6–8 + Sprints M/N/O/Q/R shipped 2026-09-08. **Visual unlock confirmed** (Quaternius aliens in PIE; silhouette ref `ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). Open items: **server-rack `.uasset` import** (soft stamps ready), optional **Git LFS** for `Content/Imported`, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
 
 ### Phase 6: First playthrough + softer start — **SHIPPED**
 
@@ -142,14 +144,14 @@ Done earlier + 2026-09-08: greybox lighting tune (`BuildGreyboxLighting`); mantl
 Still open (human / content):
 
 - Judge feel in PIE — **recoil** accumulate vs self-cancel still an open decision.
-- Fluorescent **ceiling sockets** (props exist; socket alignment polish).
+- **Server-rack `.uasset` import** (Kenney FBX staged; soft stamps shipped in Q).
 - Richer materials / Lumen mood beyond greybox + imported props.
 
 ### Phase 8: Mesh wire + mood props — **SHIPPED; visual unlock confirmed**
 
-Soft refs + `ResolvePhase8LoadedMeshes` cache: `SM_Alien`, `SM_Cubicle`, desk/chair, fluorescents. Cubicle-only cover stamps; Omie desk/chair dress (Sprint N); ≤4 ceiling fluorescents; hit-flash/bio tint. Sprint M yaws start cam toward nearest alien so silhouettes read on Click-to-play. Docs: `ue5-scaffold/PHASE8_WIRE.md`.
+Soft refs + `ResolvePhase8LoadedMeshes` cache: `SM_Alien`, `SM_Cubicle`, desk/chair, fluorescents. Cubicle-only cover stamps; Omie desk/chair dress (Sprint N); Kenney rack stamps (Sprint Q, pending uasset); ceiling fluorescents on underside (Sprint R); hit-flash/bio tint. Sprint M yaws start cam toward nearest alien so silhouettes read on Click-to-play. Docs: `ue5-scaffold/PHASE8_WIRE.md`.
 
-**Open:** optional Git LFS to commit `Content/Imported/`; fluorescent ceiling socket placement polish; NavMesh flip / fuller atrium art from `LEVEL_SETUP_CHECKLIST.md`.
+**Open:** server-rack **`.uasset` import** (code stamps ready); optional Git LFS for `Content/Imported/`; NavMesh flip / fuller atrium art from `LEVEL_SETUP_CHECKLIST.md`. Silhouette shot on disk: `ue5-scaffold/Saved/sprintm_aliens_in_frame.png`.
 
 ### Phase 9: Web prototype upkeep (parallel, optional)
 
