@@ -4,14 +4,33 @@
 
 UGameConfig::UGameConfig()
 {
-	// Defaults are set on UPROPERTY initializers to match DESIGN.md.
-	// Keep this constructor empty so the Data Asset CDO mirrors those numbers.
+	// DESIGN numeric defaults live on UPROPERTY initializers.
+	EnsurePhase8DefaultSoftPaths();
+}
+
+void UGameConfig::EnsurePhase8DefaultSoftPaths()
+{
+	// Sprint G — expected Editor-imported StaticMesh asset paths (FBX staged under Content/Imported).
+	// SoftLoad fails quietly → greybox fallback until SoftwareStarter / Editor import lands .uasset.
+	if (AlienBodyMesh.IsNull())
+	{
+		AlienBodyMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Aliens/SM_Alien.SM_Alien")));
+	}
+	if (CoverPropMesh.IsNull())
+	{
+		CoverPropMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Office/SM_Cubicle.SM_Cubicle")));
+	}
+	if (FluorescentLightMesh.IsNull())
+	{
+		FluorescentLightMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Lights/SM_MountedFluorescent.SM_MountedFluorescent")));
+	}
 }
 
 UGameConfig* UGameConfig::ResolveOrCreate(UObject* Outer, UGameConfig* Existing)
 {
 	if (Existing)
 	{
+		Existing->EnsurePhase8DefaultSoftPaths();
 		return Existing;
 	}
 
@@ -26,6 +45,7 @@ UGameConfig* UGameConfig::ResolveOrCreate(UObject* Outer, UGameConfig* Existing)
 		{
 			if (UGameConfig* AsConfig = Cast<UGameConfig>(Loaded))
 			{
+				AsConfig->EnsurePhase8DefaultSoftPaths();
 				UE_LOG(LogNightShift, Log, TEXT("UGameConfig::ResolveOrCreate — loaded %s"), AssetPath);
 				return AsConfig;
 			}

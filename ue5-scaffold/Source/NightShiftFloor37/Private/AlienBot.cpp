@@ -112,7 +112,7 @@ void AAlienBot::ApplyConfiguredMeshes()
 			HeadMesh->SetVisibility(false);
 			HeadMesh->SetHiddenInGame(true);
 		}
-		UE_LOG(LogNightShift, Log, TEXT("AAlienBot::ApplyConfiguredMeshes — skeletal override applied."));
+		UE_LOG(LogNightShift, Log, TEXT("AAlienBot::ApplyConfiguredMeshes — skeletal override applied (hit-flash materials follow-up)."));
 		return;
 	}
 
@@ -125,9 +125,15 @@ void AAlienBot::ApplyConfiguredMeshes()
 			BodyMesh->SetVisibility(true);
 			BodyMesh->SetHiddenInGame(false);
 			bSwapped = true;
+			// Quaternius Alien is a single mesh — hide greybox head sphere unless head override set.
+			if (HeadMesh && GameConfig->AlienHeadMesh.IsNull())
+			{
+				HeadMesh->SetVisibility(false);
+				HeadMesh->SetHiddenInGame(true);
+			}
 		}
 	}
-	if (HeadMesh)
+	if (HeadMesh && !GameConfig->AlienHeadMesh.IsNull())
 	{
 		if (UStaticMesh* Head = GameConfig->AlienHeadMesh.LoadSynchronous())
 		{
@@ -139,6 +145,7 @@ void AAlienBot::ApplyConfiguredMeshes()
 	}
 	if (bSwapped)
 	{
+		// Bright bio-readable tint (BodyColor) on imported static mats when possible.
 		ApplyFlashToMaterials();
 		UE_LOG(LogNightShift, Log, TEXT("AAlienBot::ApplyConfiguredMeshes — static mesh override(s) applied."));
 	}

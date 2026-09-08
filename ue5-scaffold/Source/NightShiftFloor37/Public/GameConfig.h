@@ -183,8 +183,8 @@ public:
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Optional body static mesh override for AAlienBot (replaces BasicShapes Cylinder).
-	 * Leave unset to keep greybox cylinders.
+	 * Quaternius Alien static mesh (replaces BasicShapes Cylinder).
+	 * Default soft path: /Game/Imported/Aliens/SM_Alien — greybox if asset missing.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	TSoftObjectPtr<UStaticMesh> AlienBodyMesh;
@@ -204,11 +204,18 @@ public:
 	TSoftObjectPtr<USkeletalMesh> AlienSkeletalMesh;
 
 	/**
-	 * Optional decorative static mesh stamped at cover volume centers (non-colliding visual).
-	 * Collision/query stays on UBoxComponent cover volumes. Null = no prop swap.
+	 * Omie SM_Cubicle stamped at cover volume centers (non-colliding visual).
+	 * Default soft path: /Game/Imported/Props/Office/SM_Cubicle. Collision stays on cover boxes.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	TSoftObjectPtr<UStaticMesh> CoverPropMesh;
+
+	/**
+	 * Poly Haven mounted fluorescent (Phase 8). Import-only for Sprint G if unused in arena yet.
+	 * Expected asset: /Game/Imported/Props/Lights/SM_MountedFluorescent
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	TSoftObjectPtr<UStaticMesh> FluorescentLightMesh;
 
 	// -------------------------------------------------------------------------
 	// Match (DESIGN: win at 25 kills, soft restart)
@@ -296,5 +303,8 @@ public:
 	 * Pass Existing if already assigned on GameMode/Character.
 	 */
 	static UGameConfig* ResolveOrCreate(UObject* Outer, UGameConfig* Existing = nullptr);
+
+	/** Assign Sprint G Content/Imported soft paths when soft refs are still null. */
+	void EnsurePhase8DefaultSoftPaths();
 };
 
