@@ -34,11 +34,35 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	}
 }
 
+
+void UGameConfig::ResolvePhase8LoadedMeshes()
+{
+	// Sprint O — one LoadSynchronous batch; ApplyConfigured* reuses these pointers.
+	if (bPhase8MeshesResolved)
+	{
+		return;
+	}
+	EnsurePhase8DefaultSoftPaths();
+	CachedAlienBodyMesh = AlienBodyMesh.LoadSynchronous();
+	CachedAlienHeadMesh = AlienHeadMesh.LoadSynchronous();
+	CachedAlienSkeletalMesh = AlienSkeletalMesh.LoadSynchronous();
+	CachedCoverPropMesh = CoverPropMesh.LoadSynchronous();
+	CachedDeskPropMesh = DeskPropMesh.LoadSynchronous();
+	CachedChairPropMesh = ChairPropMesh.LoadSynchronous();
+	CachedFluorescentLightMesh = FluorescentLightMesh.LoadSynchronous();
+	bPhase8MeshesResolved = true;
+	UE_LOG(LogNightShift, Log, TEXT("UGameConfig::ResolvePhase8LoadedMeshes — cached Phase 8 meshes (body=%s cover=%s fluoro=%s)."),
+		CachedAlienBodyMesh ? *CachedAlienBodyMesh->GetName() : TEXT("null"),
+		CachedCoverPropMesh ? *CachedCoverPropMesh->GetName() : TEXT("null"),
+		CachedFluorescentLightMesh ? *CachedFluorescentLightMesh->GetName() : TEXT("null"));
+}
+
 UGameConfig* UGameConfig::ResolveOrCreate(UObject* Outer, UGameConfig* Existing)
 {
 	if (Existing)
 	{
 		Existing->EnsurePhase8DefaultSoftPaths();
+		Existing->ResolvePhase8LoadedMeshes();
 		return Existing;
 	}
 
@@ -54,6 +78,7 @@ UGameConfig* UGameConfig::ResolveOrCreate(UObject* Outer, UGameConfig* Existing)
 			if (UGameConfig* AsConfig = Cast<UGameConfig>(Loaded))
 			{
 				AsConfig->EnsurePhase8DefaultSoftPaths();
+				AsConfig->ResolvePhase8LoadedMeshes();
 				UE_LOG(LogNightShift, Log, TEXT("UGameConfig::ResolveOrCreate — loaded %s"), AssetPath);
 				return AsConfig;
 			}
@@ -62,6 +87,7 @@ UGameConfig* UGameConfig::ResolveOrCreate(UObject* Outer, UGameConfig* Existing)
 
 	UObject* OuterObj = Outer ? Outer : GetTransientPackage();
 	UGameConfig* Created = NewObject<UGameConfig>(OuterObj, TEXT("RuntimeGameConfig"));
+	Created->ResolvePhase8LoadedMeshes();
 	UE_LOG(LogNightShift, Warning,
 		TEXT("UGameConfig::ResolveOrCreate — no /Game/Data/DA_GameConfig; using NewObject DESIGN defaults (PIE-safe). Create the Data Asset in Editor when ready."));
 	return Created;

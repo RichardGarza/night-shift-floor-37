@@ -147,6 +147,10 @@ void AArenaGameMode::ClampDelta(float& DeltaSeconds) const
 void AArenaGameMode::ResolveAndPropagateGameConfig()
 {
 	GameConfig = UGameConfig::ResolveOrCreate(this, GameConfig);
+	if (GameConfig)
+	{
+		GameConfig->ResolvePhase8LoadedMeshes(); // Sprint O — once per propagate
+	}
 
 	FindOrCacheArena();
 	if (CachedArena && GameConfig)

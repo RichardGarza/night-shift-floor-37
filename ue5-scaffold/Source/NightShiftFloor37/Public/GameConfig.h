@@ -320,5 +320,31 @@ public:
 
 	/** Assign Sprint G Content/Imported soft paths when soft refs are still null. */
 	void EnsurePhase8DefaultSoftPaths();
+
+	/** Sprint O — LoadSynchronous once; reuse cached meshes (avoids per-alien PIE hitch). */
+	void ResolvePhase8LoadedMeshes();
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedAlienBodyMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedAlienHeadMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<USkeletalMesh> CachedAlienSkeletalMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedCoverPropMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedDeskPropMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedChairPropMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedFluorescentLightMesh;
+
+	bool bPhase8MeshesResolved = false;
 };
 

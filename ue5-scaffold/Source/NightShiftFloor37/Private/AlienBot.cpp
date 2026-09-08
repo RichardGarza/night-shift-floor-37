@@ -94,7 +94,9 @@ void AAlienBot::ApplyConfiguredMeshes()
 		return;
 	}
 
-	if (USkeletalMesh* Skel = GameConfig->AlienSkeletalMesh.LoadSynchronous())
+	GameConfig->ResolvePhase8LoadedMeshes();
+
+	if (USkeletalMesh* Skel = GameConfig->CachedAlienSkeletalMesh.Get())
 	{
 		InvalidateFlashMIDs();
 		if (USkeletalMeshComponent* CharMesh = GetMesh())
@@ -121,7 +123,7 @@ void AAlienBot::ApplyConfiguredMeshes()
 	bool bSwapped = false;
 	if (BodyMesh)
 	{
-		if (UStaticMesh* Body = GameConfig->AlienBodyMesh.LoadSynchronous())
+		if (UStaticMesh* Body = GameConfig->CachedAlienBodyMesh.Get())
 		{
 			InvalidateFlashMIDs();
 			BodyMesh->SetStaticMesh(Body);
@@ -138,7 +140,7 @@ void AAlienBot::ApplyConfiguredMeshes()
 	}
 	if (HeadMesh && !GameConfig->AlienHeadMesh.IsNull())
 	{
-		if (UStaticMesh* Head = GameConfig->AlienHeadMesh.LoadSynchronous())
+		if (UStaticMesh* Head = GameConfig->CachedAlienHeadMesh.Get())
 		{
 			HeadMID = nullptr;
 			HeadMesh->SetStaticMesh(Head);

@@ -341,7 +341,8 @@ void AOfficeArena::ApplyConfiguredCoverMeshes()
 	{
 		return;
 	}
-	UStaticMesh* CoverMesh = GameConfig->CoverPropMesh.LoadSynchronous();
+	GameConfig->ResolvePhase8LoadedMeshes();
+	UStaticMesh* CoverMesh = GameConfig->CachedCoverPropMesh.Get();
 	if (!CoverMesh)
 	{
 		return;
@@ -396,8 +397,9 @@ void AOfficeArena::ApplyConfiguredOfficeDressMeshes()
 		return;
 	}
 
-	UStaticMesh* DeskMesh = GameConfig->DeskPropMesh.LoadSynchronous();
-	UStaticMesh* ChairMesh = GameConfig->ChairPropMesh.LoadSynchronous();
+	GameConfig->ResolvePhase8LoadedMeshes();
+	UStaticMesh* DeskMesh = GameConfig->CachedDeskPropMesh.Get();
+	UStaticMesh* ChairMesh = GameConfig->CachedChairPropMesh.Get();
 	if (!DeskMesh && !ChairMesh)
 	{
 		return; // greybox fallback
@@ -498,7 +500,8 @@ void AOfficeArena::ApplyConfiguredFluorescentMeshes()
 	{
 		return;
 	}
-	UStaticMesh* Fluoro = GameConfig->FluorescentLightMesh.LoadSynchronous();
+	GameConfig->ResolvePhase8LoadedMeshes();
+	UStaticMesh* Fluoro = GameConfig->CachedFluorescentLightMesh.Get();
 	if (!Fluoro)
 	{
 		return;
