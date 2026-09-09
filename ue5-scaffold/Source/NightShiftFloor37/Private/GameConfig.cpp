@@ -1,6 +1,13 @@
 #include "GameConfig.h"
 #include "NightShiftFloor37.h"
 #include "UObject/SoftObjectPath.h"
+#include "Misc/PackageName.h"
+
+namespace GameConfigPrivate
+{
+	const TCHAR* MutantPackage = TEXT("/Game/Imported/Aliens/Mutant/SK_Mutant");
+	const TCHAR* QuaterniusPackage = TEXT("/Game/Imported/Aliens/Skel/SK_Alien");
+}
 
 UGameConfig::UGameConfig()
 {
@@ -48,18 +55,14 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 		FluorescentLightMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Lights/SM_MountedFluorescent.SM_MountedFluorescent")));
 	}
 
-	// Sprint X — Quaternius Alien.fbx imported as a skeletal mesh + takes (Scripts/import_alien_skeletal.py).
+	// Sprint AA — alien model set: Mixamo Mutant when imported, else the Sprint X Quaternius alien.
 	auto SoftAnim = [](const TCHAR* Path) { return TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(Path)); };
-	if (AlienSkeletalMesh.IsNull())
+	(void)SoftAnim;
+	if (AlienSkeletalMesh.IsNull() || bAutoPickAlienModelSet)
 	{
-		AlienSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Aliens/Skel/SK_Alien.SK_Alien")));
+		const bool bMutant = bAutoPickAlienModelSet && FPackageName::DoesPackageExist(GameConfigPrivate::MutantPackage);
+		ApplyAlienModelSet(bMutant);
 	}
-	if (AlienAnims.Idle.IsNull())     { AlienAnims.Idle     = SoftAnim(TEXT("/Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_Idle.SK_AlienCharacterArmature_Idle")); }
-	if (AlienAnims.Walk.IsNull())     { AlienAnims.Walk     = SoftAnim(TEXT("/Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_Walk.SK_AlienCharacterArmature_Walk")); }
-	if (AlienAnims.Run.IsNull())      { AlienAnims.Run      = SoftAnim(TEXT("/Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_Run.SK_AlienCharacterArmature_Run")); }
-	if (AlienAnims.Attack.IsNull())   { AlienAnims.Attack   = SoftAnim(TEXT("/Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_Punch.SK_AlienCharacterArmature_Punch")); }
-	if (AlienAnims.HitReact.IsNull()) { AlienAnims.HitReact = SoftAnim(TEXT("/Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_HitReact.SK_AlienCharacterArmature_HitReact")); }
-	if (AlienAnims.Death.IsNull())    { AlienAnims.Death    = SoftAnim(TEXT("/Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_Death.SK_AlienCharacterArmature_Death")); }
 
 	// Sprint W — UE template mannequin + rifle (copied from Engine/Templates/TemplateResources).
 	if (PlayerSkeletalMesh.IsNull())
@@ -93,6 +96,37 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 }
 
 
+void UGameConfig::ApplyAlienModelSet(bool bMutant)
+{
+	auto SoftAnim = [](const TCHAR* Path) { return TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(Path)); };
+	bUsingMutantModel = bMutant;
+	if (bMutant)
+	{
+		AlienSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Aliens/Mutant/SK_Mutant.SK_Mutant")));
+		AlienAnims.Idle     = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Idle.A_Mutant_Idle"));
+		AlienAnims.Walk     = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Walking.A_Mutant_Walking"));
+		AlienAnims.Run      = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Run.A_Mutant_Run"));
+		AlienAnims.Attack   = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Punch.A_Mutant_Punch"));
+		AlienAnims.HitReact = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Hit_Reaction.A_Mutant_Hit_Reaction"));
+		AlienAnims.Death    = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Dying.A_Mutant_Dying"));
+		AlienMeshScale = MutantMeshScale;
+		AlienMeshYawDegrees = MutantMeshYawDegrees;
+		AlienRunAnimRefSpeed = MutantRunAnimRefSpeed;
+		return;
+	}
+	AlienSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Aliens/Skel/SK_Alien.SK_Alien")));
+	AlienAnims.Idle     = SoftAnim(TEXT("/Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_Idle.SK_AlienCharacterArmature_Idle"));
+	AlienAnims.Walk     = SoftAnim(TEXT("/Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_Walk.SK_AlienCharacterArmature_Walk"));
+	AlienAnims.Run      = SoftAnim(TEXT("/Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_Run.SK_AlienCharacterArmature_Run"));
+	AlienAnims.Attack   = SoftAnim(TEXT("/Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_Punch.SK_AlienCharacterArmature_Punch"));
+	AlienAnims.HitReact = SoftAnim(TEXT("/Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_HitReact.SK_AlienCharacterArmature_HitReact"));
+	AlienAnims.Death    = SoftAnim(TEXT("/Game/Imported/Aliens/Skel/SK_AlienCharacterArmature_Death.SK_AlienCharacterArmature_Death"));
+	// Quaternius "Big" alien is ~3.5 m native → 0.55; FBX export faces +Y → -90.
+	AlienMeshScale = 0.55f;
+	AlienMeshYawDegrees = -90.f;
+	AlienRunAnimRefSpeed = 350.f;
+}
+
 void UGameConfig::ResolvePhase8LoadedMeshes()
 {
 	// Sprint O — one LoadSynchronous batch; ApplyConfigured* reuses these pointers.
@@ -104,6 +138,13 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 	CachedAlienBodyMesh = AlienBodyMesh.LoadSynchronous();
 	CachedAlienHeadMesh = AlienHeadMesh.LoadSynchronous();
 	CachedAlienSkeletalMesh = AlienSkeletalMesh.LoadSynchronous();
+	if (!CachedAlienSkeletalMesh && bUsingMutantModel)
+	{
+		// Mutant package present but failed to load — fall back to the Quaternius set rather than greybox.
+		UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: SK_Mutant did not load; falling back to SK_Alien."));
+		ApplyAlienModelSet(false);
+		CachedAlienSkeletalMesh = AlienSkeletalMesh.LoadSynchronous();
+	}
 	CachedCoverPropMesh = CoverPropMesh.LoadSynchronous();
 	CachedDeskPropMesh = DeskPropMesh.LoadSynchronous();
 	CachedChairPropMesh = ChairPropMesh.LoadSynchronous();

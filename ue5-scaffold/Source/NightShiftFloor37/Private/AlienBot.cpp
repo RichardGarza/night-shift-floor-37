@@ -1043,9 +1043,12 @@ void AAlienBot::Die()
 	{
 		CurrentAnim = nullptr;
 		AttackAnimRemaining = 0.f;
-		PlayAlienAnim(DeathAnim, false);
+		// Fit the clip into the respawn window (Mixamo "Dying" is 4.6 s) instead of hiding it mid-fall.
 		const float Respawn = GameConfig ? GameConfig->AlienRespawnSeconds : 3.f;
-		DeathHideRemaining = FMath::Clamp(DeathAnim->GetPlayLength(), 0.3f, FMath::Max(Respawn - 0.25f, 0.3f));
+		const float Window = FMath::Max(Respawn - 0.25f, 0.3f);
+		const float Rate = FMath::Max(1.f, DeathAnim->GetPlayLength() / Window);
+		PlayAlienAnim(DeathAnim, false, Rate);
+		DeathHideRemaining = FMath::Clamp(DeathAnim->GetPlayLength() / Rate, 0.3f, Window);
 	}
 	else
 	{

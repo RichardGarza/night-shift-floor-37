@@ -349,6 +349,26 @@ public:
 	FNightShiftAlienAnimSet AlienAnims;
 
 	/**
+	 * Sprint AA — model set selection. When true and /Game/Imported/Aliens/Mutant/SK_Mutant exists
+	 * (Mixamo Mutant via Scripts/import_mixamo_alien.py), the alien soft paths, scale and yaw are set
+	 * for it; otherwise the Quaternius SK_Alien set applies. Set false to hand-assign the paths above.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	bool bAutoPickAlienModelSet = true;
+
+	/** Mutant is 1.86 m at native scale; 1.15 → ~2.1 m so the Grunt already looms over the mannequin. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float MutantMeshScale = 1.15f;
+
+	/** Mixamo rigs face +Y after import; -90 turns them to +X like the mannequin. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float MutantMeshYawDegrees = -90.f;
+
+	/** Mixamo run clip plays at rate 1.0 around this ground speed (cm/s). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float MutantRunAnimRefSpeed = 420.f;
+
+	/**
 	 * Sprint W — player skeletal mesh (UE template Manny). When resolved, hides the greybox
 	 * cylinder and drives ACharacter::GetMesh(). Default: /Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.
 	 */
@@ -641,6 +661,13 @@ public:
 
 	/** Assign Sprint G Content/Imported soft paths when soft refs are still null. */
 	void EnsurePhase8DefaultSoftPaths();
+
+	/** Sprint AA — point the alien soft paths at the Mutant (Mixamo) or Quaternius set + matching scale/yaw. */
+	void ApplyAlienModelSet(bool bMutant);
+
+	/** True once ApplyAlienModelSet picked the Mutant. */
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	bool bUsingMutantModel = false;
 
 	/** Sprint O — LoadSynchronous once; reuse cached meshes (avoids per-alien PIE hitch). */
 	void ResolvePhase8LoadedMeshes();
