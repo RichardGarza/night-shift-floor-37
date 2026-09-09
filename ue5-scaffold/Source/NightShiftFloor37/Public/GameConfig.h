@@ -8,6 +8,7 @@
 #include "Engine/SkeletalMesh.h"
 #include "Animation/AnimSequence.h"
 #include "Materials/MaterialInterface.h"
+#include "Sound/SoundBase.h"
 #include "GameConfig.generated.h"
 
 /** Sprint W — rifle-carry animation set for the player mannequin (code-driven, no AnimBP). */
@@ -493,6 +494,42 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	TSoftObjectPtr<UStaticMesh> FluorescentLightMesh;
+
+	// -------------------------------------------------------------------------
+	// Audio (Sprint AF — synthesized WAVs under /Game/Imported/Audio, imported by Scripts/import_audio.py).
+	// All soft refs; a miss is silent. Volumes are linear multipliers.
+	// -------------------------------------------------------------------------
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") bool bAudioEnabled = true;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio", meta = (ClampMin = "0", ClampMax = "2")) float SfxVolume = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio", meta = (ClampMin = "0", ClampMax = "2")) float AmbientVolume = 0.45f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundRifleFire;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundRifleReload;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundHitFlesh;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundAlienGrowl;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundAlienDeath;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundAlienBolt;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundPlayerHurt;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundFootstep;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundWaveSting;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundWaveClear;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundNeonSnap;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundAmbientLoop;
+	/** Footstep cadence: one step per this many cm of ground travel. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") float FootstepStrideCm = 180.f;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Audio|Cache") TObjectPtr<USoundBase> CachedSoundRifleFire;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Audio|Cache") TObjectPtr<USoundBase> CachedSoundRifleReload;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Audio|Cache") TObjectPtr<USoundBase> CachedSoundHitFlesh;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Audio|Cache") TObjectPtr<USoundBase> CachedSoundAlienGrowl;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Audio|Cache") TObjectPtr<USoundBase> CachedSoundAlienDeath;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Audio|Cache") TObjectPtr<USoundBase> CachedSoundAlienBolt;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Audio|Cache") TObjectPtr<USoundBase> CachedSoundPlayerHurt;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Audio|Cache") TObjectPtr<USoundBase> CachedSoundFootstep;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Audio|Cache") TObjectPtr<USoundBase> CachedSoundWaveSting;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Audio|Cache") TObjectPtr<USoundBase> CachedSoundWaveClear;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Audio|Cache") TObjectPtr<USoundBase> CachedSoundNeonSnap;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Audio|Cache") TObjectPtr<USoundBase> CachedSoundAmbientLoop;
 
 	// -------------------------------------------------------------------------
 	// Match (DESIGN: win at 25 kills, soft restart)

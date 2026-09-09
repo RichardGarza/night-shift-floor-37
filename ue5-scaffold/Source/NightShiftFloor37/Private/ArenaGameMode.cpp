@@ -16,6 +16,8 @@
 #include "NightShiftSelfTest.h"
 #include "Misc/CommandLine.h"
 #include "TimerManager.h"
+#include "NightShiftAudio.h"
+#include "Components/AudioComponent.h"
 
 AArenaGameMode::AArenaGameMode()
 {
@@ -83,6 +85,11 @@ void AArenaGameMode::BeginPlay()
 	CreateAndBindHUD();
 	SetMatchState(EArenaMatchState::WaitingToStart);
 	UpdatePlayerInputMode();
+	// Sprint AF — the floor hums from the first frame (fluorescents, air handling).
+	if (GameConfig && GameConfig->bAudioEnabled && !AmbientLoop)
+	{
+		AmbientLoop = NightShiftAudio::StartLoop2D(this, GameConfig->CachedSoundAmbientLoop, GameConfig->AmbientVolume);
+	}
 	if (ANightShiftSelfTest::IsRequestedOnCommandLine())
 	{
 		GetWorld()->SpawnActor<ANightShiftSelfTest>();
@@ -318,6 +325,10 @@ void AArenaGameMode::OnWaveCleared()
 {
 	const int32 ToWin = GetWavesToWin();
 	UE_LOG(LogNightShift, Log, TEXT("Wave %d cleared — %d kills total at %.1fs."), CurrentWave, KillCount, MatchTimeSeconds);
+	if (GameConfig)
+	{
+		NightShiftAudio::Play2D(this, GameConfig->CachedSoundWaveClear, GameConfig->SfxVolume);
+	}
 	if (ToWin > 0 && CurrentWave >= ToWin)
 	{
 		SetMatchState(EArenaMatchState::Won);
@@ -385,6 +396,10 @@ void AArenaGameMode::ShowWaveStartBanner()
 	const FString Title = ToWin > 0 ? FString::Printf(TEXT("Wave %d of %d"), CurrentWave, ToWin) : FString::Printf(TEXT("Wave %d"), CurrentWave);
 	HUDWidget->ShowWaveBanner(FText::FromString(Title), FText::FromString(FString::Printf(TEXT("%d kills to clear"), GetWaveKillQuota())));
 	GetWorldTimerManager().SetTimer(WaveBannerTimer, this, &AArenaGameMode::ClearWaveStartBanner, Hold, false);
+	if (GameConfig)
+	{
+		NightShiftAudio::Play2D(this, GameConfig->CachedSoundWaveSting, GameConfig->SfxVolume * 0.8f);
+	}
 }
 
 void AArenaGameMode::ClearWaveStartBanner()

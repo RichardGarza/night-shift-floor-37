@@ -292,6 +292,8 @@ protected:
 	bool bSurfaceMaterialsApplied = false;
 	/** Sprint AE — neon trim MIDs + their base strength, flickered in Tick. */
 	UPROPERTY(Transient) TArray<TObjectPtr<UMaterialInstanceDynamic>> NeonMIDs;
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> NeonComps;
+	TArray<bool> NeonDipping;
 	float NeonBaseStrength = 7.f;
 	float NeonTime = 0.f;
 	void ApplyResinGrowths();

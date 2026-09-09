@@ -14,6 +14,7 @@
 #include "HAL/PlatformMisc.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/AudioComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 ANightShiftSelfTest::ANightShiftSelfTest()
@@ -198,6 +199,9 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 			Check(Pos.Num() == WantLive, FString::Printf(TEXT("%d aliens live at start (want %d)"), Pos.Num(), WantLive));
 			Check(Distinct >= FMath::Min(WantLive, 5), FString::Printf(TEXT("spawn spread: %d distinct points for %d aliens"), Distinct, Pos.Num()));
 			Check(bAboveFloor, TEXT("aliens spawn above the floor"));
+			// Sprint AF — audio wiring.
+			Check(GM->GameConfig && GM->GameConfig->CachedSoundRifleFire != nullptr, TEXT("rifle shot sound resolved"));
+			Check(GM->GetAmbientLoop() != nullptr && GM->GetAmbientLoop()->IsPlaying(), TEXT("ambient hum loop is playing"));
 			const bool bRamp = GM->GameConfig && GM->GameConfig->bDifficultyRamp;
 			Check(!bRamp || WantLive < MaxLive, FString::Printf(TEXT("difficulty ramp starts easy (%d of %d aliens, threat %d/5)"), WantLive, MaxLive, GM->GetThreatTier()));
 			Check(!bRamp || GM->GetAlienAccuracy() < (GM->GameConfig ? GM->GameConfig->AlienAccuracy : 0.3f),

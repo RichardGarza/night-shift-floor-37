@@ -11,6 +11,7 @@ class AOfficeArena;
 class AAlienBot;
 class UHUDWidget;
 class ANightShiftCharacter;
+class UAudioComponent;
 
 UENUM(BlueprintType)
 enum class EArenaMatchState : uint8
@@ -193,6 +194,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Match|Waves")
 	void DebugClearWave();
 
+	/** Sprint AF — looping office hum started in BeginPlay (null when audio is off or the asset is missing). */
+	UFUNCTION(BlueprintPure, Category = "Audio")
+	UAudioComponent* GetAmbientLoop() const { return AmbientLoop; }
+
 protected:
 	/** Begin grace timer + place player on farthest edge spawn from aliens / push aliens out. */
 	void BeginSpawnGraceAndSafeStart();
@@ -257,6 +262,9 @@ protected:
 	int32 LastBannerSecond = -1;
 	/** -NightShiftStartWave=N (screenshots / smoke runs at a later wave). 0 = unset. */
 	int32 DebugStartWave = 0;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> AmbientLoop;
 
 	/** Sprint AE — "Wave N" banner at wave start; cleared by timer while still in play. */
 	FTimerHandle WaveBannerTimer;

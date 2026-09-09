@@ -5,6 +5,7 @@
 #include "ArenaGameMode.h"
 #include "FXPoolInterface.h"
 #include "NightShiftFloor37.h"
+#include "NightShiftAudio.h"
 #include "Engine/World.h"
 #include "Engine/OverlapResult.h"
 #include "Kismet/GameplayStatics.h"
@@ -139,6 +140,10 @@ void URifleComponent::TryFireShot()
 	SpawnTracerFX(TracerStart, bHit ? Hit.ImpactPoint : End);
 	SpawnMuzzleFlashFX();
 	KickRecoil();
+	if (Config)
+	{
+		NightShiftAudio::PlayAt(this, Config->CachedSoundRifleFire, TracerStart, Config->SfxVolume * 0.9f, 0.05f);
+	}
 
 	if (bHit)
 	{
@@ -281,6 +286,10 @@ void URifleComponent::Reload()
 	}
 	bIsReloading = true;
 	ReloadTimeRemaining = Config ? Config->ReloadSeconds : 1.5f;
+	if (Config)
+	{
+		NightShiftAudio::Play2D(this, Config->CachedSoundRifleReload, Config->SfxVolume * 0.8f);
+	}
 	UE_LOG(LogNightShift, Verbose, TEXT("Reload started (%.1fs)"), ReloadTimeRemaining);
 }
 

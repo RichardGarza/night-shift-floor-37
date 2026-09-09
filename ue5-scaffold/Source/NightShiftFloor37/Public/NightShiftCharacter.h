@@ -261,6 +261,9 @@ protected:
 	float OneShotRemaining = 0.f;
 	/** Pick and play the clip for the current movement / rifle state. */
 	void UpdateLocomotionAnim(float DeltaSeconds);
+	/** Sprint AF — distance-based footstep sounds. */
+	void UpdateFootsteps(float DeltaSeconds);
+	float FootstepDistance = 0.f;
 	/** Play Seq on GetMesh() unless it is already the active clip (looping clips never restart). */
 	void PlayBodyAnim(UAnimSequence* Seq, bool bLoop, float Rate = 1.f);
 	/** Start a non-looping clip and return its duration at Rate (0 if null). */

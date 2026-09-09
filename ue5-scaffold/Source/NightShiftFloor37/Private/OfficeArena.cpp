@@ -10,6 +10,8 @@
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "NightShiftAudio.h"
+#include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 #include "NightShiftFloor37.h"
 
@@ -363,6 +365,8 @@ void AOfficeArena::ApplyConfiguredSurfaceMaterials()
 			MID->SetScalarParameterValue(TEXT("EmissiveStrength"), GameConfig->NeonEmissiveStrength);
 			M->SetCastShadow(false);
 			NeonMIDs.Add(MID);
+			NeonComps.Add(M);
+			NeonDipping.Add(false);
 			NeonBaseStrength = GameConfig->NeonEmissiveStrength;
 		}
 		M->SetMaterial(0, MID);
@@ -480,6 +484,24 @@ void AOfficeArena::Tick(float DeltaSeconds)
 		const float Noise = FMath::PerlinNoise1D(T * 1.7f);                        // -1..1 slow wander
 		const float Dip = (Noise > 0.55f) ? 1.f - Depth * FMath::Clamp((Noise - 0.55f) / 0.2f, 0.f, 1.f) : 1.f;
 		MID->SetScalarParameterValue(TEXT("EmissiveStrength"), NeonBaseStrength * Hum * Dip);
+		// Sprint AF — an electric snap when a strip drops out, once per dip, from the strip's nearest point.
+		const bool bDipping = Dip < 0.6f;
+		if (NeonDipping.IsValidIndex(i))
+		{
+			if (bDipping && !NeonDipping[i] && NeonComps.IsValidIndex(i) && NeonComps[i])
+			{
+				FVector At = NeonComps[i]->GetComponentLocation();
+				if (APawn* P = UGameplayStatics::GetPlayerPawn(this, 0))
+				{
+					// Strips are 50 m long: snap from the point on the strip closest to the player.
+					const FVector Axis = NeonComps[i]->GetRelativeScale3D().X > NeonComps[i]->GetRelativeScale3D().Y ? FVector(1, 0, 0) : FVector(0, 1, 0);
+					const float Along = FMath::Clamp(FVector::DotProduct(P->GetActorLocation() - At, Axis), -2400.f, 2400.f);
+					At += Axis * Along;
+				}
+				NightShiftAudio::PlayAt(this, GameConfig->CachedSoundNeonSnap, At, GameConfig->SfxVolume * 0.5f, 0.2f);
+			}
+			NeonDipping[i] = bDipping;
+		}
 	}
 }
 

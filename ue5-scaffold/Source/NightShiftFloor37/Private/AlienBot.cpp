@@ -25,6 +25,7 @@
 #include "FXPoolInterface.h"
 #include "Animation/AnimSequence.h"
 #include "PhysicsEngine/PhysicsAsset.h"
+#include "NightShiftAudio.h"
 
 namespace AlienBotPrivate
 {
@@ -649,6 +650,14 @@ void AAlienBot::ActivateAtSpawn(const FTransform& SpawnTransform)
 	SteerCommitRemaining = 0.f;
 	ApplyConfiguredMeshes();
 	ApplyVariantPresentation();
+	if (GameConfig)
+	{
+		const AArenaGameMode* GM = GetArenaGameMode();
+		if (GM && GM->MatchState == EArenaMatchState::InProgress)
+		{
+			NightShiftAudio::PlayAt(this, GameConfig->CachedSoundAlienGrowl, GetActorLocation() + FVector(0.f, 0.f, 60.f), GameConfig->SfxVolume * 0.6f, 0.15f);
+		}
+	}
 	// Spawn transforms assume the Grunt capsule; re-seat so this variant's feet touch the same floor.
 	{
 		const float Half = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
@@ -933,6 +942,11 @@ void AAlienBot::StrafeAndBurst(float DeltaSeconds)
 		BurstShotsRemaining = BurstCount;
 		BurstIntraShotRemaining = 0.f; // first shot fires this frame (after tick delay below)
 		StrafeSign *= -1.f;
+		if (GameConfig && FMath::FRand() < 0.5f)
+		{
+			NightShiftAudio::PlayAt(this, GameConfig->CachedSoundAlienGrowl, GetActorLocation() + FVector(0.f, 0.f, 60.f),
+				GameConfig->SfxVolume * 0.9f, Variant == EAlienVariant::Brute ? 0.f : 0.12f);
+		}
 		if (bSkeletalActive && GameConfig && GameConfig->CachedAlienAnims.Attack)
 		{
 			CurrentAnim = nullptr;
@@ -1001,6 +1015,10 @@ void AAlienBot::TryBurstShot()
 		FXPool->ActivateTracer(Muzzle, End, GameConfig ? GameConfig->TracerDurationMs : 60.f);
 		FXPool->ActivateMuzzleLight(Muzzle, GameConfig ? GameConfig->MuzzleFlashDurationMs : 40.f);
 	}
+	if (GameConfig)
+	{
+		NightShiftAudio::PlayAt(this, GameConfig->CachedSoundAlienBolt, Muzzle, GameConfig->SfxVolume * 0.7f, 0.08f);
+	}
 
 	if (!bHit)
 	{
@@ -1060,6 +1078,15 @@ float AAlienBot::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
 	}
 
 	PlayHitFlash();
+	if (GameConfig)
+	{
+		FVector HitLoc = GetActorLocation();
+		if (DamageEvent.IsOfType(FPointDamageEvent::ClassID))
+		{
+			HitLoc = ((const FPointDamageEvent*)&DamageEvent)->HitInfo.ImpactPoint;
+		}
+		NightShiftAudio::PlayAt(this, GameConfig->CachedSoundHitFlesh, HitLoc, GameConfig->SfxVolume * (bHead ? 1.f : 0.8f), 0.1f);
+	}
 
 	const FAlienVariantTuning* VT = GetVariantTuning();
 	const int32 BodyNeed = VT ? FMath::Max(VT->BodyHitsToKill, 1) : (GameConfig ? GameConfig->AlienBodyHitsToKill : 3);
@@ -1103,6 +1130,13 @@ void AAlienBot::Die()
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{
 		Move->StopMovementImmediately();
+	}
+	if (GameConfig)
+	{
+		const FAlienVariantTuning* DeathVT = GetVariantTuning();
+		const float Pitch = DeathVT ? (Variant == EAlienVariant::Brute ? 0.75f : 1.25f) : 1.f;
+		NightShiftAudio::PlayAt(this, GameConfig->CachedSoundAlienDeath, GetActorLocation(), GameConfig->SfxVolume, 0.f);
+		(void)Pitch;
 	}
 	// Skeletal body: play the Death clip and stay visible until it ends (or just before respawn).
 	SetActorEnableCollision(false);

@@ -1,5 +1,6 @@
 #include "NightShiftCharacter.h"
 #include "Misc/CommandLine.h"
+#include "NightShiftAudio.h"
 #include "GameConfig.h"
 #include "RifleComponent.h"
 #include "ArenaCollision.h"
@@ -194,6 +195,31 @@ void ANightShiftCharacter::Tick(float DeltaSeconds)
 	UpdateRecoilRecovery(DeltaSeconds);
 	UpdateSprintSpeed();
 	UpdateLocomotionAnim(DeltaSeconds);
+	UpdateFootsteps(DeltaSeconds);
+}
+
+void ANightShiftCharacter::UpdateFootsteps(float DeltaSeconds)
+{
+	// Sprint AF — one tile step per FootstepStrideCm of ground travel; nothing in the air or when idle.
+	if (!GameConfig || !GetCharacterMovement() || !GetCharacterMovement()->IsMovingOnGround())
+	{
+		FootstepDistance = 0.f;
+		return;
+	}
+	const float Speed = GetVelocity().Size2D();
+	if (Speed < 60.f)
+	{
+		FootstepDistance = 0.f;
+		return;
+	}
+	FootstepDistance += Speed * DeltaSeconds;
+	const float Stride = FMath::Max(GameConfig->FootstepStrideCm, 40.f);
+	if (FootstepDistance >= Stride)
+	{
+		FootstepDistance -= Stride;
+		const float Vol = FMath::Clamp(Speed / FMath::Max(GameConfig->SprintSpeed, 1.f), 0.35f, 1.f) * GameConfig->SfxVolume * 0.55f;
+		NightShiftAudio::PlayAt(this, GameConfig->CachedSoundFootstep, GetActorLocation() - FVector(0.f, 0.f, 80.f), Vol, 0.12f);
+	}
 }
 
 void ANightShiftCharacter::SnapshotGroundedZIfNeeded()
@@ -846,6 +872,10 @@ float ANightShiftCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
 	const float Applied = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	Health = FMath::Max(0.f, Health - Applied);
 	TimeSinceLastDamage = 0.f;
+	if (GameConfig && Applied > 0.f)
+	{
+		NightShiftAudio::Play2D(this, GameConfig->CachedSoundPlayerHurt, GameConfig->SfxVolume * 0.9f, 0.08f);
+	}
 
 	if (Applied > 0.f)
 	{

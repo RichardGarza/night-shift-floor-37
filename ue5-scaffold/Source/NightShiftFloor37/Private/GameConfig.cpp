@@ -66,6 +66,20 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	if (SurfaceGlass.IsNull())    { SurfaceGlass    = SoftMat(TEXT("MI_Glass")); }
 	if (SurfaceNeon.IsNull())     { SurfaceNeon     = SoftMat(TEXT("M_Neon")); }
 	if (SurfaceResin.IsNull())    { SurfaceResin    = SoftMat(TEXT("M_Resin")); }
+	// Sprint AF — audio.
+	auto SoftSnd = [](const TCHAR* Name) { return TSoftObjectPtr<USoundBase>(FSoftObjectPath(FString::Printf(TEXT("/Game/Imported/Audio/%s.%s"), Name, Name))); };
+	if (SoundRifleFire.IsNull())   { SoundRifleFire   = SoftSnd(TEXT("sfx_rifle_shot")); }
+	if (SoundRifleReload.IsNull()) { SoundRifleReload = SoftSnd(TEXT("sfx_rifle_reload")); }
+	if (SoundHitFlesh.IsNull())    { SoundHitFlesh    = SoftSnd(TEXT("sfx_hit_flesh")); }
+	if (SoundAlienGrowl.IsNull())  { SoundAlienGrowl  = SoftSnd(TEXT("sfx_alien_growl")); }
+	if (SoundAlienDeath.IsNull())  { SoundAlienDeath  = SoftSnd(TEXT("sfx_alien_death")); }
+	if (SoundAlienBolt.IsNull())   { SoundAlienBolt   = SoftSnd(TEXT("sfx_alien_bolt")); }
+	if (SoundPlayerHurt.IsNull())  { SoundPlayerHurt  = SoftSnd(TEXT("sfx_player_hurt")); }
+	if (SoundFootstep.IsNull())    { SoundFootstep    = SoftSnd(TEXT("sfx_footstep_tile")); }
+	if (SoundWaveSting.IsNull())   { SoundWaveSting   = SoftSnd(TEXT("sfx_wave_sting")); }
+	if (SoundWaveClear.IsNull())   { SoundWaveClear   = SoftSnd(TEXT("sfx_wave_clear")); }
+	if (SoundNeonSnap.IsNull())    { SoundNeonSnap    = SoftSnd(TEXT("sfx_neon_snap")); }
+	if (SoundAmbientLoop.IsNull()) { SoundAmbientLoop = SoftSnd(TEXT("amb_office_hum_loop")); }
 
 	// Sprint AA — alien model set: Mixamo Mutant when imported, else the Sprint X Quaternius alien.
 	auto SoftAnim = [](const TCHAR* Path) { return TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(Path)); };
@@ -172,6 +186,28 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 	CachedSurfaceGlass    = SurfaceGlass.LoadSynchronous();
 	CachedSurfaceNeon     = SurfaceNeon.LoadSynchronous();
 	CachedSurfaceResin    = SurfaceResin.LoadSynchronous();
+	if (bAudioEnabled)
+	{
+		CachedSoundRifleFire   = SoundRifleFire.LoadSynchronous();
+		CachedSoundRifleReload = SoundRifleReload.LoadSynchronous();
+		CachedSoundHitFlesh    = SoundHitFlesh.LoadSynchronous();
+		CachedSoundAlienGrowl  = SoundAlienGrowl.LoadSynchronous();
+		CachedSoundAlienDeath  = SoundAlienDeath.LoadSynchronous();
+		CachedSoundAlienBolt   = SoundAlienBolt.LoadSynchronous();
+		CachedSoundPlayerHurt  = SoundPlayerHurt.LoadSynchronous();
+		CachedSoundFootstep    = SoundFootstep.LoadSynchronous();
+		CachedSoundWaveSting   = SoundWaveSting.LoadSynchronous();
+		CachedSoundWaveClear   = SoundWaveClear.LoadSynchronous();
+		CachedSoundNeonSnap    = SoundNeonSnap.LoadSynchronous();
+		CachedSoundAmbientLoop = SoundAmbientLoop.LoadSynchronous();
+		int32 Loaded = 0;
+		for (USoundBase* S : { CachedSoundRifleFire.Get(), CachedSoundRifleReload.Get(), CachedSoundHitFlesh.Get(), CachedSoundAlienGrowl.Get(), CachedSoundAlienDeath.Get(), CachedSoundAlienBolt.Get(), CachedSoundPlayerHurt.Get(), CachedSoundFootstep.Get(), CachedSoundWaveSting.Get(), CachedSoundWaveClear.Get(), CachedSoundNeonSnap.Get(), CachedSoundAmbientLoop.Get() })
+		{
+			Loaded += S != nullptr;
+		}
+		UE_LOG(LogNightShift, Log, TEXT("UGameConfig: audio — %d of 12 sounds resolved (rifle=%s ambient=%s)."), Loaded,
+			CachedSoundRifleFire ? TEXT("ok") : TEXT("miss"), CachedSoundAmbientLoop ? TEXT("ok") : TEXT("miss"));
+	}
 	CachedPlayerAnims.Idle      = PlayerAnims.Idle.LoadSynchronous();
 	CachedPlayerAnims.WalkFwd   = PlayerAnims.WalkFwd.LoadSynchronous();
 	CachedPlayerAnims.WalkBwd   = PlayerAnims.WalkBwd.LoadSynchronous();
