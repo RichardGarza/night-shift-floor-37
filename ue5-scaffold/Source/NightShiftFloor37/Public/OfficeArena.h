@@ -143,6 +143,12 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lighting")
 	TArray<TObjectPtr<UPointLightComponent>> AtriumPlateLights;
 
+	/** Sprint AE — resin growth spheres around the egg-cover blocks (transient visuals). */
+	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category = "Cover|Phase8")
+	TArray<TObjectPtr<UStaticMeshComponent>> ResinGrowthVisuals;
+
+	virtual void Tick(float DeltaSeconds) override;
+
 	/** Sprint N — desk/chair dress near cubicle stamps only. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cover|Phase8")
 	TArray<TObjectPtr<UStaticMeshComponent>> OfficeDressVisuals;
@@ -284,6 +290,11 @@ protected:
 	TArray<FLinearColor> GreyboxColors;
 	TArray<EArenaSurface> GreyboxSurfaces;
 	bool bSurfaceMaterialsApplied = false;
+	/** Sprint AE — neon trim MIDs + their base strength, flickered in Tick. */
+	UPROPERTY(Transient) TArray<TObjectPtr<UMaterialInstanceDynamic>> NeonMIDs;
+	float NeonBaseStrength = 7.f;
+	float NeonTime = 0.f;
+	void ApplyResinGrowths();
 	UPROPERTY()
 	TObjectPtr<UStaticMesh> GreyboxCubeMesh;
 	UPROPERTY()

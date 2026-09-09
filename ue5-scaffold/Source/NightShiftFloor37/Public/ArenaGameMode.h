@@ -257,4 +257,9 @@ protected:
 	int32 LastBannerSecond = -1;
 	/** -NightShiftStartWave=N (screenshots / smoke runs at a later wave). 0 = unset. */
 	int32 DebugStartWave = 0;
+
+	/** Sprint AE — "Wave N" banner at wave start; cleared by timer while still in play. */
+	FTimerHandle WaveBannerTimer;
+	void ShowWaveStartBanner();
+	void ClearWaveStartBanner();
 };

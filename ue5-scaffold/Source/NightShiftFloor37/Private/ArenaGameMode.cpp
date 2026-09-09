@@ -373,6 +373,29 @@ void AArenaGameMode::UpdateWaveBreakBanner()
 		FText::FromString(FString::Printf(TEXT("Wave %d in %d s%s"), CurrentWave + 1, Sec, bRestock ? TEXT(" · ammo and HP restocked") : TEXT(""))));
 }
 
+void AArenaGameMode::ShowWaveStartBanner()
+{
+	const float Hold = GameConfig ? GameConfig->WaveStartBannerSeconds : 2.2f;
+	if (!HUDWidget || Hold <= 0.f)
+	{
+		if (HUDWidget) { HUDWidget->ClearPrompt(); }
+		return;
+	}
+	const int32 ToWin = GetWavesToWin();
+	const FString Title = ToWin > 0 ? FString::Printf(TEXT("Wave %d of %d"), CurrentWave, ToWin) : FString::Printf(TEXT("Wave %d"), CurrentWave);
+	HUDWidget->ShowWaveBanner(FText::FromString(Title), FText::FromString(FString::Printf(TEXT("%d kills to clear"), GetWaveKillQuota())));
+	GetWorldTimerManager().SetTimer(WaveBannerTimer, this, &AArenaGameMode::ClearWaveStartBanner, Hold, false);
+}
+
+void AArenaGameMode::ClearWaveStartBanner()
+{
+	// Only clear our own banner: death / win / breather prompts own the line otherwise.
+	if (HUDWidget && MatchState == EArenaMatchState::InProgress && !bInWaveBreak)
+	{
+		HUDWidget->ClearPrompt();
+	}
+}
+
 void AArenaGameMode::StartNextWave()
 {
 	bInWaveBreak = false;
@@ -382,11 +405,8 @@ void AArenaGameMode::StartNextWave()
 	// Short grace so the new wave is seen arriving at the edges; the post-grace fire lock arms as usual.
 	SpawnGraceRemaining = GameConfig ? FMath::Max(0.f, GameConfig->WaveStartGraceSeconds) : 2.f;
 	AlienFireLockRemaining = 0.f;
-	if (HUDWidget)
-	{
-		HUDWidget->ClearPrompt();
-	}
 	EnsureAlienPopulation();
+	ShowWaveStartBanner();
 	UE_LOG(LogNightShift, Log, TEXT("Wave %d — %d aliens (target %d), quota %d, accuracy %.0f%%, burst every %.1fs, speed %.0f."),
 		CurrentWave, GetLiveAlienCount(), GetTargetLiveAliens(), GetWaveKillQuota(), GetAlienAccuracy() * 100.f, GetAlienBurstInterval(), GetAlienMoveSpeed());
 }
@@ -713,6 +733,10 @@ void AArenaGameMode::StartMatch()
 		HUDWidget->ClearPrompt();
 	}
 	UpdatePlayerInputMode();
+	if (IsWaveProgression())
+	{
+		ShowWaveStartBanner();
+	}
 	UE_LOG(LogNightShift, Log, TEXT("Match started — %d live aliens (target %d, %s), grace %.1fs."),
 		GetLiveAlienCount(), GetTargetLiveAliens(),
 		IsWaveProgression() ? *FString::Printf(TEXT("wave %d of %d, quota %d"), CurrentWave, GetWavesToWin(), GetWaveKillQuota())

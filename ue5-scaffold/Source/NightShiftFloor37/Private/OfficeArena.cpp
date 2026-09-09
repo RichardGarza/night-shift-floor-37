@@ -75,7 +75,7 @@ namespace OfficeArenaPrivate
 
 AOfficeArena::AOfficeArena()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true; // Sprint AE — neon flicker only; cheap
 
 	BoundsVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("BoundsVolume"));
 	SetRootComponent(BoundsVolume);
@@ -362,6 +362,8 @@ void AOfficeArena::ApplyConfiguredSurfaceMaterials()
 			MID->SetVectorParameterValue(TEXT("EmissiveColor"), GreyboxColors.IsValidIndex(i) ? GreyboxColors[i] : FLinearColor::Green);
 			MID->SetScalarParameterValue(TEXT("EmissiveStrength"), GameConfig->NeonEmissiveStrength);
 			M->SetCastShadow(false);
+			NeonMIDs.Add(MID);
+			NeonBaseStrength = GameConfig->NeonEmissiveStrength;
 		}
 		M->SetMaterial(0, MID);
 		++Applied;
@@ -373,6 +375,7 @@ void AOfficeArena::ApplyConfiguredSurfaceMaterials()
 			L->SetIntensity(GameConfig->AtriumPlateLightIntensity);
 		}
 	}
+	ApplyResinGrowths();
 	bSurfaceMaterialsApplied = Applied > 0;
 	UE_LOG(LogNightShift, Log, TEXT("AOfficeArena::ApplyConfiguredSurfaceMaterials — %d blocks textured (floor=%s concrete=%s wall=%s metal=%s glass=%s)."),
 		Applied,
@@ -381,6 +384,103 @@ void AOfficeArena::ApplyConfiguredSurfaceMaterials()
 		GameConfig->CachedSurfaceWall ? TEXT("ok") : TEXT("miss"),
 		GameConfig->CachedSurfaceMetal ? TEXT("ok") : TEXT("miss"),
 		GameConfig->CachedSurfaceGlass ? TEXT("ok") : TEXT("miss"));
+}
+
+void AOfficeArena::ApplyResinGrowths()
+{
+	// Sprint AE — clusters of resin blobs climbing each egg-cover block and spilling onto the floor.
+	// Deterministic pseudo-random (seeded per cover) so the layout is stable between runs.
+	for (UStaticMeshComponent* Old : ResinGrowthVisuals)
+	{
+		if (Old) { Old->DestroyComponent(); }
+	}
+	ResinGrowthVisuals.Reset();
+	if (!GameConfig || GameConfig->ResinGrowthsPerCover <= 0 || !GameConfig->CachedSurfaceResin)
+	{
+		return;
+	}
+	UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	if (!Sphere)
+	{
+		return;
+	}
+	int32 CoverIndex = 0;
+	for (UBoxComponent* Vol : CoverVolumes)
+	{
+		if (!Vol || !Vol->GetName().Contains(TEXT("Resin")))
+		{
+			continue;
+		}
+		FRandomStream Rand(1337 + 17 * CoverIndex++);
+		const FVector C = Vol->GetRelativeLocation();
+		const FVector E = Vol->GetUnscaledBoxExtent();
+		// Which wall is nearest → blobs lean that way (the infestation came in from the edge).
+		const FVector Lean = FVector(FMath::Sign(C.X), FMath::Sign(C.Y), 0.f).GetSafeNormal();
+		for (int32 i = 0; i < GameConfig->ResinGrowthsPerCover; ++i)
+		{
+			const float Scale = Rand.FRandRange(0.45f, 1.35f); // engine sphere is 100 cm
+			FVector Off;
+			if (i < 3)
+			{
+				// On top / against the block.
+				Off = FVector(Rand.FRandRange(-E.X, E.X) * 0.7f, Rand.FRandRange(-E.Y, E.Y) * 0.7f, E.Z + Scale * 25.f);
+			}
+			else
+			{
+				// Spilled onto the floor around it, biased toward the wall, half-sunk.
+				const float Ang = Rand.FRandRange(0.f, 2.f * PI);
+				const float R = Rand.FRandRange(E.X + 40.f, E.X + 260.f);
+				Off = FVector(FMath::Cos(Ang) * R, FMath::Sin(Ang) * R, 0.f) + Lean * Rand.FRandRange(0.f, 120.f);
+				Off.Z = -E.Z + Scale * 28.f;
+			}
+			UStaticMeshComponent* Blob = NewObject<UStaticMeshComponent>(this, NAME_None, RF_Transient);
+			if (!Blob)
+			{
+				continue;
+			}
+			Blob->SetStaticMesh(Sphere);
+			Blob->SetupAttachment(BoundsVolume);
+			Blob->SetRelativeLocation(C + Off);
+			Blob->SetRelativeRotation(FRotator(Rand.FRandRange(-15.f, 15.f), Rand.FRandRange(0.f, 360.f), Rand.FRandRange(-15.f, 15.f)));
+			Blob->SetRelativeScale3D(FVector(Scale * Rand.FRandRange(0.9f, 1.3f), Scale, Scale * Rand.FRandRange(0.55f, 0.8f))); // squashed
+			Blob->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Blob->SetCastShadow(true);
+			if (UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(GameConfig->CachedSurfaceResin, this))
+			{
+				MID->SetScalarParameterValue(TEXT("EmissiveStrength"), Rand.FRandRange(0.08f, 0.35f));
+				Blob->SetMaterial(0, MID);
+			}
+			Blob->RegisterComponent();
+			ResinGrowthVisuals.Add(Blob);
+		}
+	}
+	UE_LOG(LogNightShift, Log, TEXT("AOfficeArena::ApplyResinGrowths — %d resin blobs on %d covers."), ResinGrowthVisuals.Num(), CoverIndex);
+}
+
+void AOfficeArena::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	if (NeonMIDs.Num() == 0 || !GameConfig)
+	{
+		return;
+	}
+	// Sprint AE — dying fluorescents: each strip has its own slow hum + occasional deep dips.
+	NeonTime += DeltaSeconds;
+	const float Depth = FMath::Clamp(GameConfig->NeonFlickerDepth, 0.f, 1.f);
+	const float Rate = FMath::Max(GameConfig->NeonFlickerRate, 0.01f);
+	for (int32 i = 0; i < NeonMIDs.Num(); ++i)
+	{
+		UMaterialInstanceDynamic* MID = NeonMIDs[i];
+		if (!MID)
+		{
+			continue;
+		}
+		const float T = NeonTime * Rate + i * 7.31f;
+		const float Hum = 0.92f + 0.08f * FMath::Sin(T * 23.f);                 // mains buzz
+		const float Noise = FMath::PerlinNoise1D(T * 1.7f);                        // -1..1 slow wander
+		const float Dip = (Noise > 0.55f) ? 1.f - Depth * FMath::Clamp((Noise - 0.55f) / 0.2f, 0.f, 1.f) : 1.f;
+		MID->SetScalarParameterValue(TEXT("EmissiveStrength"), NeonBaseStrength * Hum * Dip);
+	}
 }
 
 void AOfficeArena::ApplyGreyboxColors()

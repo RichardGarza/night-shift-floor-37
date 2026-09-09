@@ -460,6 +460,13 @@ public:
 	/** Sprint AD — desk-pair work pods on a ring inside the perimeter, between the edge spawns (0 = none). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces", meta = (ClampMin = "0", ClampMax = "16")) int32 OfficePodCount = 8;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") float OfficePodRingRadiusCm = 2050.f;
+	/** Sprint AE — resin growth spheres per egg-cover block (0 = none); climb the block and spill onto the floor. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces", meta = (ClampMin = "0", ClampMax = "16")) int32 ResinGrowthsPerCover = 7;
+	/** Sprint AE — dying-fluorescent flicker on the neon trim: fraction of strength lost in a dip, and dips per second. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces", meta = (ClampMin = "0", ClampMax = "1")) float NeonFlickerDepth = 0.75f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") float NeonFlickerRate = 0.6f;
+	/** Sprint AE — "Wave N" banner hold at each wave start (0 = off). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves") float WaveStartBannerSeconds = 2.2f;
 	/** Sprint AD — cool fluorescent under each atrium plate so the tower reads as a lit interior, not a silhouette. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") float AtriumPlateLightIntensity = 900.f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") float NeonEmissiveStrength = 7.f;
