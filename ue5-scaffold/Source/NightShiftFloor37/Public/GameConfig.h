@@ -7,6 +7,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/SkeletalMesh.h"
 #include "Animation/AnimSequence.h"
+#include "Materials/MaterialInterface.h"
 #include "GameConfig.generated.h"
 
 /** Sprint W — rifle-carry animation set for the player mannequin (code-driven, no AnimBP). */
@@ -110,9 +111,9 @@ struct FAlienVariantTuning
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") FLinearColor GlowColor = FLinearColor(1.f, 0.15f, 0.05f);
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") float GlowIntensity = 400.f;
 	/** Sprint AB — multiplies the diffuse on M_AlienVariant ("Tint" parameter). White = untinted. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") FLinearColor Tint = FLinearColor(1.0f, 0.42f, 0.38f);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") FLinearColor Tint = FLinearColor(2.4f, 0.9f, 0.8f);
 	/** Sprint AB — resting emissive so the variant glows on its own skin, not just from the point light. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") float RestingEmissive = 0.6f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") float RestingEmissive = 1.6f;
 };
 
 /**
@@ -441,6 +442,36 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	TSoftObjectPtr<UStaticMesh> ServerRackPropMesh;
 
+	// Sprint AC — arena surfaces (Poly Haven CC0 via Scripts/build_surface_materials.py). Instances of
+	// M_WorldSurface (world-projected UVs) so the scaled greybox cubes tile correctly. Soft-miss → colour.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces")
+	bool bArenaSurfaceMaterials = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") TSoftObjectPtr<UMaterialInterface> SurfaceFloor;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") TSoftObjectPtr<UMaterialInterface> SurfaceConcrete;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") TSoftObjectPtr<UMaterialInterface> SurfaceWall;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") TSoftObjectPtr<UMaterialInterface> SurfaceMetal;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") TSoftObjectPtr<UMaterialInterface> SurfaceBerm;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") TSoftObjectPtr<UMaterialInterface> SurfaceGlass;
+	/** Emissive trim strips along the perimeter (EmissiveColor from the block colour, EmissiveStrength below). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") TSoftObjectPtr<UMaterialInterface> SurfaceNeon;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") float NeonEmissiveStrength = 7.f;
+	/** Height of the painted perimeter wall; dirty glass fills the rest up to the 3.2 m bounds wall. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") float PerimeterWallHeightCm = 200.f;
+
+	/** Multiplied into the floor tint (wet, dirty tile reads darker than the raw scan). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") FLinearColor FloorTint = FLinearColor(0.95f, 1.0f, 0.98f);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") FLinearColor ConcreteTint = FLinearColor(1.1f, 1.1f, 1.05f);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") FLinearColor WallTint = FLinearColor(1.0f, 1.0f, 0.95f);
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache") TObjectPtr<UMaterialInterface> CachedSurfaceFloor;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache") TObjectPtr<UMaterialInterface> CachedSurfaceConcrete;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache") TObjectPtr<UMaterialInterface> CachedSurfaceWall;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache") TObjectPtr<UMaterialInterface> CachedSurfaceMetal;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache") TObjectPtr<UMaterialInterface> CachedSurfaceBerm;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache") TObjectPtr<UMaterialInterface> CachedSurfaceGlass;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache") TObjectPtr<UMaterialInterface> CachedSurfaceNeon;
+
 	/**
 	 * Poly Haven mounted fluorescent (Phase 8). Import-only for Sprint G if unused in arena yet.
 	 * Expected asset: /Game/Imported/Props/Lights/SM_MountedFluorescent
@@ -600,7 +631,7 @@ public:
 
 	/** Sprint AB — Grunt diffuse tint on M_AlienVariant (white = the Mixamo texture as shipped). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens|Behaviour")
-	FLinearColor AlienGruntTint = FLinearColor::White;
+	FLinearColor AlienGruntTint = FLinearColor(1.7f, 1.7f, 1.65f); // the Mixamo skin scan is dark; lift it into the arena light
 
 	/** Sprint AB — landing a shot plays the HitReact clip and staggers the alien (no move / no fire). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens|Behaviour")

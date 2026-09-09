@@ -96,6 +96,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint Z waves + variants | **Shipped** | 8 numbered waves with kill quotas, breather + restock between waves, Brute (wave 3) / Stalker (wave 5) variants, win on clearing wave 8 (~60 kills). `-NightShiftStartWave=N` for smoke runs. `ue5-scaffold/SPRINT_Z_WAVES.md` |
 | Sprint AA Mutant model | **Shipped** | Mixamo Mutant (`/Game/Imported/Aliens/Mutant/SK_Mutant` + 6 clips, root-locked) auto-selected by `bAutoPickAlienModelSet`; Quaternius alien is the fallback. `ue5-scaffold/SPRINT_AA_MUTANT.md`, `docs/sprintaa_mutant_wave4.png` |
 | Sprint AB variant skins | **Shipped** | `M_AlienVariant` (Tint/Emissive params) on SK_Mutant, Brute red / Stalker cyan skins, hit-react stagger, physics asset → per-bone headshots. `ue5-scaffold/SPRINT_AB_VARIANT_SKINS.md` |
+| Sprint AC arena surfaces | **Shipped** | Poly Haven CC0 textures on a world-projected master material: wet tile floor, peeling painted 2 m walls + dirty-glass band + neon trim, concrete tower, corrugated ramps. Fixed invisible cover blocks and a stale serialized greybox list. `ue5-scaffold/SPRINT_AC_SURFACES.md`, `docs/sprintac_textured_arena_wave5.png` |
 | Self-test | 47 / 47 | Adds wave-clear breather, restock, wave 2 growth, wave reset, final-wave win + variant mix |
 | `Content/Imported` | **Partly committed** | `Aliens/Skel/` (SK_Alien + anims) is committed; office props / fluorescents / `SM_Alien` remain local-only on the Desktop copy — optional Git LFS |
 | UE5 feel | Needs human | Recoil accumulate vs self-cancel still open |
@@ -137,6 +138,10 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 ---
 
 ## Next steps
+
+### After Sprint AC (2026-09-09)
+
+Arena is textured and lit with neon trim; Mutant variants tinted (Brute red, Stalker cyan). Richard to judge in play. Candidates next: darker glass band, tower fill light, resin cover material, more office dressing, ceiling decision, AnimBlueprint blends, recoil.
 
 ### After Sprint AA (2026-09-09)
 

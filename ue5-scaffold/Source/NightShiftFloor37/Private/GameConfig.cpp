@@ -23,8 +23,8 @@ UGameConfig::UGameConfig()
 	Stalker.AccuracyBonus = 0.05f;
 	Stalker.GlowColor = FLinearColor(0.2f, 0.9f, 1.0f);
 	Stalker.GlowIntensity = 300.f;
-	Stalker.Tint = FLinearColor(0.45f, 0.85f, 1.0f);
-	Stalker.RestingEmissive = 0.5f;
+	Stalker.Tint = FLinearColor(0.9f, 2.0f, 2.4f);
+	Stalker.RestingEmissive = 1.3f;
 	EnsurePhase8DefaultSoftPaths();
 }
 
@@ -56,6 +56,15 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	{
 		FluorescentLightMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Lights/SM_MountedFluorescent.SM_MountedFluorescent")));
 	}
+	// Sprint AC — arena surface material instances.
+	auto SoftMat = [](const TCHAR* Name) { return TSoftObjectPtr<UMaterialInterface>(FSoftObjectPath(FString::Printf(TEXT("/Game/Imported/Surfaces/%s.%s"), Name, Name))); };
+	if (SurfaceFloor.IsNull())    { SurfaceFloor    = SoftMat(TEXT("MI_Floor")); }
+	if (SurfaceConcrete.IsNull()) { SurfaceConcrete = SoftMat(TEXT("MI_Concrete")); }
+	if (SurfaceWall.IsNull())     { SurfaceWall     = SoftMat(TEXT("MI_Wall")); }
+	if (SurfaceMetal.IsNull())    { SurfaceMetal    = SoftMat(TEXT("MI_Metal")); }
+	if (SurfaceBerm.IsNull())     { SurfaceBerm     = SoftMat(TEXT("MI_Berm")); }
+	if (SurfaceGlass.IsNull())    { SurfaceGlass    = SoftMat(TEXT("MI_Glass")); }
+	if (SurfaceNeon.IsNull())     { SurfaceNeon     = SoftMat(TEXT("M_Neon")); }
 
 	// Sprint AA — alien model set: Mixamo Mutant when imported, else the Sprint X Quaternius alien.
 	auto SoftAnim = [](const TCHAR* Path) { return TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(Path)); };
@@ -154,6 +163,13 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 	CachedFluorescentLightMesh = FluorescentLightMesh.LoadSynchronous();
 	CachedPlayerSkeletalMesh = PlayerSkeletalMesh.LoadSynchronous();
 	CachedRifleMesh = RifleMesh.LoadSynchronous();
+	CachedSurfaceFloor    = SurfaceFloor.LoadSynchronous();
+	CachedSurfaceConcrete = SurfaceConcrete.LoadSynchronous();
+	CachedSurfaceWall     = SurfaceWall.LoadSynchronous();
+	CachedSurfaceMetal    = SurfaceMetal.LoadSynchronous();
+	CachedSurfaceBerm     = SurfaceBerm.LoadSynchronous();
+	CachedSurfaceGlass    = SurfaceGlass.LoadSynchronous();
+	CachedSurfaceNeon     = SurfaceNeon.LoadSynchronous();
 	CachedPlayerAnims.Idle      = PlayerAnims.Idle.LoadSynchronous();
 	CachedPlayerAnims.WalkFwd   = PlayerAnims.WalkFwd.LoadSynchronous();
 	CachedPlayerAnims.WalkBwd   = PlayerAnims.WalkBwd.LoadSynchronous();

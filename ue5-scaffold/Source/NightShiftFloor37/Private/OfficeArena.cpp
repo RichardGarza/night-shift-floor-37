@@ -153,8 +153,17 @@ AOfficeArena::AOfficeArena()
 	BuildGreyboxLighting();
 }
 
-UStaticMeshComponent* AOfficeArena::AddGreyboxBox(const FString& Name, const FVector& Center, const FVector& Size, const FRotator& Rot, const FLinearColor& Color)
+UStaticMeshComponent* AOfficeArena::AddGreyboxBox(const FString& Name, const FVector& Center, const FVector& Size, const FRotator& Rot, const FLinearColor& Color, EArenaSurface Surface)
 {
+	// Sprint AC — the cover-volume blocks are added before BuildGreybox, so resolve the engine cube here
+	// (constructor context) instead of relying on member order. Without this they had no mesh at all.
+	if (!GreyboxCubeMesh || !GreyboxMaterial)
+	{
+		static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
+		static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMatFinder(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+		if (!GreyboxCubeMesh && CubeMeshFinder.Succeeded()) { GreyboxCubeMesh = CubeMeshFinder.Object; }
+		if (!GreyboxMaterial && ShapeMatFinder.Succeeded()) { GreyboxMaterial = ShapeMatFinder.Object; }
+	}
 	UStaticMeshComponent* M = CreateDefaultSubobject<UStaticMeshComponent>(*Name);
 	M->SetupAttachment(BoundsVolume);
 	M->SetRelativeLocation(Center);
@@ -172,10 +181,11 @@ UStaticMeshComponent* AOfficeArena::AddGreyboxBox(const FString& Name, const FVe
 	M->SetCastShadow(true);
 	GreyboxMeshes.Add(M);
 	GreyboxColors.Add(Color);
+	GreyboxSurfaces.Add(Surface);
 	return M;
 }
 
-UStaticMeshComponent* AOfficeArena::AddGreyboxRamp(const FString& Name, const FVector& SurfaceStart, const FVector& SurfaceEnd, float Width, const FLinearColor& Color)
+UStaticMeshComponent* AOfficeArena::AddGreyboxRamp(const FString& Name, const FVector& SurfaceStart, const FVector& SurfaceEnd, float Width, const FLinearColor& Color, EArenaSurface Surface)
 {
 	const FVector D = SurfaceEnd - SurfaceStart;
 	const float Horiz = D.Size2D();
@@ -183,7 +193,7 @@ UStaticMeshComponent* AOfficeArena::AddGreyboxRamp(const FString& Name, const FV
 	const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X));
 	const float Pitch = FMath::RadiansToDegrees(FMath::Atan2(D.Z, Horiz)); // +pitch raises the +X end
 	const FVector Center = (SurfaceStart + SurfaceEnd) * 0.5f + FVector(0.f, 0.f, -10.f);
-	return AddGreyboxBox(Name, Center, FVector(Len, Width, 20.f), FRotator(Pitch, Yaw, 0.f), Color);
+	return AddGreyboxBox(Name, Center, FVector(Len, Width, 20.f), FRotator(Pitch, Yaw, 0.f), Color, Surface);
 }
 
 void AOfficeArena::BuildGreybox()
@@ -196,33 +206,49 @@ void AOfficeArena::BuildGreybox()
 	const FLinearColor Steel(0.32f, 0.34f, 0.36f);
 	const float Half = 2500.f; // ctor default; SyncLayoutFromConfig rescales the bounds, not the greybox
 
-	AddGreyboxBox(TEXT("GB_Floor"), FVector(0.f, 0.f, -10.f), FVector(Half * 2.f, Half * 2.f, 20.f), FRotator::ZeroRotator, Floor);
-	AddGreyboxBox(TEXT("GB_WallN"), FVector(0.f, Half + 10.f, 160.f), FVector(Half * 2.f + 40.f, 20.f, 320.f), FRotator::ZeroRotator, Glass);
-	AddGreyboxBox(TEXT("GB_WallS"), FVector(0.f, -Half - 10.f, 160.f), FVector(Half * 2.f + 40.f, 20.f, 320.f), FRotator::ZeroRotator, Glass);
-	AddGreyboxBox(TEXT("GB_WallE"), FVector(Half + 10.f, 0.f, 160.f), FVector(20.f, Half * 2.f, 320.f), FRotator::ZeroRotator, Glass);
-	AddGreyboxBox(TEXT("GB_WallW"), FVector(-Half - 10.f, 0.f, 160.f), FVector(20.f, Half * 2.f, 320.f), FRotator::ZeroRotator, Glass);
+	AddGreyboxBox(TEXT("GB_Floor"), FVector(0.f, 0.f, -10.f), FVector(Half * 2.f, Half * 2.f, 20.f), FRotator::ZeroRotator, Floor, EArenaSurface::Floor);
+	// Perimeter: a painted wall (Sprint AC — Richard: "the walls need texture") with a dirty-glass band
+	// above it up to the 3.2 m bounds wall, and an emissive trim strip at the seam.
+	const float Spandrel = 200.f; // UGameConfig::PerimeterWallHeightCm mirrors this default
+	AddGreyboxBox(TEXT("GB_WallN"), FVector(0.f, Half + 10.f, Spandrel + (320.f - Spandrel) * 0.5f), FVector(Half * 2.f + 40.f, 20.f, 320.f - Spandrel), FRotator::ZeroRotator, Glass, EArenaSurface::Glass);
+	AddGreyboxBox(TEXT("GB_WallS"), FVector(0.f, -Half - 10.f, Spandrel + (320.f - Spandrel) * 0.5f), FVector(Half * 2.f + 40.f, 20.f, 320.f - Spandrel), FRotator::ZeroRotator, Glass, EArenaSurface::Glass);
+	AddGreyboxBox(TEXT("GB_WallE"), FVector(Half + 10.f, 0.f, Spandrel + (320.f - Spandrel) * 0.5f), FVector(20.f, Half * 2.f, 320.f - Spandrel), FRotator::ZeroRotator, Glass, EArenaSurface::Glass);
+	AddGreyboxBox(TEXT("GB_WallW"), FVector(-Half - 10.f, 0.f, Spandrel + (320.f - Spandrel) * 0.5f), FVector(20.f, Half * 2.f, 320.f - Spandrel), FRotator::ZeroRotator, Glass, EArenaSurface::Glass);
+	const FLinearColor Paint(0.36f, 0.38f, 0.34f);
+	AddGreyboxBox(TEXT("GB_SpandrelN"), FVector(0.f, Half + 10.f, Spandrel * 0.5f), FVector(Half * 2.f + 40.f, 24.f, Spandrel), FRotator::ZeroRotator, Paint, EArenaSurface::Wall);
+	AddGreyboxBox(TEXT("GB_SpandrelS"), FVector(0.f, -Half - 10.f, Spandrel * 0.5f), FVector(Half * 2.f + 40.f, 24.f, Spandrel), FRotator::ZeroRotator, Paint, EArenaSurface::Wall);
+	AddGreyboxBox(TEXT("GB_SpandrelE"), FVector(Half + 10.f, 0.f, Spandrel * 0.5f), FVector(24.f, Half * 2.f, Spandrel), FRotator::ZeroRotator, Paint, EArenaSurface::Wall);
+	AddGreyboxBox(TEXT("GB_SpandrelW"), FVector(-Half - 10.f, 0.f, Spandrel * 0.5f), FVector(24.f, Half * 2.f, Spandrel), FRotator::ZeroRotator, Paint, EArenaSurface::Wall);
+	// Neon trim: sick green on N/S, amber on E/W — the block colour becomes the emissive colour.
+	const FLinearColor NeonG(0.35f, 1.0f, 0.55f);
+	const FLinearColor NeonA(1.0f, 0.62f, 0.22f);
+	const float TrimZ = Spandrel + 4.f;
+	AddGreyboxBox(TEXT("GB_TrimN"), FVector(0.f, Half - 6.f, TrimZ), FVector(Half * 2.f, 8.f, 8.f), FRotator::ZeroRotator, NeonG, EArenaSurface::Neon);
+	AddGreyboxBox(TEXT("GB_TrimS"), FVector(0.f, -Half + 6.f, TrimZ), FVector(Half * 2.f, 8.f, 8.f), FRotator::ZeroRotator, NeonG, EArenaSurface::Neon);
+	AddGreyboxBox(TEXT("GB_TrimE"), FVector(Half - 6.f, 0.f, TrimZ), FVector(8.f, Half * 2.f, 8.f), FRotator::ZeroRotator, NeonA, EArenaSurface::Neon);
+	AddGreyboxBox(TEXT("GB_TrimW"), FVector(-Half + 6.f, 0.f, TrimZ), FVector(8.f, Half * 2.f, 8.f), FRotator::ZeroRotator, NeonA, EArenaSurface::Neon);
 
 	// Atrium tower (DESIGN: 3 open levels, ramps, no rails, ~14 m). Levels 467 / 933 / 1400.
 	const float L1 = 467.f, L2 = 933.f, L3 = 1400.f;
 	const float Lane = 570.f;   // ramp / bridge centre-line, just outside the 900 cm plates
 	const float LaneW = 240.f;
-	AddGreyboxBox(TEXT("GB_Column"), FVector(0.f, 0.f, 700.f), FVector(120.f, 120.f, 1400.f), FRotator::ZeroRotator, Concrete);
-	AddGreyboxBox(TEXT("GB_PlateL1"), FVector(0.f, 0.f, L1 - 15.f), FVector(900.f, 900.f, 30.f), FRotator::ZeroRotator, Concrete);
-	AddGreyboxBox(TEXT("GB_PlateL2"), FVector(0.f, 0.f, L2 - 15.f), FVector(900.f, 900.f, 30.f), FRotator::ZeroRotator, Concrete);
-	AddGreyboxBox(TEXT("GB_PlateL3"), FVector(0.f, 0.f, L3 - 15.f), FVector(900.f, 900.f, 30.f), FRotator::ZeroRotator, Concrete);
+	AddGreyboxBox(TEXT("GB_Column"), FVector(0.f, 0.f, 700.f), FVector(120.f, 120.f, 1400.f), FRotator::ZeroRotator, Concrete, EArenaSurface::Concrete);
+	AddGreyboxBox(TEXT("GB_PlateL1"), FVector(0.f, 0.f, L1 - 15.f), FVector(900.f, 900.f, 30.f), FRotator::ZeroRotator, Concrete, EArenaSurface::Concrete);
+	AddGreyboxBox(TEXT("GB_PlateL2"), FVector(0.f, 0.f, L2 - 15.f), FVector(900.f, 900.f, 30.f), FRotator::ZeroRotator, Concrete, EArenaSurface::Concrete);
+	AddGreyboxBox(TEXT("GB_PlateL3"), FVector(0.f, 0.f, L3 - 15.f), FVector(900.f, 900.f, 30.f), FRotator::ZeroRotator, Concrete, EArenaSurface::Concrete);
 	// Spiral: south ramp up to L1, west ramp to L2, east ramp to L3, flat bridges between, each
 	// bridge touching its plate edge so you can step across.
-	AddGreyboxRamp(TEXT("GB_Ramp1"), FVector(1290.f, -Lane, 0.f), FVector(150.f, -Lane, L1), LaneW, Steel);
-	AddGreyboxBox(TEXT("GB_Bridge1"), FVector(-210.f, -Lane, L1 - 15.f), FVector(720.f, LaneW, 30.f), FRotator::ZeroRotator, Steel);
-	AddGreyboxRamp(TEXT("GB_Ramp2"), FVector(-Lane, -Lane, L1), FVector(-Lane, Lane, L2), LaneW, Steel);
-	AddGreyboxBox(TEXT("GB_Bridge2"), FVector(0.f, Lane, L2 - 15.f), FVector(1140.f + LaneW, LaneW, 30.f), FRotator::ZeroRotator, Steel);
-	AddGreyboxRamp(TEXT("GB_Ramp3"), FVector(Lane, Lane, L2), FVector(Lane, -Lane, L3), LaneW, Steel);
-	AddGreyboxBox(TEXT("GB_Bridge3"), FVector(0.f, -Lane, L3 - 15.f), FVector(1140.f + LaneW, LaneW, 30.f), FRotator::ZeroRotator, Steel);
+	AddGreyboxRamp(TEXT("GB_Ramp1"), FVector(1290.f, -Lane, 0.f), FVector(150.f, -Lane, L1), LaneW, Steel, EArenaSurface::Steel);
+	AddGreyboxBox(TEXT("GB_Bridge1"), FVector(-210.f, -Lane, L1 - 15.f), FVector(720.f, LaneW, 30.f), FRotator::ZeroRotator, Steel, EArenaSurface::Steel);
+	AddGreyboxRamp(TEXT("GB_Ramp2"), FVector(-Lane, -Lane, L1), FVector(-Lane, Lane, L2), LaneW, Steel, EArenaSurface::Steel);
+	AddGreyboxBox(TEXT("GB_Bridge2"), FVector(0.f, Lane, L2 - 15.f), FVector(1140.f + LaneW, LaneW, 30.f), FRotator::ZeroRotator, Steel, EArenaSurface::Steel);
+	AddGreyboxRamp(TEXT("GB_Ramp3"), FVector(Lane, Lane, L2), FVector(Lane, -Lane, L3), LaneW, Steel, EArenaSurface::Steel);
+	AddGreyboxBox(TEXT("GB_Bridge3"), FVector(0.f, -Lane, L3 - 15.f), FVector(1140.f + LaneW, LaneW, 30.f), FRotator::ZeroRotator, Steel, EArenaSurface::Steel);
 
 	// Raised conference pad with a broken glass wall, and a collapsed drywall berm (DESIGN).
-	AddGreyboxBox(TEXT("GB_ConfPad"), FVector(1500.f, 900.f, 35.f), FVector(800.f, 600.f, 70.f), FRotator::ZeroRotator, Concrete);
-	AddGreyboxBox(TEXT("GB_ConfGlass"), FVector(1500.f, 1210.f, 160.f), FVector(600.f, 16.f, 180.f), FRotator::ZeroRotator, Glass);
-	AddGreyboxBox(TEXT("GB_Berm"), FVector(-1500.f, -950.f, 35.f), FVector(700.f, 420.f, 70.f), FRotator(0.f, 20.f, 0.f), FLinearColor(0.26f, 0.24f, 0.21f));
+	AddGreyboxBox(TEXT("GB_ConfPad"), FVector(1500.f, 900.f, 35.f), FVector(800.f, 600.f, 70.f), FRotator::ZeroRotator, Concrete, EArenaSurface::Concrete);
+	AddGreyboxBox(TEXT("GB_ConfGlass"), FVector(1500.f, 1210.f, 160.f), FVector(600.f, 16.f, 180.f), FRotator::ZeroRotator, Glass, EArenaSurface::Glass);
+	AddGreyboxBox(TEXT("GB_Berm"), FVector(-1500.f, -950.f, 35.f), FVector(700.f, 420.f, 70.f), FRotator(0.f, 20.f, 0.f), FLinearColor(0.26f, 0.24f, 0.21f), EArenaSurface::Berm);
 }
 
 void AOfficeArena::BuildGreyboxLighting()
@@ -270,6 +296,70 @@ void AOfficeArena::BuildGreyboxLighting()
 	}
 }
 
+void AOfficeArena::ApplyConfiguredSurfaceMaterials()
+{
+	if (bSurfaceMaterialsApplied || !bBuildGreybox || !GameConfig || !GameConfig->bArenaSurfaceMaterials)
+	{
+		return;
+	}
+	GameConfig->ResolvePhase8LoadedMeshes();
+	int32 Applied = 0;
+	for (int32 i = 0; i < GreyboxMeshes.Num(); ++i)
+	{
+		UStaticMeshComponent* M = GreyboxMeshes[i];
+		const EArenaSurface Surface = GreyboxSurfaces.IsValidIndex(i) ? GreyboxSurfaces[i] : EArenaSurface::Colour;
+		if (!M || Surface == EArenaSurface::Colour)
+		{
+			continue;
+		}
+		UMaterialInterface* Parent = nullptr;
+		FLinearColor Tint = FLinearColor::White;
+		switch (Surface)
+		{
+		case EArenaSurface::Floor:    Parent = GameConfig->CachedSurfaceFloor;    Tint = GameConfig->FloorTint; break;
+		case EArenaSurface::Concrete: Parent = GameConfig->CachedSurfaceConcrete; Tint = GameConfig->ConcreteTint; break;
+		case EArenaSurface::Wall:     Parent = GameConfig->CachedSurfaceWall;     Tint = GameConfig->WallTint; break;
+		case EArenaSurface::Steel:    Parent = GameConfig->CachedSurfaceMetal; break;
+		case EArenaSurface::Berm:     Parent = GameConfig->CachedSurfaceBerm; break;
+		case EArenaSurface::Glass:    Parent = GameConfig->CachedSurfaceGlass; break;
+		case EArenaSurface::Neon:     Parent = GameConfig->CachedSurfaceNeon; break;
+		default: break;
+		}
+		if (!Parent)
+		{
+			continue; // soft-miss → colour MID from ApplyGreyboxColors stays
+		}
+		UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Parent, this);
+		if (!MID)
+		{
+			continue;
+		}
+		// World-projected UVs: project along the block's thin axis (Z → XY, Y → XZ, X → YZ).
+		const FVector S = M->GetRelativeScale3D();
+		float PlaneSel = 0.f;
+		if (S.Y <= S.X && S.Y <= S.Z)      { PlaneSel = 1.f; }
+		else if (S.X <= S.Y && S.X <= S.Z) { PlaneSel = 2.f; }
+		MID->SetScalarParameterValue(TEXT("PlaneSel"), PlaneSel);
+		MID->SetVectorParameterValue(TEXT("Tint"), Tint);
+		if (Surface == EArenaSurface::Neon)
+		{
+			MID->SetVectorParameterValue(TEXT("EmissiveColor"), GreyboxColors.IsValidIndex(i) ? GreyboxColors[i] : FLinearColor::Green);
+			MID->SetScalarParameterValue(TEXT("EmissiveStrength"), GameConfig->NeonEmissiveStrength);
+			M->SetCastShadow(false);
+		}
+		M->SetMaterial(0, MID);
+		++Applied;
+	}
+	bSurfaceMaterialsApplied = Applied > 0;
+	UE_LOG(LogNightShift, Log, TEXT("AOfficeArena::ApplyConfiguredSurfaceMaterials — %d blocks textured (floor=%s concrete=%s wall=%s metal=%s glass=%s)."),
+		Applied,
+		GameConfig->CachedSurfaceFloor ? TEXT("ok") : TEXT("miss"),
+		GameConfig->CachedSurfaceConcrete ? TEXT("ok") : TEXT("miss"),
+		GameConfig->CachedSurfaceWall ? TEXT("ok") : TEXT("miss"),
+		GameConfig->CachedSurfaceMetal ? TEXT("ok") : TEXT("miss"),
+		GameConfig->CachedSurfaceGlass ? TEXT("ok") : TEXT("miss"));
+}
+
 void AOfficeArena::ApplyGreyboxColors()
 {
 	for (int32 i = 0; i < GreyboxMeshes.Num(); ++i)
@@ -284,6 +374,10 @@ void AOfficeArena::ApplyGreyboxColors()
 			M->SetVisibility(false);
 			M->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			continue;
+		}
+		if (bSurfaceMaterialsApplied && GreyboxSurfaces.IsValidIndex(i) && GreyboxSurfaces[i] != EArenaSurface::Colour)
+		{
+			continue; // Sprint AC — textured already
 		}
 		if (UMaterialInstanceDynamic* MID = M->CreateAndSetMaterialInstanceDynamic(0))
 		{
@@ -330,7 +424,9 @@ void AOfficeArena::SetupDefaultCoverVolumeRotated(
 	const bool bResin = BoxName.Contains(TEXT("Resin"));
 	const bool bRack = BoxName.Contains(TEXT("Rack"));
 	const FLinearColor Color = bResin ? FLinearColor(0.42f, 0.36f, 0.12f) : bRack ? FLinearColor(0.16f, 0.18f, 0.22f) : FLinearColor(0.34f, 0.32f, 0.27f);
-	AddGreyboxBox(BoxName + TEXT("_Mesh"), RelativeLocation, Extent * 2.f, RelativeRotation, Color);
+	// Sprint AC — cubicle blocks take the painted-wall texture; racks/resin keep their tints (props sit on racks).
+	AddGreyboxBox(BoxName + TEXT("_Mesh"), RelativeLocation, Extent * 2.f, RelativeRotation, Color,
+		(bResin || bRack) ? EArenaSurface::Colour : EArenaSurface::Wall);
 }
 
 

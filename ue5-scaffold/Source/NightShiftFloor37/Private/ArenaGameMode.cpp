@@ -434,6 +434,7 @@ void AArenaGameMode::ResolveAndPropagateGameConfig()
 	if (CachedArena && GameConfig)
 	{
 		CachedArena->GameConfig = GameConfig;
+		CachedArena->ApplyConfiguredSurfaceMaterials();
 		CachedArena->ApplyConfiguredCoverMeshes();
 		CachedArena->ApplyConfiguredOfficeDressMeshes();
 		CachedArena->ApplyConfiguredServerRackMeshes();

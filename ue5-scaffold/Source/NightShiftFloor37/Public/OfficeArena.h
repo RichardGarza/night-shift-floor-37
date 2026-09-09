@@ -113,8 +113,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Greybox")
 	bool bBuildGreybox = true;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
+	/**
+	 * Transient on purpose: the constructor rebuilds this list every load. If it were saved in the map,
+	 * an arena placed before new blocks were added would load the OLD list and misalign it with
+	 * GreyboxColors / GreyboxSurfaces (Sprint AC found bridges wearing the neon material this way).
+	 */
+	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
 	TArray<TObjectPtr<UStaticMeshComponent>> GreyboxMeshes;
+
+	/** Sprint AC — which surface material each greybox block takes (parallel to GreyboxMeshes). */
+	enum class EArenaSurface : uint8 { Colour, Floor, Glass, Concrete, Steel, Berm, Wall, Neon };
+
+	/**
+	 * Sprint AC — swap greybox colour MIDs for UGameConfig surface materials (world-projected
+	 * textures; PlaneSel picked from each block's thin axis). Idempotent; soft-miss keeps colours.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Greybox")
+	void ApplyConfiguredSurfaceMaterials();
 
 	/** Phase 8 optional cover prop visuals (from GameConfig::CoverPropMesh). */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cover|Phase8")
@@ -259,10 +274,12 @@ protected:
 	/** Create the MIDs that colour the greybox (BeginPlay; MIDs cannot exist in the constructor). */
 	void ApplyGreyboxColors();
 
-	UStaticMeshComponent* AddGreyboxBox(const FString& Name, const FVector& Center, const FVector& Size, const FRotator& Rot, const FLinearColor& Color);
+	UStaticMeshComponent* AddGreyboxBox(const FString& Name, const FVector& Center, const FVector& Size, const FRotator& Rot, const FLinearColor& Color, EArenaSurface Surface = EArenaSurface::Colour);
 	/** Sloped box whose top surface runs from SurfaceStart to SurfaceEnd (world-relative cm). */
-	UStaticMeshComponent* AddGreyboxRamp(const FString& Name, const FVector& SurfaceStart, const FVector& SurfaceEnd, float Width, const FLinearColor& Color);
+	UStaticMeshComponent* AddGreyboxRamp(const FString& Name, const FVector& SurfaceStart, const FVector& SurfaceEnd, float Width, const FLinearColor& Color, EArenaSurface Surface = EArenaSurface::Colour);
 	TArray<FLinearColor> GreyboxColors;
+	TArray<EArenaSurface> GreyboxSurfaces;
+	bool bSurfaceMaterialsApplied = false;
 	UPROPERTY()
 	TObjectPtr<UStaticMesh> GreyboxCubeMesh;
 	UPROPERTY()

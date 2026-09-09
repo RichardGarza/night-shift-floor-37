@@ -1,4 +1,5 @@
 #include "NightShiftCharacter.h"
+#include "Misc/CommandLine.h"
 #include "GameConfig.h"
 #include "RifleComponent.h"
 #include "ArenaCollision.h"
@@ -821,6 +822,12 @@ float ANightShiftCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
 	AController* EventInstigator, AActor* DamageCauser)
 {
 	if (!IsAlive())
+	{
+		return 0.f;
+	}
+	// -NightShiftGodMode: screenshot / smoke runs where nobody is at the controls.
+	static const bool bGodMode = FParse::Param(FCommandLine::Get(), TEXT("NightShiftGodMode"));
+	if (bGodMode)
 	{
 		return 0.f;
 	}
