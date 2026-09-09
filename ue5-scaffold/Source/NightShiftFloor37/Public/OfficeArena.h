@@ -122,7 +122,7 @@ public:
 	TArray<TObjectPtr<UStaticMeshComponent>> GreyboxMeshes;
 
 	/** Sprint AC — which surface material each greybox block takes (parallel to GreyboxMeshes). */
-	enum class EArenaSurface : uint8 { Colour, Floor, Glass, Concrete, Steel, Berm, Wall, Neon };
+	enum class EArenaSurface : uint8 { Colour, Floor, Glass, Concrete, Steel, Berm, Wall, Neon, Resin };
 
 	/**
 	 * Sprint AC — swap greybox colour MIDs for UGameConfig surface materials (world-projected
@@ -138,6 +138,10 @@ public:
 	/** Sprint H ceiling fluorescent visuals. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lighting|Phase8")
 	TArray<TObjectPtr<UStaticMeshComponent>> FluorescentPropVisuals;
+
+	/** Sprint AD — cool point lights under the three atrium plates (built in the constructor, no shadows). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lighting")
+	TArray<TObjectPtr<UPointLightComponent>> AtriumPlateLights;
 
 	/** Sprint N — desk/chair dress near cubicle stamps only. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cover|Phase8")

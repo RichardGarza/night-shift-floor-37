@@ -1,0 +1,8 @@
+SM_ServerRack.fbx — Night Shift Floor 37 Sprint Q
+
+Source mesh: Kenney Space Station Kit — container-tall.fbx
+License: CC0 1.0 (Kenney.nl) — free for any use, no attribution required (appreciated).
+Kit path: Content/Imported/KenneySpaceStationKit/
+
+Note: Sketchfab Dreadler "Server Rack" (CC Attribution) was shortlisted but download requires Sketchfab login (401). Kenney container-tall used as CC0 server-rack stand-in until Dreadler FBX is staged.
+Editor: import this FBX as StaticMesh /Game/Imported/Props/Office/SM_ServerRack

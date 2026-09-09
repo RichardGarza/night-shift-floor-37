@@ -294,6 +294,21 @@ void AOfficeArena::BuildGreyboxLighting()
 		L->LightColor = (i % 2 == 0) ? FColor(110, 235, 155) : FColor(255, 175, 90);
 		PracticalLights.Add(L);
 	}
+
+	// Sprint AD — a cool fluorescent under each atrium plate: lights the column, the plate undersides
+	// and whoever is on the level below, so the tower stops reading as a backlit silhouette.
+	const float PlateZ[3] = { 467.f, 933.f, 1400.f };
+	for (int32 i = 0; i < 3; ++i)
+	{
+		UPointLightComponent* L = CreateDefaultSubobject<UPointLightComponent>(*FString::Printf(TEXT("GB_PlateLight_%d"), i));
+		L->SetupAttachment(BoundsVolume);
+		L->SetRelativeLocation(FVector(0.f, 0.f, PlateZ[i] - 60.f));
+		L->Intensity = 900.f; // UGameConfig::AtriumPlateLightIntensity overrides at BeginPlay
+		L->AttenuationRadius = 1100.f;
+		L->SetCastShadows(false);
+		L->LightColor = FColor(190, 225, 235);
+		AtriumPlateLights.Add(L);
+	}
 }
 
 void AOfficeArena::ApplyConfiguredSurfaceMaterials()
@@ -323,6 +338,7 @@ void AOfficeArena::ApplyConfiguredSurfaceMaterials()
 		case EArenaSurface::Berm:     Parent = GameConfig->CachedSurfaceBerm; break;
 		case EArenaSurface::Glass:    Parent = GameConfig->CachedSurfaceGlass; break;
 		case EArenaSurface::Neon:     Parent = GameConfig->CachedSurfaceNeon; break;
+		case EArenaSurface::Resin:    Parent = GameConfig->CachedSurfaceResin; break;
 		default: break;
 		}
 		if (!Parent)
@@ -349,6 +365,13 @@ void AOfficeArena::ApplyConfiguredSurfaceMaterials()
 		}
 		M->SetMaterial(0, MID);
 		++Applied;
+	}
+	for (UPointLightComponent* L : AtriumPlateLights)
+	{
+		if (L)
+		{
+			L->SetIntensity(GameConfig->AtriumPlateLightIntensity);
+		}
 	}
 	bSurfaceMaterialsApplied = Applied > 0;
 	UE_LOG(LogNightShift, Log, TEXT("AOfficeArena::ApplyConfiguredSurfaceMaterials — %d blocks textured (floor=%s concrete=%s wall=%s metal=%s glass=%s)."),
@@ -426,7 +449,7 @@ void AOfficeArena::SetupDefaultCoverVolumeRotated(
 	const FLinearColor Color = bResin ? FLinearColor(0.42f, 0.36f, 0.12f) : bRack ? FLinearColor(0.16f, 0.18f, 0.22f) : FLinearColor(0.34f, 0.32f, 0.27f);
 	// Sprint AC — cubicle blocks take the painted-wall texture; racks/resin keep their tints (props sit on racks).
 	AddGreyboxBox(BoxName + TEXT("_Mesh"), RelativeLocation, Extent * 2.f, RelativeRotation, Color,
-		(bResin || bRack) ? EArenaSurface::Colour : EArenaSurface::Wall);
+		bResin ? EArenaSurface::Resin : bRack ? EArenaSurface::Colour : EArenaSurface::Wall);
 }
 
 
@@ -532,6 +555,50 @@ void AOfficeArena::ApplyConfiguredOfficeDressMeshes()
 		OfficeDressVisuals.Add(Vis);
 		return Vis;
 	};
+
+	// Sprint AD — perimeter work pods: two desks + two chairs on a ring just inside the walls, at the
+	// half-angles between the eight edge spawns so nothing spawns into a desk. Faces the atrium.
+	const int32 Pods = FMath::Clamp(GameConfig->OfficePodCount, 0, 16);
+	const float Ring = GameConfig->OfficePodRingRadiusCm;
+	for (int32 i = 0; i < Pods; ++i)
+	{
+		const float AngleDeg = (360.f / FMath::Max(Pods, 1)) * i + (180.f / FMath::Max(Pods, 1));
+		const float A = FMath::DegreesToRadians(AngleDeg);
+		const FVector Center(FMath::Cos(A) * Ring, FMath::Sin(A) * Ring, 0.f);
+		const FRotator FaceIn(0.f, AngleDeg + 180.f, 0.f);           // props look at the atrium
+		const FVector Right = FRotationMatrix(FaceIn).GetUnitAxis(EAxis::Y);
+		const FVector Fwd = FRotationMatrix(FaceIn).GetUnitAxis(EAxis::X);
+		for (float Side : { -1.f, 1.f })
+		{
+			const FVector DeskLoc = Center + Right * Side * 95.f;
+			const FVector ChairLoc = DeskLoc - Fwd * 85.f;
+			if (UStaticMeshComponent* D = NewObject<UStaticMeshComponent>(this, NAME_None, RF_Transient))
+			{
+				if (DeskMesh) { D->SetStaticMesh(DeskMesh); }
+				D->SetupAttachment(BoundsVolume);
+				D->SetRelativeLocation(DeskLoc);
+				D->SetRelativeRotation(FaceIn);
+				D->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				D->SetCastShadow(true);
+				D->RegisterComponent();
+				OfficeDressVisuals.Add(D);
+			}
+			if (ChairMesh)
+			{
+				if (UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this, NAME_None, RF_Transient))
+				{
+					C->SetStaticMesh(ChairMesh);
+					C->SetupAttachment(BoundsVolume);
+					C->SetRelativeLocation(ChairLoc);
+					C->SetRelativeRotation(FaceIn + FRotator(0.f, (Side < 0.f) ? -12.f : 15.f, 0.f)); // slightly askew, abandoned
+					C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					C->SetCastShadow(true);
+					C->RegisterComponent();
+					OfficeDressVisuals.Add(C);
+				}
+			}
+		}
+	}
 
 	// One desk + one chair per cubicle side (≤8 meshes). Offset toward atrium.
 	for (UBoxComponent* Vol : CoverVolumes)

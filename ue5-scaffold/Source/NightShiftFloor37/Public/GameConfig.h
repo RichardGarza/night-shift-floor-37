@@ -455,6 +455,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") TSoftObjectPtr<UMaterialInterface> SurfaceGlass;
 	/** Emissive trim strips along the perimeter (EmissiveColor from the block colour, EmissiveStrength below). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") TSoftObjectPtr<UMaterialInterface> SurfaceNeon;
+	/** Alien resin / egg cover blocks: dark glossy green with a faint bio glow. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") TSoftObjectPtr<UMaterialInterface> SurfaceResin;
+	/** Sprint AD — desk-pair work pods on a ring inside the perimeter, between the edge spawns (0 = none). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces", meta = (ClampMin = "0", ClampMax = "16")) int32 OfficePodCount = 8;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") float OfficePodRingRadiusCm = 2050.f;
+	/** Sprint AD — cool fluorescent under each atrium plate so the tower reads as a lit interior, not a silhouette. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") float AtriumPlateLightIntensity = 900.f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") float NeonEmissiveStrength = 7.f;
 	/** Height of the painted perimeter wall; dirty glass fills the rest up to the 3.2 m bounds wall. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") float PerimeterWallHeightCm = 200.f;
@@ -471,6 +478,7 @@ public:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache") TObjectPtr<UMaterialInterface> CachedSurfaceBerm;
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache") TObjectPtr<UMaterialInterface> CachedSurfaceGlass;
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache") TObjectPtr<UMaterialInterface> CachedSurfaceNeon;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache") TObjectPtr<UMaterialInterface> CachedSurfaceResin;
 
 	/**
 	 * Poly Haven mounted fluorescent (Phase 8). Import-only for Sprint G if unused in arena yet.

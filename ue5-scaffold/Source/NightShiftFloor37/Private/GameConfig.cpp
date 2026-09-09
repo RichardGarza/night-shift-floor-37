@@ -65,6 +65,7 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	if (SurfaceBerm.IsNull())     { SurfaceBerm     = SoftMat(TEXT("MI_Berm")); }
 	if (SurfaceGlass.IsNull())    { SurfaceGlass    = SoftMat(TEXT("MI_Glass")); }
 	if (SurfaceNeon.IsNull())     { SurfaceNeon     = SoftMat(TEXT("M_Neon")); }
+	if (SurfaceResin.IsNull())    { SurfaceResin    = SoftMat(TEXT("M_Resin")); }
 
 	// Sprint AA — alien model set: Mixamo Mutant when imported, else the Sprint X Quaternius alien.
 	auto SoftAnim = [](const TCHAR* Path) { return TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(Path)); };
@@ -170,6 +171,7 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 	CachedSurfaceBerm     = SurfaceBerm.LoadSynchronous();
 	CachedSurfaceGlass    = SurfaceGlass.LoadSynchronous();
 	CachedSurfaceNeon     = SurfaceNeon.LoadSynchronous();
+	CachedSurfaceResin    = SurfaceResin.LoadSynchronous();
 	CachedPlayerAnims.Idle      = PlayerAnims.Idle.LoadSynchronous();
 	CachedPlayerAnims.WalkFwd   = PlayerAnims.WalkFwd.LoadSynchronous();
 	CachedPlayerAnims.WalkBwd   = PlayerAnims.WalkBwd.LoadSynchronous();

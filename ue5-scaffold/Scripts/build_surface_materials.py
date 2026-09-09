@@ -101,11 +101,11 @@ def build_glass():
     if unreal.load_asset(path):
         EAL.delete_asset(path)  # rebuilt each run: cheap, and the params below changed in Sprint AC
     mat = tools.create_asset("M_DirtyGlass", dest_root, unreal.Material, unreal.MaterialFactoryNew())
-    col = expr(mat, unreal.MaterialExpressionVectorParameter, -500, -100, parameter_name="Tint", default_value=unreal.LinearColor(0.02, 0.045, 0.05, 1))
+    col = expr(mat, unreal.MaterialExpressionVectorParameter, -500, -100, parameter_name="Tint", default_value=unreal.LinearColor(0.012, 0.03, 0.034, 1))
     lib.connect_material_property(col, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    rough = expr(mat, unreal.MaterialExpressionScalarParameter, -500, 100, parameter_name="RoughnessScale", default_value=0.32)
+    rough = expr(mat, unreal.MaterialExpressionScalarParameter, -500, 100, parameter_name="RoughnessScale", default_value=0.42)
     lib.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
-    met = expr(mat, unreal.MaterialExpressionScalarParameter, -500, 250, parameter_name="Metallic", default_value=0.25)
+    met = expr(mat, unreal.MaterialExpressionScalarParameter, -500, 250, parameter_name="Metallic", default_value=0.12)
     lib.connect_material_property(met, "", unreal.MaterialProperty.MP_METALLIC)
     spec = expr(mat, unreal.MaterialExpressionConstant, -500, 400, r=0.7)
     lib.connect_material_property(spec, "", unreal.MaterialProperty.MP_SPECULAR)
@@ -116,6 +116,25 @@ def build_glass():
     lib.set_material_instance_parent(mi, mat)
     lib.update_material_instance(mi); EAL.save_loaded_asset(mi)
     unreal.log("NS_MI: %s" % mi_path)
+
+def build_resin():
+    path = dest_root + "/M_Resin"
+    if unreal.load_asset(path):
+        EAL.delete_asset(path)
+    mat = tools.create_asset("M_Resin", dest_root, unreal.Material, unreal.MaterialFactoryNew())
+    col = expr(mat, unreal.MaterialExpressionVectorParameter, -600, -150, parameter_name="Tint", default_value=unreal.LinearColor(0.045, 0.095, 0.035, 1))
+    lib.connect_material_property(col, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    rough = expr(mat, unreal.MaterialExpressionScalarParameter, -600, 50, parameter_name="RoughnessScale", default_value=0.22)
+    lib.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    ecol = expr(mat, unreal.MaterialExpressionVectorParameter, -600, 250, parameter_name="EmissiveColor", default_value=unreal.LinearColor(0.25, 0.9, 0.35, 1))
+    estr = expr(mat, unreal.MaterialExpressionScalarParameter, -600, 450, parameter_name="EmissiveStrength", default_value=0.10)
+    mul = expr(mat, unreal.MaterialExpressionMultiply, -300, 300)
+    connect(ecol, "", mul, "A"); connect(estr, "", mul, "B")
+    lib.connect_material_property(mul, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    spec = expr(mat, unreal.MaterialExpressionConstant, -600, 600, r=0.9)
+    lib.connect_material_property(spec, "", unreal.MaterialProperty.MP_SPECULAR)
+    lib.recompile_material(mat); EAL.save_loaded_asset(mat)
+    unreal.log("NS_MAT: created %s" % path)
 
 def build_neon():
     path = dest_root + "/M_Neon"
@@ -161,3 +180,4 @@ for asset, role in roles.items():
     unreal.log("NS_MI: %s <- %s (tile %.0f)" % (mi_path, asset, tile_cm.get(role, 250.0)))
 build_glass()
 build_neon()
+build_resin()

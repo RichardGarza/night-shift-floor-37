@@ -1,0 +1,6 @@
+Asset: SM_ServerRack.fbx (from Kenney Space Station Kit — computer-system.fbx)
+Source: https://kenney.nl/assets/space-station-kit
+License: CC0 1.0
+Preferred alt (not staged — Sketchfab login required): Dreadler Server Rack CC-BY https://sketchfab.com/3d-models/server-rack-eac42015fd8641aaa88e5a0ff50b0814
+Staged for Sprint Q soft-ref on rack cover volumes.
+Downloaded: 2026-09-08
