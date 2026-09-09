@@ -466,6 +466,13 @@ public:
 	/** Sprint AE — dying-fluorescent flicker on the neon trim: fraction of strength lost in a dip, and dips per second. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces", meta = (ClampMin = "0", ClampMax = "1")) float NeonFlickerDepth = 0.75f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces") float NeonFlickerRate = 0.6f;
+	// Sprint AG — hands-off demo (attract mode). -NightShiftDemo on the command line, or idle at the start prompt.
+	/** Seconds idle on "Click to play" before the demo starts (0 = only via -NightShiftDemo). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Demo") float DemoIdleSeconds = 25.f;
+	/** Demo length; ends back on the start prompt. -NightShiftDemoSeconds=N overrides. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Demo") float DemoSeconds = 60.f;
+	/** Damage the autopilot takes (it cannot dodge like a person; keeps the demo alive). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Demo", meta = (ClampMin = "0", ClampMax = "1")) float DemoDamageScale = 0.45f;
 	/** Sprint AE — "Wave N" banner hold at each wave start (0 = off). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves") float WaveStartBannerSeconds = 2.2f;
 	/** Sprint AD — cool fluorescent under each atrium plate so the tower reads as a lit interior, not a silhouette. */
@@ -502,7 +509,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") bool bAudioEnabled = true;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio", meta = (ClampMin = "0", ClampMax = "2")) float SfxVolume = 1.f;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio", meta = (ClampMin = "0", ClampMax = "2")) float AmbientVolume = 0.45f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio", meta = (ClampMin = "0", ClampMax = "2")) float AmbientVolume = 0.3f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundRifleFire;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundRifleReload;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio") TSoftObjectPtr<USoundBase> SoundHitFlesh;

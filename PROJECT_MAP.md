@@ -100,6 +100,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint AD dressing | **Shipped** | Darker glass band, under-plate atrium lights, `M_Resin` on egg cover, 8 perimeter desk pods; office props committed. `ue5-scaffold/SPRINT_AD_DRESSING.md` |
 | Sprint AE infestation | **Shipped** | Resin growth clusters, flickering neon trim, "Wave N" start banners. `ue5-scaffold/SPRINT_AE_INFESTATION.md` |
 | Sprint AF audio | **Shipped** | 12 synthesized WAVs (rifle, reload, hits, growl, death, bolts, hurt, footsteps, wave sting/clear, neon snap, hum loop) via `NightShiftAudio` helpers + `UGameConfig` soft refs. `ue5-scaffold/SPRINT_AF_AUDIO.md` |
+| Sprint AG autopilot demo | **Shipped** | `-NightShiftDemo` or 25 s idle on the start prompt → `ANightShiftDemoPilot` plays for 60 s (aim, fire, strafe, reload), click takes over. Ambient hum regenerated without hiss. `ue5-scaffold/SPRINT_AG_DEMO.md` |
 | Self-test | 49 / 49 | + audio wiring checks (rifle sound resolved, ambient loop playing) |
 | `Content/Imported` | **Partly committed** | `Aliens/Skel/` (SK_Alien + anims) is committed; office props / fluorescents / `SM_Alien` remain local-only on the Desktop copy — optional Git LFS |
 | UE5 feel | Needs human | Recoil accumulate vs self-cancel still open |

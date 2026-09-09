@@ -869,7 +869,15 @@ float ANightShiftCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
 			}
 		}
 	}
-	const float Applied = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	float Applied = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	// Sprint AG — the autopilot cannot really dodge; soften what it takes so the demo stays alive.
+	if (const AArenaGameMode* DemoGM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
+	{
+		if (DemoGM->IsDemoActive() && GameConfig)
+		{
+			Applied *= FMath::Clamp(GameConfig->DemoDamageScale, 0.f, 1.f);
+		}
+	}
 	Health = FMath::Max(0.f, Health - Applied);
 	TimeSinceLastDamage = 0.f;
 	if (GameConfig && Applied > 0.f)

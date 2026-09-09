@@ -18,6 +18,7 @@
 #include "TimerManager.h"
 #include "NightShiftAudio.h"
 #include "Components/AudioComponent.h"
+#include "NightShiftDemoPilot.h"
 
 AArenaGameMode::AArenaGameMode()
 {
@@ -96,6 +97,14 @@ void AArenaGameMode::BeginPlay()
 	}
 	// -NightShiftStartWave=N: open on a later wave (Sprint Z — variant / pressure screenshots).
 	FParse::Value(FCommandLine::Get(), TEXT("NightShiftStartWave="), DebugStartWave);
+	// -NightShiftDemo[-NightShiftDemoSeconds=N]: hands-off autopilot showcase from the first frame.
+	FParse::Value(FCommandLine::Get(), TEXT("NightShiftDemoSeconds="), DemoSecondsOverride);
+	if (FParse::Param(FCommandLine::Get(), TEXT("NightShiftDemo")))
+	{
+		FTimerHandle DemoStartHandle;
+		GetWorldTimerManager().SetTimer(DemoStartHandle, this, &AArenaGameMode::StartDemo, 1.5f, false);
+		UE_LOG(LogNightShift, Log, TEXT("AArenaGameMode: -NightShiftDemo — autopilot demo starts in 1.5 s."));
+	}
 	// -NightShiftAutoStart: skip Click-to-play after 1.5 s (screenshots / smoke runs without a mouse).
 	if (FParse::Param(FCommandLine::Get(), TEXT("NightShiftAutoStart")))
 	{
@@ -114,6 +123,28 @@ void AArenaGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	ClampDelta(DeltaSeconds);
+	// Sprint AG — attract mode: idle on the start prompt long enough and the game demos itself.
+	if (MatchState == EArenaMatchState::WaitingToStart && !DemoPilot && GameConfig && GameConfig->DemoIdleSeconds > 0.f
+		&& !ANightShiftSelfTest::IsRequestedOnCommandLine())
+	{
+		IdleAtPrompt += DeltaSeconds;
+		if (IdleAtPrompt >= GameConfig->DemoIdleSeconds)
+		{
+			StartDemo();
+		}
+	}
+	else
+	{
+		IdleAtPrompt = 0.f;
+	}
+	if (DemoPilot && MatchState != EArenaMatchState::WaitingToStart)
+	{
+		const float Limit = DemoSecondsOverride > 0.f ? DemoSecondsOverride : (GameConfig ? GameConfig->DemoSeconds : 60.f);
+		if (DemoPilot->Elapsed >= Limit)
+		{
+			EndDemo(false);
+		}
+	}
 	if (MatchState != EArenaMatchState::InProgress || bMatchPaused)
 	{
 		return;
@@ -319,6 +350,73 @@ void AArenaGameMode::DebugClearWave()
 	}
 	WaveKills = GetWaveKillQuota();
 	OnWaveCleared();
+}
+
+// ----- Sprint AG hands-off demo -----
+
+void AArenaGameMode::StartDemo()
+{
+	if (DemoPilot || !GetWorld())
+	{
+		return;
+	}
+	IdleAtPrompt = 0.f;
+	DemoPilot = GetWorld()->SpawnActor<ANightShiftDemoPilot>();
+	if (!DemoPilot)
+	{
+		return;
+	}
+	SoftRestartInternal(/*bShowPromptIfWaiting=*/false);
+	StartMatch();
+	DemoPilot->KillsAtStart = KillCount;
+	if (HUDWidget)
+	{
+		HUDWidget->SetCornerNote(FText::FromString(TEXT("AUTOPILOT DEMO — click to take over")));
+	}
+	UE_LOG(LogNightShift, Log, TEXT("Demo started — autopilot for %.0f s."), DemoSecondsOverride > 0.f ? DemoSecondsOverride : (GameConfig ? GameConfig->DemoSeconds : 60.f));
+}
+
+void AArenaGameMode::DemoRespawnAfterDeath()
+{
+	if (!DemoPilot || MatchState != EArenaMatchState::Lost)
+	{
+		return;
+	}
+	SoftRestartInternal(false);
+	StartMatch();
+}
+
+void AArenaGameMode::EndDemo(bool bHandToPlayer)
+{
+	if (!DemoPilot)
+	{
+		return;
+	}
+	GetWorldTimerManager().ClearTimer(DemoRespawnTimer);
+	const float Ran = DemoPilot->Elapsed;
+	const int32 Kills = KillCount;
+	if (ANightShiftCharacter* Player = GetPlayerCharacter())
+	{
+		Player->StopFire();
+		Player->StopSprint();
+	}
+	DemoPilot->Destroy();
+	DemoPilot = nullptr;
+	if (HUDWidget)
+	{
+		HUDWidget->SetCornerNote(FText::GetEmpty());
+	}
+	IdleAtPrompt = 0.f;
+	if (bHandToPlayer)
+	{
+		SoftRestartInternal(false);
+		StartMatch();
+		UE_LOG(LogNightShift, Log, TEXT("Demo ended by click after %.0f s (%d kills) — player takes over."), Ran, Kills);
+		return;
+	}
+	const int32 WaveReached = CurrentWave;
+	SoftRestartInternal(/*bShowPromptIfWaiting=*/true);
+	UE_LOG(LogNightShift, Log, TEXT("Demo ended after %.0f s — %d kills, wave %d reached."), Ran, Kills, WaveReached);
 }
 
 void AArenaGameMode::OnWaveCleared()
@@ -762,6 +860,11 @@ void AArenaGameMode::StartMatch()
 void AArenaGameMode::RequestStartOrRestart()
 {
 	EnsureHUDBound();
+	if (DemoPilot)
+	{
+		EndDemo(/*bHandToPlayer=*/true);
+		return;
+	}
 
 	if (MatchState == EArenaMatchState::WaitingToStart)
 	{
@@ -818,6 +921,11 @@ void AArenaGameMode::NotifyPlayerDied()
 	}
 	UpdatePlayerInputMode();
 	UE_LOG(LogNightShift, Log, TEXT("Player died."));
+	if (DemoPilot)
+	{
+		// The demo keeps rolling: brief death beat, then a fresh match under autopilot.
+		GetWorldTimerManager().SetTimer(DemoRespawnTimer, this, &AArenaGameMode::DemoRespawnAfterDeath, 2.f, false);
+	}
 }
 
 void AArenaGameMode::SoftRestart()

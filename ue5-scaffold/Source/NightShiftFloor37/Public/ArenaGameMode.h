@@ -12,6 +12,7 @@ class AAlienBot;
 class UHUDWidget;
 class ANightShiftCharacter;
 class UAudioComponent;
+class ANightShiftDemoPilot;
 
 UENUM(BlueprintType)
 enum class EArenaMatchState : uint8
@@ -194,6 +195,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Match|Waves")
 	void DebugClearWave();
 
+	// ----- Sprint AG hands-off demo -----
+
+	UFUNCTION(BlueprintPure, Category = "Match|Demo")
+	bool IsDemoActive() const { return DemoPilot != nullptr; }
+
+	/** Start the autopilot demo (soft-restarts into a live match driven by ANightShiftDemoPilot). */
+	UFUNCTION(BlueprintCallable, Category = "Match|Demo")
+	void StartDemo();
+
+	/** End the demo: back to "Click to play" (bHandToPlayer = a human clicked → straight into a fresh match). */
+	UFUNCTION(BlueprintCallable, Category = "Match|Demo")
+	void EndDemo(bool bHandToPlayer);
+
 	/** Sprint AF — looping office hum started in BeginPlay (null when audio is off or the asset is missing). */
 	UFUNCTION(BlueprintPure, Category = "Audio")
 	UAudioComponent* GetAmbientLoop() const { return AmbientLoop; }
@@ -265,6 +279,13 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> AmbientLoop;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ANightShiftDemoPilot> DemoPilot;
+	float DemoSecondsOverride = 0.f;
+	float IdleAtPrompt = 0.f;
+	FTimerHandle DemoRespawnTimer;
+	void DemoRespawnAfterDeath();
 
 	/** Sprint AE — "Wave N" banner at wave start; cleared by timer while still in play. */
 	FTimerHandle WaveBannerTimer;

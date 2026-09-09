@@ -79,6 +79,8 @@ void UHUDWidget::BuildNativeTree()
 	KillsText = MakeText(Canvas, TEXT("KillsText"), FVector2D(1.f, 0.f), FVector2D(1.f, 0.f), FVector2D(-24.f, 20.f), 16, HUDPrivate::Dim);
 	TimerText = MakeText(Canvas, TEXT("TimerText"), FVector2D(1.f, 0.f), FVector2D(1.f, 0.f), FVector2D(-24.f, 42.f), 16, HUDPrivate::Dim);
 	ThreatText = MakeText(Canvas, TEXT("ThreatText"), FVector2D(1.f, 0.f), FVector2D(1.f, 0.f), FVector2D(-24.f, 64.f), 16, HUDPrivate::Dim);
+	CornerNoteText = MakeText(Canvas, TEXT("CornerNote"), FVector2D(0.f, 0.f), FVector2D(0.f, 0.f), FVector2D(24.f, 20.f), 15, HUDPrivate::Amber);
+	CornerNoteText->SetVisibility(ESlateVisibility::Collapsed);
 
 	// Centre: crosshair + prompt
 	CrosshairText = MakeText(Canvas, TEXT("Crosshair"), FVector2D(0.5f, 0.5f), FVector2D(0.5f, 0.5f), FVector2D(0.f, 0.f), 26, HUDPrivate::Ink);
@@ -406,6 +408,16 @@ void UHUDWidget::ShowWin(float MatchTimeSeconds, int32 WavesCleared, int32 Kills
 		return;
 	}
 	SetPrompt(FText::FromString(FString::Printf(TEXT("Floor cleared — %s — click to play again"), *HUDPrivate::FormatTime(MatchTimeSeconds))));
+}
+
+void UHUDWidget::SetCornerNote(const FText& Note)
+{
+	if (!CornerNoteText)
+	{
+		return;
+	}
+	CornerNoteText->SetText(Note);
+	CornerNoteText->SetVisibility(Note.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 }
 
 void UHUDWidget::ShowWaveBanner(const FText& Title, const FText& Hint)

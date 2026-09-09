@@ -50,6 +50,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void ShowWaveBanner(const FText& Title, const FText& Hint);
 
+	/** Sprint AG — small persistent note in the top-left (demo mode); empty hides it. */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void SetCornerNote(const FText& Note);
+
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void ClearPrompt();
 
@@ -113,6 +117,7 @@ protected:
 	UPROPERTY() TObjectPtr<UTextBlock> TimerText;
 	/** Sprint Y — difficulty ramp readout ("Threat 2 / 5"). */
 	UPROPERTY() TObjectPtr<UTextBlock> ThreatText;
+	UPROPERTY() TObjectPtr<UTextBlock> CornerNoteText;
 	UPROPERTY() TObjectPtr<UTextBlock> CrosshairText;
 	UPROPERTY() TObjectPtr<UTextBlock> PromptText;
 	UPROPERTY() TObjectPtr<UTextBlock> PromptHintText;
