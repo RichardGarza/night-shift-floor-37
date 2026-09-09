@@ -131,6 +131,28 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Match|EarlyGame")
 	float GetSpawnGraceRemaining() const { return SpawnGraceRemaining; }
 
+	// ----- Sprint Y difficulty ramp -----
+
+	/** 0 at match start → 1 when kills or time hit the ramp caps. Always 1 when the ramp is off. */
+	UFUNCTION(BlueprintPure, Category = "Match|Ramp")
+	float GetDifficultyAlpha() const;
+
+	/** Live aliens the population keeper aims for right now (RampStartLiveAliens → MaxLiveAliens). */
+	UFUNCTION(BlueprintPure, Category = "Match|Ramp")
+	int32 GetTargetLiveAliens() const;
+
+	/** Alien hit chance at the current ramp alpha. */
+	UFUNCTION(BlueprintPure, Category = "Match|Ramp")
+	float GetAlienAccuracy() const;
+
+	/** Seconds between alien bursts at the current ramp alpha. */
+	UFUNCTION(BlueprintPure, Category = "Match|Ramp")
+	float GetAlienBurstInterval() const;
+
+	/** 1..5 HUD bucket of the ramp alpha. */
+	UFUNCTION(BlueprintPure, Category = "Match|Ramp")
+	int32 GetThreatTier() const;
+
 protected:
 	/** Begin grace timer + place player on farthest edge spawn from aliens / push aliens out. */
 	void BeginSpawnGraceAndSafeStart();
@@ -178,4 +200,7 @@ protected:
 
 	/** Countdown after grace — chase OK, fire blocked (Sprint V). */
 	float AlienFireLockRemaining = 0.f;
+
+	/** Last logged threat tier so the ramp only logs on change. */
+	int32 LoggedThreatTier = 0;
 };

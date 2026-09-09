@@ -18,6 +18,7 @@ class UGameConfig;
 class ANightShiftCharacter;
 class UArenaCollision;
 class AOfficeArena;
+class AArenaGameMode;
 
 UENUM(BlueprintType)
 enum class EAlienCombatState : uint8
@@ -186,8 +187,15 @@ protected:
 
 	float StrafeSign = 1.f;
 
-	/** Alternating lateral sign when forward steer probe is blocked. */
+	/** Lateral steer sign around an obstacle; held for AlienSteerCommitSeconds (Sprint Y — no per-frame flip). */
 	float SteerSideSign = 1.f;
+	float SteerCommitRemaining = 0.f;
+
+	/** Sprint Y — cached GameMode (ramp-scaled accuracy / burst interval, fire lock). */
+	mutable TWeakObjectPtr<AArenaGameMode> CachedGameMode;
+	AArenaGameMode* GetArenaGameMode() const;
+	/** Yaw toward the player at AlienFaceTargetTurnRateDegPerSec; returns remaining yaw error in degrees. */
+	float FaceTarget(float DeltaSeconds);
 
 	FTimerHandle RespawnTimerHandle;
 

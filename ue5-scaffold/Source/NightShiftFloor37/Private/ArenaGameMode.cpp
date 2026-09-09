@@ -130,6 +130,68 @@ void AArenaGameMode::Tick(float DeltaSeconds)
 	}
 	EnsureAlienPopulation();
 	EnforceArenaBounds();
+
+	const int32 Tier = GetThreatTier();
+	if (Tier != LoggedThreatTier)
+	{
+		LoggedThreatTier = Tier;
+		UE_LOG(LogNightShift, Log, TEXT("Difficulty ramp — threat %d/5 (alpha %.2f): %d live aliens, accuracy %.0f%%, burst every %.1fs."),
+			Tier, GetDifficultyAlpha(), GetTargetLiveAliens(), GetAlienAccuracy() * 100.f, GetAlienBurstInterval());
+	}
+}
+
+float AArenaGameMode::GetDifficultyAlpha() const
+{
+	if (!GameConfig || !GameConfig->bDifficultyRamp)
+	{
+		return 1.f;
+	}
+	const float ByKills = KillCount / static_cast<float>(FMath::Max(GameConfig->RampKillsToMax, 1));
+	const float ByTime = MatchTimeSeconds / FMath::Max(GameConfig->RampSecondsToMax, 1.f);
+	return FMath::Clamp(FMath::Max(ByKills, ByTime), 0.f, 1.f);
+}
+
+int32 AArenaGameMode::GetTargetLiveAliens() const
+{
+	const int32 MaxLive = GameConfig ? GameConfig->MaxLiveAliens : 6;
+	if (!GameConfig || !GameConfig->bDifficultyRamp)
+	{
+		return MaxLive;
+	}
+	const int32 Start = FMath::Clamp(GameConfig->RampStartLiveAliens, 1, MaxLive);
+	// Floor so each extra alien arrives at an even kill/time step; alpha 1 always yields MaxLive.
+	return Start + FMath::FloorToInt(GetDifficultyAlpha() * (MaxLive - Start) + 0.001f);
+}
+
+float AArenaGameMode::GetAlienAccuracy() const
+{
+	if (!GameConfig)
+	{
+		return 0.3f;
+	}
+	if (!GameConfig->bDifficultyRamp)
+	{
+		return GameConfig->AlienAccuracy;
+	}
+	return FMath::Lerp(GameConfig->RampStartAlienAccuracy, GameConfig->RampEndAlienAccuracy, GetDifficultyAlpha());
+}
+
+float AArenaGameMode::GetAlienBurstInterval() const
+{
+	if (!GameConfig)
+	{
+		return 1.5f;
+	}
+	if (!GameConfig->bDifficultyRamp)
+	{
+		return GameConfig->AlienBurstIntervalSeconds;
+	}
+	return FMath::Max(0.2f, FMath::Lerp(GameConfig->RampStartBurstIntervalSeconds, GameConfig->RampEndBurstIntervalSeconds, GetDifficultyAlpha()));
+}
+
+int32 AArenaGameMode::GetThreatTier() const
+{
+	return 1 + FMath::Clamp(FMath::FloorToInt(GetDifficultyAlpha() * 4.999f), 0, 4);
 }
 
 void AArenaGameMode::EnforceArenaBounds()
@@ -440,6 +502,7 @@ void AArenaGameMode::StartMatch()
 		CachedArena->RefreshSpawnGather();
 	}
 	BeginSpawnGraceAndSafeStart();
+	LoggedThreatTier = 0;
 	EnsureAlienPopulation();
 	ApplySaferStartSpacing(); // re-push any bot that landed too close
 	OrientPlayerTowardStartFocus(); // Sprint M — silhouette in frame without closing gap
@@ -448,8 +511,9 @@ void AArenaGameMode::StartMatch()
 		HUDWidget->ClearPrompt();
 	}
 	UpdatePlayerInputMode();
-	UE_LOG(LogNightShift, Log, TEXT("Match started — %d live aliens, grace %.1fs."),
-		GetLiveAlienCount(), SpawnGraceRemaining);
+	UE_LOG(LogNightShift, Log, TEXT("Match started — %d live aliens (target %d, ramp %s), grace %.1fs."),
+		GetLiveAlienCount(), GetTargetLiveAliens(),
+		(GameConfig && GameConfig->bDifficultyRamp) ? TEXT("on") : TEXT("off"), SpawnGraceRemaining);
 }
 
 void AArenaGameMode::RequestStartOrRestart()
@@ -791,7 +855,8 @@ void AArenaGameMode::EnsureAlienPopulation()
 	}
 
 	FindOrCacheArena();
-	const int32 MaxLive = GameConfig ? GameConfig->MaxLiveAliens : 6;
+	// Sprint Y — the ramp decides how many of the pool are live; the pool itself stays MaxLiveAliens.
+	const int32 MaxLive = GetTargetLiveAliens();
 
 	if (AlienPool.Num() == 0)
 	{

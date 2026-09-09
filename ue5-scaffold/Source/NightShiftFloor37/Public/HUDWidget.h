@@ -106,6 +106,8 @@ protected:
 	UPROPERTY() TObjectPtr<UTextBlock> AmmoText;
 	UPROPERTY() TObjectPtr<UTextBlock> KillsText;
 	UPROPERTY() TObjectPtr<UTextBlock> TimerText;
+	/** Sprint Y — difficulty ramp readout ("Threat 2 / 5"). */
+	UPROPERTY() TObjectPtr<UTextBlock> ThreatText;
 	UPROPERTY() TObjectPtr<UTextBlock> CrosshairText;
 	UPROPERTY() TObjectPtr<UTextBlock> PromptText;
 	UPROPERTY() TObjectPtr<UTextBlock> PromptHintText;

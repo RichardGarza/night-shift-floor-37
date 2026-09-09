@@ -73,6 +73,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Rifle")
 	void GetAmmo(int32& OutMag, int32& OutReserve) const;
 
+	/** Seconds since the last round left the barrel (Sprint Y — sprint suppression window). */
+	UFUNCTION(BlueprintPure, Category = "Rifle")
+	float GetTimeSinceLastShot() const { return TimeSinceLastShot; }
+
 	UFUNCTION(BlueprintCallable, Category = "Rifle")
 	void SoftResetAmmo();
 

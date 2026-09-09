@@ -688,7 +688,14 @@ void ANightShiftCharacter::UpdateSprintSpeed()
 	}
 	const float Walk = GameConfig ? GameConfig->WalkSpeed : 600.f;
 	const float Sprint = GameConfig ? GameConfig->SprintSpeed : 900.f;
-	GetCharacterMovement()->MaxWalkSpeed = bWantsSprint ? Sprint : Walk;
+	// Sprint Y — firing (or having fired within the resume window) holds the player at walk speed.
+	bool bFireSuppressesSprint = false;
+	if (Rifle && (!GameConfig || GameConfig->bFireCancelsSprint))
+	{
+		const float Window = GameConfig ? GameConfig->SprintResumeAfterFireSeconds : 0.4f;
+		bFireSuppressesSprint = Rifle->bWantsFire || Rifle->GetTimeSinceLastShot() < Window;
+	}
+	GetCharacterMovement()->MaxWalkSpeed = (bWantsSprint && !bFireSuppressesSprint) ? Sprint : Walk;
 }
 
 void ANightShiftCharacter::SwapShoulder()
@@ -722,6 +729,7 @@ void ANightShiftCharacter::StartFire()
 	{
 		Rifle->Fire();
 	}
+	UpdateSprintSpeed(); // Sprint Y — drop to walk on the same frame the trigger is pulled
 }
 
 void ANightShiftCharacter::StopFire()
@@ -730,6 +738,7 @@ void ANightShiftCharacter::StopFire()
 	{
 		Rifle->StopFire();
 	}
+	UpdateSprintSpeed();
 }
 
 void ANightShiftCharacter::RequestReload()

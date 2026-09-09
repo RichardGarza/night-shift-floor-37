@@ -195,6 +195,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle")
 	float SoftLockRangeMeters = 30.f;
 
+	/**
+	 * Sprint Y — holding fire drops the player from sprint to walk speed (Richard: shooting felt bad
+	 * while running — 9 m/s + jog clip at 1.9× bounced the rifle). Sprint resumes once the trigger
+	 * has been released for SprintResumeAfterFireSeconds while Shift is still held.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle")
+	bool bFireCancelsSprint = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle")
+	float SprintResumeAfterFireSeconds = 0.4f;
+
 	// -------------------------------------------------------------------------
 	// Aliens (DESIGN: 6 live, 4 m/s, ≤12m combat, 3-round burst / 1.5s,
 	//         30% accuracy, 10 dmg, kill 3 body or 2 head, respawn 3s, 8 spawns)
@@ -249,6 +260,22 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens")
 	float AlienPushApartRadiusCm = 80.f;
+
+	/** Sprint Y — yaw turn rate (deg/s) used to face the player while in combat range. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens|Behaviour")
+	float AlienFaceTargetTurnRateDegPerSec = 540.f;
+
+	/** Sprint Y — a burst may only start once the alien faces the player within this many degrees. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens|Behaviour")
+	float AlienFireFacingToleranceDegrees = 25.f;
+
+	/** Sprint Y — stop strafing while the attack clip / burst plays (strafe between bursts only). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens|Behaviour")
+	bool bAlienPlantsDuringBurst = true;
+
+	/** Sprint Y — once a steer side is picked around an obstacle, hold it this long (no per-frame flip). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens|Behaviour")
+	float AlienSteerCommitSeconds = 0.6f;
 
 	// -------------------------------------------------------------------------
 	// Art | Phase 8 mesh swap (ModelFinder → Content/Imported). Soft refs; null = greybox.
@@ -402,6 +429,40 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|EarlyGame")
 	float PostGraceAlienFireDelaySeconds = 1.5f;
+
+	// -------------------------------------------------------------------------
+	// Difficulty ramp (Sprint Y — Richard: "start super easy, then more spawning enemies and more
+	// shooting at me"). Alpha = max(kills / RampKillsToMax, time / RampSecondsToMax), clamped 0..1.
+	// Live alien target, alien accuracy and burst interval lerp Start → End/MaxLiveAliens on alpha.
+	// bDifficultyRamp=false restores the flat DESIGN numbers (6 live, 30 %, 1.5 s).
+	// -------------------------------------------------------------------------
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Ramp")
+	bool bDifficultyRamp = true;
+
+	/** Live aliens at match start; grows to MaxLiveAliens as the ramp alpha reaches 1. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Ramp", meta = (ClampMin = "1"))
+	int32 RampStartLiveAliens = 2;
+
+	/** Kills at which the ramp is fully on (KillsToWin 25 → the last 10 kills are full pressure). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Ramp", meta = (ClampMin = "1"))
+	int32 RampKillsToMax = 15;
+
+	/** Match seconds at which the ramp is fully on regardless of kills (slow players still get pushed). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Ramp", meta = (ClampMin = "1"))
+	float RampSecondsToMax = 150.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Ramp", meta = (ClampMin = "0", ClampMax = "1"))
+	float RampStartAlienAccuracy = 0.10f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Ramp", meta = (ClampMin = "0", ClampMax = "1"))
+	float RampEndAlienAccuracy = 0.35f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Ramp")
+	float RampStartBurstIntervalSeconds = 3.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Ramp")
+	float RampEndBurstIntervalSeconds = 1.2f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match")
 	float MaxDeltaTimeClampSeconds = 0.05f; // treat spikes above ~50 ms as 50 ms

@@ -14,6 +14,7 @@
 #include "HAL/PlatformMisc.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 ANightShiftSelfTest::ANightShiftSelfTest()
 {
@@ -192,9 +193,15 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 				}
 				if (!bDup) { ++Distinct; }
 			}
-			Check(Pos.Num() == MaxLive, FString::Printf(TEXT("%d aliens live at start (want %d)"), Pos.Num(), MaxLive));
-			Check(Distinct >= FMath::Min(MaxLive, 5), FString::Printf(TEXT("spawn spread: %d distinct points for %d aliens"), Distinct, Pos.Num()));
+			// Sprint Y — the ramp starts the match below MaxLiveAliens; the population keeper tracks the target.
+			const int32 WantLive = GM->GetTargetLiveAliens();
+			Check(Pos.Num() == WantLive, FString::Printf(TEXT("%d aliens live at start (want %d)"), Pos.Num(), WantLive));
+			Check(Distinct >= FMath::Min(WantLive, 5), FString::Printf(TEXT("spawn spread: %d distinct points for %d aliens"), Distinct, Pos.Num()));
 			Check(bAboveFloor, TEXT("aliens spawn above the floor"));
+			const bool bRamp = GM->GameConfig && GM->GameConfig->bDifficultyRamp;
+			Check(!bRamp || WantLive < MaxLive, FString::Printf(TEXT("difficulty ramp starts easy (%d of %d aliens, threat %d/5)"), WantLive, MaxLive, GM->GetThreatTier()));
+			Check(!bRamp || GM->GetAlienAccuracy() < (GM->GameConfig ? GM->GameConfig->AlienAccuracy : 0.3f),
+				FString::Printf(TEXT("alien accuracy starts below DESIGN (%.0f%%)"), GM->GetAlienAccuracy() * 100.f));
 			Enter(EStep::Aim);
 		}
 		break;
@@ -216,10 +223,8 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 		if (StepTime > 0.3f)
 		{
 			KillsAtFireStart = GM->KillCount;
-			if (Player->Rifle)
-			{
-				Player->Rifle->Fire();
-			}
+			Player->StartSprint(); // Sprint Y — firing must drop sprint to walk speed
+			Player->StartFire();   // → Rifle->Fire() + sprint suppression
 			Enter(EStep::Fire);
 		}
 		break;
@@ -229,6 +234,11 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 		if (TargetBot->BodyHitCount + TargetBot->HeadHitCount > 0 || !TargetBot->bIsAlive)
 		{
 			Check(true, TEXT("rifle hitscan lands on the alien capsule"));
+			const float Walk = GM->GameConfig ? GM->GameConfig->WalkSpeed : 600.f;
+			const float MaxSpeed = Player->GetCharacterMovement() ? Player->GetCharacterMovement()->MaxWalkSpeed : 0.f;
+			Check(Player->bWantsSprint && MaxSpeed <= Walk + 1.f,
+				FString::Printf(TEXT("firing drops sprint to walk speed (%.0f cm/s)"), MaxSpeed));
+			Player->StopSprint();
 			Enter(EStep::Kill);
 		}
 		else if (StepTime > 2.f)
@@ -370,7 +380,7 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 			Check(GM->MatchState == EArenaMatchState::InProgress, TEXT("click after death restarts in place"));
 			Check(Player->IsAlive() && Player->Health >= MaxHP - 1.f, FString::Printf(TEXT("HP reset on restart (%.0f)"), Player->Health));
 			Check(GM->KillCount == 0, TEXT("kills reset on restart"));
-			Check(LiveBots() == MaxLive, FString::Printf(TEXT("aliens repopulated on restart (%d)"), LiveBots()));
+			Check(LiveBots() == GM->GetTargetLiveAliens(), FString::Printf(TEXT("aliens repopulated on restart (%d, target %d)"), LiveBots(), GM->GetTargetLiveAliens()));
 			Enter(EStep::Win);
 		}
 		break;
@@ -384,6 +394,8 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 		if (StepTime > 0.3f)
 		{
 			Check(GM->HasWon(), FString::Printf(TEXT("kill %d → Won"), KillsToWin));
+			Check(GM->GetTargetLiveAliens() == MaxLive && GM->GetThreatTier() == 5,
+				FString::Printf(TEXT("difficulty ramp is maxed by the win (%d aliens, threat %d/5)"), GM->GetTargetLiveAliens(), GM->GetThreatTier()));
 			Enter(EStep::Done);
 		}
 		break;

@@ -124,6 +124,13 @@ Kill: 3 body hits or 2 headshots.
 
 Dead alien respawns after 3 s.
 
+### Difficulty ramp
+
+The numbers above are the *full-pressure* values. A match opens easy and ramps to them: 2 live aliens,
+10% accuracy and a burst every 3 s at the start; 6 live, 35% and 1.2 s once the player has 15 kills
+or 150 s have passed, whichever comes first. HUD shows `Threat N / 5`. `UGameConfig` `Ramp*` knobs;
+`bDifficultyRamp = false` gives the flat numbers.
+
 Aliens collide with the map and each other (cheap sphere push-apart).
 
 ---

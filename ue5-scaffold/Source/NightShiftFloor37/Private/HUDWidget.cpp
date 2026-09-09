@@ -78,6 +78,7 @@ void UHUDWidget::BuildNativeTree()
 	// Top-right: kills + timer
 	KillsText = MakeText(Canvas, TEXT("KillsText"), FVector2D(1.f, 0.f), FVector2D(1.f, 0.f), FVector2D(-24.f, 20.f), 16, HUDPrivate::Dim);
 	TimerText = MakeText(Canvas, TEXT("TimerText"), FVector2D(1.f, 0.f), FVector2D(1.f, 0.f), FVector2D(-24.f, 42.f), 16, HUDPrivate::Dim);
+	ThreatText = MakeText(Canvas, TEXT("ThreatText"), FVector2D(1.f, 0.f), FVector2D(1.f, 0.f), FVector2D(-24.f, 64.f), 16, HUDPrivate::Dim);
 
 	// Centre: crosshair + prompt
 	CrosshairText = MakeText(Canvas, TEXT("Crosshair"), FVector2D(0.5f, 0.5f), FVector2D(0.5f, 0.5f), FVector2D(0.f, 0.f), 26, HUDPrivate::Ink);
@@ -288,6 +289,12 @@ void UHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	if (TimerText)
 	{
 		TimerText->SetText(FText::FromString(HUDPrivate::FormatTime(BoundGameMode->MatchTimeSeconds)));
+	}
+	if (ThreatText)
+	{
+		const int32 Tier = BoundGameMode->GetThreatTier();
+		ThreatText->SetText(FText::FromString(FString::Printf(TEXT("Threat %d / 5"), Tier)));
+		ThreatText->SetColorAndOpacity(FSlateColor(Tier >= 5 ? HUDPrivate::Red : Tier >= 3 ? HUDPrivate::Amber : HUDPrivate::Dim));
 	}
 	const bool bPaused = BoundGameMode->IsMatchPaused();
 	if (PausePanel)

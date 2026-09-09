@@ -43,6 +43,9 @@ AAlienBot::AAlienBot()
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	GetCharacterMovement()->MaxWalkSpeed = 400.f; // 4 m/s
 	GetCharacterMovement()->bOrientRotationToMovement = true;
+	// Sprint Y — yaw is owned here (orient-to-movement while chasing, FaceTarget in combat), never by
+	// the AIController, so the two cannot fight.
+	bUseControllerRotationYaw = false;
 	ArenaCollision = CreateDefaultSubobject<UArenaCollision>(TEXT("ArenaCollision"));
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
@@ -524,6 +527,11 @@ void AAlienBot::ActivateAtSpawn(const FTransform& SpawnTransform)
 	BodyHitCount = 0;
 	HeadHitCount = 0;
 	CombatState = EAlienCombatState::Chase;
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->bOrientRotationToMovement = true;
+	}
+	SteerCommitRemaining = 0.f;
 	ApplyConfiguredMeshes();
 	BurstCooldownRemaining = 0.f;
 	BurstShotsRemaining = 0;
@@ -567,6 +575,7 @@ void AAlienBot::SoftReset()
 	BurstIntraShotRemaining = 0.f;
 	StrafeSign = 1.f;
 	SteerSideSign = 1.f;
+	SteerCommitRemaining = 0.f;
 	HitFlashTimeRemaining = 0.f;
 	HitFlashAlpha = 0.f;
 	if (bIsFlashing)
@@ -575,6 +584,33 @@ void AAlienBot::SoftReset()
 		OnHitFlash.Broadcast(false);
 	}
 	SoftDespawn();
+}
+
+AArenaGameMode* AAlienBot::GetArenaGameMode() const
+{
+	if (!CachedGameMode.IsValid())
+	{
+		CachedGameMode = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this));
+	}
+	return CachedGameMode.Get();
+}
+
+float AAlienBot::FaceTarget(float DeltaSeconds)
+{
+	if (!TargetPlayer.IsValid())
+	{
+		return 180.f;
+	}
+	const FVector ToPlayer = (TargetPlayer->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
+	if (ToPlayer.IsNearlyZero())
+	{
+		return 0.f;
+	}
+	const float WantYaw = ToPlayer.Rotation().Yaw;
+	const float Rate = GameConfig ? GameConfig->AlienFaceTargetTurnRateDegPerSec : 540.f;
+	const float NewYaw = FMath::FixedTurn(GetActorRotation().Yaw, WantYaw, Rate * DeltaSeconds);
+	SetActorRotation(FRotator(0.f, NewYaw, 0.f));
+	return FMath::Abs(FMath::FindDeltaAngleDegrees(NewYaw, WantYaw));
 }
 
 void AAlienBot::UpdateAI(float DeltaSeconds)
@@ -593,7 +629,7 @@ void AAlienBot::UpdateAI(float DeltaSeconds)
 	}
 
 	// Sprint C — spawn grace: never fire; optionally block chase (Idle) when bSpawnGraceBlocksAlienAggro.
-	if (const AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
+	if (const AArenaGameMode* GM = GetArenaGameMode())
 	{
 		if (GM->IsSpawnGraceActive())
 		{
@@ -617,7 +653,7 @@ void AAlienBot::UpdateAI(float DeltaSeconds)
 	}
 
 	// Sprint V — post-grace fire lock: chase OK, no burst progress.
-	if (const AArenaGameMode* GMFire = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
+	if (const AArenaGameMode* GMFire = GetArenaGameMode())
 	{
 		if (GMFire->IsAlienFireLocked() && !GMFire->IsSpawnGraceActive())
 		{
@@ -684,6 +720,12 @@ void AAlienBot::ChasePlayer(float DeltaSeconds)
 		return;
 	}
 
+	// Chasing: body follows velocity again (combat range hands yaw to FaceTarget).
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->bOrientRotationToMovement = true;
+	}
+
 	const FVector ToPlayer = TargetPlayer->GetActorLocation() - GetActorLocation();
 	FVector Desired = ToPlayer.GetSafeNormal2D();
 	if (Desired.IsNearlyZero())
@@ -691,7 +733,10 @@ void AAlienBot::ChasePlayer(float DeltaSeconds)
 		Desired = ToPlayer.GetSafeNormal();
 	}
 
-	// Simple obstacle steering: forward line trace; if blocked, add lateral offset (alternate sign).
+	// Simple obstacle steering: forward line trace; if blocked, add a lateral offset. Sprint Y — the
+	// side is chosen by probing left/right once and then held for AlienSteerCommitSeconds, instead of
+	// flipping every frame (which made bots shiver against cover).
+	SteerCommitRemaining = FMath::Max(0.f, SteerCommitRemaining - DeltaSeconds);
 	const FVector ProbeStart = GetActorLocation();
 	const FVector ProbeEnd = ProbeStart + Desired * AlienBotPrivate::SteerProbeCm;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(AlienSteer), false, this);
@@ -701,8 +746,25 @@ void AAlienBot::ChasePlayer(float DeltaSeconds)
 	if (bBlocked && SteerHitScratch.GetActor() != TargetPlayer.Get())
 	{
 		const FVector Right = FVector::CrossProduct(FVector::UpVector, Desired).GetSafeNormal();
+		if (SteerCommitRemaining <= 0.f)
+		{
+			// Probe both sides at 60°; keep the clearer one (farther hit / no hit).
+			auto SideClearance = [&](float Sign) -> float
+			{
+				const FVector Dir = (Desired + Right * Sign * 1.7f).GetSafeNormal(); // ≈60° off axis
+				const FVector End = ProbeStart + Dir * AlienBotPrivate::SteerProbeCm;
+				const bool bHit = GetWorld()->LineTraceSingleByChannel(SteerHitScratch, ProbeStart, End, ECC_Visibility, Params);
+				return (bHit && SteerHitScratch.GetActor() != TargetPlayer.Get()) ? SteerHitScratch.Distance : AlienBotPrivate::SteerProbeCm * 2.f;
+			};
+			const float RightClear = SideClearance(1.f);
+			const float LeftClear = SideClearance(-1.f);
+			if (!FMath::IsNearlyEqual(RightClear, LeftClear, 5.f))
+			{
+				SteerSideSign = (RightClear > LeftClear) ? 1.f : -1.f;
+			}
+			SteerCommitRemaining = GameConfig ? GameConfig->AlienSteerCommitSeconds : 0.6f;
+		}
 		Desired = (Desired + Right * SteerSideSign * AlienBotPrivate::SteerLateralWeight).GetSafeNormal();
-		SteerSideSign *= -1.f;
 	}
 
 	AddMovementInput(Desired, 1.f);
@@ -715,17 +777,33 @@ void AAlienBot::StrafeAndBurst(float DeltaSeconds)
 		return;
 	}
 
-	// Stop forward, strafe L/R (DESIGN)
-	const FVector ToPlayer = (TargetPlayer->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-	const FVector Right = FVector::CrossProduct(FVector::UpVector, ToPlayer).GetSafeNormal();
-	AddMovementInput(Right, StrafeSign);
+	// Sprint Y — in combat range the body faces the player (was: orient-to-movement, so strafing
+	// bots shot sideways out of their hip). Chase hands yaw back to the movement component.
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->bOrientRotationToMovement = false;
+	}
+	const float YawError = FaceTarget(DeltaSeconds);
 
+	// Stop forward, strafe L/R (DESIGN). Sprint Y — plant while the attack clip / burst plays so the
+	// punch reads and the Walk↔Attack clip swap happens standing still, not mid-slide.
+	const bool bPlant = (GameConfig ? GameConfig->bAlienPlantsDuringBurst : true)
+		&& (BurstShotsRemaining > 0 || AttackAnimRemaining > 0.f);
+	if (!bPlant)
+	{
+		const FVector ToPlayer = (TargetPlayer->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+		const FVector Right = FVector::CrossProduct(FVector::UpVector, ToPlayer).GetSafeNormal();
+		AddMovementInput(Right, StrafeSign);
+	}
+
+	const AArenaGameMode* GM = GetArenaGameMode();
 	const int32 BurstCount = GameConfig ? GameConfig->AlienBurstRoundCount : 3;
-	const float BurstInterval = GameConfig ? GameConfig->AlienBurstIntervalSeconds : 1.5f;
+	const float BurstInterval = GM ? GM->GetAlienBurstInterval() : (GameConfig ? GameConfig->AlienBurstIntervalSeconds : 1.5f);
 	const float IntraDelay = GameConfig ? GameConfig->AlienBurstIntraShotDelaySeconds : 0.09f;
+	const float FacingTol = GameConfig ? GameConfig->AlienFireFacingToleranceDegrees : 25.f;
 
-	// Start a new burst when cooldown is done and no shots are queued.
-	if (BurstCooldownRemaining <= 0.f && BurstShotsRemaining <= 0)
+	// Start a new burst when cooldown is done, no shots are queued, and the bot is looking at the player.
+	if (BurstCooldownRemaining <= 0.f && BurstShotsRemaining <= 0 && YawError <= FacingTol)
 	{
 		BurstShotsRemaining = BurstCount;
 		BurstIntraShotRemaining = 0.f; // first shot fires this frame (after tick delay below)
@@ -767,14 +845,13 @@ void AAlienBot::TryBurstShot()
 		return;
 	}
 	// Defense-in-depth: never fire during spawn grace (even if chase-only path misroutes).
-	if (const AArenaGameMode* GM = Cast<AArenaGameMode>(UGameplayStatics::GetGameMode(this)))
+	const AArenaGameMode* GM = GetArenaGameMode();
+	if (GM && GM->IsAlienFireLocked())
 	{
-		if (GM->IsAlienFireLocked())
-		{
-			return;
-		}
+		return;
 	}
-	const float Accuracy = GameConfig ? GameConfig->AlienAccuracy : 0.3f; // 30%
+	// Sprint Y — accuracy follows the difficulty ramp (10 % → 35 %); flat DESIGN 30 % when the ramp is off.
+	const float Accuracy = GM ? GM->GetAlienAccuracy() : (GameConfig ? GameConfig->AlienAccuracy : 0.3f);
 	const bool bHit = FMath::FRand() <= Accuracy;
 
 	// Tracer + muzzle light from the bot's muzzle to where the shot went (misses scatter around the player).

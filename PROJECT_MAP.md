@@ -92,7 +92,8 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint X animated aliens | **Shipped** | `SK_Alien` (Quaternius, 0.55 scale ≈ 1.9 m) with Idle/Run/Walk/Punch/Death takes; capsule refit to mesh bounds so shots hit what you see; death clip plays before hide |
 | Sprint X shooting fix | **Shipped** | Rifle trace uses complex collision + player/alien meshes block Visibility; tracer starts at the rifle muzzle. Root cause of "shots do nothing": hits only registered on the capsule, which no longer matched the visible body |
 | Sprint X lighting lift | **Shipped** | Sun 5.0 / sky 1.6 / fog 0.009, practicals 600 cd, floor/concrete albedo ×2.5, `ExposureBiasEV` 0.6 on the camera. `docs/sprintx_mannequin_aliens.png` |
-| Self-test | 31 / 31 | Adds skeletal body, rifle prop, alien body + anim playing checks |
+| Sprint Y enemies + sprint-fire + ramp | **Shipped** | Aliens face the player and plant to shoot, committed obstacle steering; firing drops sprint to walk; kill/time difficulty ramp 2→6 aliens, 10→35 % accuracy, 3.0→1.2 s bursts with HUD `Threat N / 5`. `ue5-scaffold/SPRINT_Y_ENEMIES_RAMP.md` |
+| Self-test | 35 / 35 | Adds ramp-start, sprint-drop-on-fire, ramp-maxed-at-win checks |
 | `Content/Imported` | **Partly committed** | `Aliens/Skel/` (SK_Alien + anims) is committed; office props / fluorescents / `SM_Alien` remain local-only on the Desktop copy — optional Git LFS |
 | UE5 feel | Needs human | Recoil accumulate vs self-cancel still open |
 | Silhouette | **Confirmed** | `docs/sprintx_mannequin_aliens.png` (mannequin + rifle + three aliens in frame) |
@@ -134,7 +135,11 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ## Next steps
 
-### Resume checklist (after the 2026-09-08 Desktop access loss)
+### After Sprint Y (2026-09-08 evening)
+
+Richard's read after W+X: light great, character great, enemies weak, shooting off while running, wants an easy start that ramps. Sprint Y answers all three (see status table). Next human pass: does the ramp pace feel right (`RampKillsToMax` / `RampSecondsToMax`), and do the aliens now read as threats? Still open: AnimBlueprint blendspace for clip pops, physics asset for `SK_Alien`, recoil model, Git LFS.
+
+### Resume checklist (after the 2026-09-08 Desktop access loss) — done
 
 1. `git pull` on the Desktop checkout (it was left at `71f694f`; Sprints W+X live at `72a518b`).
 2. Rebuild in place, run the self-test, expect **31 / 31**.
