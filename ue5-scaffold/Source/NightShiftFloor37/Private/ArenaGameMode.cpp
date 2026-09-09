@@ -87,6 +87,8 @@ void AArenaGameMode::BeginPlay()
 	{
 		GetWorld()->SpawnActor<ANightShiftSelfTest>();
 	}
+	// -NightShiftStartWave=N: open on a later wave (Sprint Z — variant / pressure screenshots).
+	FParse::Value(FCommandLine::Get(), TEXT("NightShiftStartWave="), DebugStartWave);
 	// -NightShiftAutoStart: skip Click-to-play after 1.5 s (screenshots / smoke runs without a mouse).
 	if (FParse::Param(FCommandLine::Get(), TEXT("NightShiftAutoStart")))
 	{
@@ -128,6 +130,15 @@ void AArenaGameMode::Tick(float DeltaSeconds)
 			UE_LOG(LogNightShift, Log, TEXT("Post-grace fire lock ended — aliens may shoot."));
 		}
 	}
+	if (bInWaveBreak)
+	{
+		WaveBreakRemaining = FMath::Max(0.f, WaveBreakRemaining - DeltaSeconds);
+		UpdateWaveBreakBanner();
+		if (WaveBreakRemaining <= 0.f)
+		{
+			StartNextWave();
+		}
+	}
 	EnsureAlienPopulation();
 	EnforceArenaBounds();
 
@@ -142,6 +153,12 @@ void AArenaGameMode::Tick(float DeltaSeconds)
 
 float AArenaGameMode::GetDifficultyAlpha() const
 {
+	if (IsWaveProgression())
+	{
+		// Wave mode: alpha is the wave's position on the way to the last wave (endless: first 8 waves).
+		const int32 Last = GetWavesToWin() > 0 ? GetWavesToWin() : 8;
+		return FMath::Clamp((CurrentWave - 1) / static_cast<float>(FMath::Max(Last - 1, 1)), 0.f, 1.f);
+	}
 	if (!GameConfig || !GameConfig->bDifficultyRamp)
 	{
 		return 1.f;
@@ -153,6 +170,11 @@ float AArenaGameMode::GetDifficultyAlpha() const
 
 int32 AArenaGameMode::GetTargetLiveAliens() const
 {
+	if (IsWaveProgression())
+	{
+		const int32 Live = GameConfig->WaveStartLiveAliens + GameConfig->WaveLiveAliensPerWave * (CurrentWave - 1);
+		return FMath::Clamp(Live, 1, GetPoolSize());
+	}
 	const int32 MaxLive = GameConfig ? GameConfig->MaxLiveAliens : 6;
 	if (!GameConfig || !GameConfig->bDifficultyRamp)
 	{
@@ -169,6 +191,10 @@ float AArenaGameMode::GetAlienAccuracy() const
 	{
 		return 0.3f;
 	}
+	if (IsWaveProgression())
+	{
+		return FMath::Clamp(GameConfig->WaveAccuracyStart + GameConfig->WaveAccuracyPerWave * (CurrentWave - 1), 0.f, GameConfig->WaveAccuracyMax);
+	}
 	if (!GameConfig->bDifficultyRamp)
 	{
 		return GameConfig->AlienAccuracy;
@@ -182,6 +208,10 @@ float AArenaGameMode::GetAlienBurstInterval() const
 	{
 		return 1.5f;
 	}
+	if (IsWaveProgression())
+	{
+		return FMath::Max(GameConfig->WaveBurstIntervalMin, GameConfig->WaveBurstIntervalStart - GameConfig->WaveBurstIntervalPerWave * (CurrentWave - 1));
+	}
 	if (!GameConfig->bDifficultyRamp)
 	{
 		return GameConfig->AlienBurstIntervalSeconds;
@@ -192,6 +222,173 @@ float AArenaGameMode::GetAlienBurstInterval() const
 int32 AArenaGameMode::GetThreatTier() const
 {
 	return 1 + FMath::Clamp(FMath::FloorToInt(GetDifficultyAlpha() * 4.999f), 0, 4);
+}
+
+// ----- Sprint Z wave progression -----
+
+bool AArenaGameMode::IsWaveProgression() const
+{
+	return GameConfig && GameConfig->bWaveProgression;
+}
+
+int32 AArenaGameMode::GetWaveKillQuota() const
+{
+	if (!GameConfig)
+	{
+		return 4;
+	}
+	return FMath::Max(1, GameConfig->WaveKillQuotaBase + GameConfig->WaveKillQuotaPerWave * CurrentWave);
+}
+
+int32 AArenaGameMode::GetWavesToWin() const
+{
+	return GameConfig ? FMath::Max(0, GameConfig->WavesToWin) : 8;
+}
+
+int32 AArenaGameMode::GetPoolSize() const
+{
+	if (!GameConfig)
+	{
+		return 6;
+	}
+	return IsWaveProgression() ? FMath::Max(GameConfig->MaxLiveAliens, GameConfig->WaveMaxLiveAliens) : GameConfig->MaxLiveAliens;
+}
+
+float AArenaGameMode::GetAlienMoveSpeed() const
+{
+	if (!GameConfig)
+	{
+		return 400.f;
+	}
+	if (!IsWaveProgression())
+	{
+		return GameConfig->AlienMoveSpeed;
+	}
+	return FMath::Min(GameConfig->AlienMoveSpeed + GameConfig->WaveMoveSpeedPerWave * (CurrentWave - 1), GameConfig->WaveMoveSpeedMax);
+}
+
+EAlienVariant AArenaGameMode::PickVariantForSpawn() const
+{
+	if (!IsWaveProgression())
+	{
+		return EAlienVariant::Grunt;
+	}
+	int32 LiveBrutes = 0, LiveStalkers = 0;
+	for (const AAlienBot* Bot : AlienPool)
+	{
+		if (!Bot || !Bot->bIsAlive)
+		{
+			continue;
+		}
+		LiveBrutes += Bot->Variant == EAlienVariant::Brute;
+		LiveStalkers += Bot->Variant == EAlienVariant::Stalker;
+	}
+	const int32 Target = GetTargetLiveAliens();
+	auto Allowed = [&](const FAlienVariantTuning& T, int32 Live) -> bool
+	{
+		if (CurrentWave < T.FromWave)
+		{
+			return false;
+		}
+		const int32 Cap = FMath::Max(1, FMath::FloorToInt(Target * T.MaxShareOfLive));
+		return Live < Cap;
+	};
+	if (Allowed(GameConfig->Brute, LiveBrutes))
+	{
+		return EAlienVariant::Brute;
+	}
+	if (Allowed(GameConfig->Stalker, LiveStalkers))
+	{
+		return EAlienVariant::Stalker;
+	}
+	return EAlienVariant::Grunt;
+}
+
+void AArenaGameMode::DebugClearWave()
+{
+	if (MatchState != EArenaMatchState::InProgress || !IsWaveProgression() || bInWaveBreak)
+	{
+		return;
+	}
+	WaveKills = GetWaveKillQuota();
+	OnWaveCleared();
+}
+
+void AArenaGameMode::OnWaveCleared()
+{
+	const int32 ToWin = GetWavesToWin();
+	UE_LOG(LogNightShift, Log, TEXT("Wave %d cleared — %d kills total at %.1fs."), CurrentWave, KillCount, MatchTimeSeconds);
+	if (ToWin > 0 && CurrentWave >= ToWin)
+	{
+		SetMatchState(EArenaMatchState::Won);
+		if (HUDWidget)
+		{
+			HUDWidget->ShowWin(MatchTimeSeconds, CurrentWave, KillCount);
+		}
+		UpdatePlayerInputMode();
+		UE_LOG(LogNightShift, Log, TEXT("WIN — %d waves, %d kills in %.2fs"), CurrentWave, KillCount, MatchTimeSeconds);
+		return;
+	}
+
+	bInWaveBreak = true;
+	WaveBreakRemaining = GameConfig ? FMath::Max(0.f, GameConfig->WaveBreatherSeconds) : 5.f;
+	LastBannerSecond = -1;
+	// Floor empties for the breather (death clips are cut; respawn timers cleared).
+	for (AAlienBot* Bot : AlienPool)
+	{
+		if (Bot)
+		{
+			Bot->SoftDespawn();
+		}
+	}
+	if (ANightShiftCharacter* Player = GetPlayerCharacter())
+	{
+		if (GameConfig && GameConfig->bWaveClearRefillsAmmo && Player->Rifle)
+		{
+			Player->Rifle->SoftResetAmmo();
+		}
+		if (GameConfig && GameConfig->bWaveClearHeals)
+		{
+			Player->ApplyHeal(GameConfig->PlayerMaxHealth);
+		}
+	}
+	UpdateWaveBreakBanner();
+}
+
+void AArenaGameMode::UpdateWaveBreakBanner()
+{
+	if (!HUDWidget || !bInWaveBreak)
+	{
+		return;
+	}
+	const int32 Sec = FMath::CeilToInt(WaveBreakRemaining);
+	if (Sec == LastBannerSecond)
+	{
+		return;
+	}
+	LastBannerSecond = Sec;
+	const bool bRestock = GameConfig ? (GameConfig->bWaveClearRefillsAmmo || GameConfig->bWaveClearHeals) : true;
+	HUDWidget->ShowWaveBanner(
+		FText::FromString(FString::Printf(TEXT("Wave %d cleared"), CurrentWave)),
+		FText::FromString(FString::Printf(TEXT("Wave %d in %d s%s"), CurrentWave + 1, Sec, bRestock ? TEXT(" · ammo and HP restocked") : TEXT(""))));
+}
+
+void AArenaGameMode::StartNextWave()
+{
+	bInWaveBreak = false;
+	WaveBreakRemaining = 0.f;
+	++CurrentWave;
+	WaveKills = 0;
+	// Short grace so the new wave is seen arriving at the edges; the post-grace fire lock arms as usual.
+	SpawnGraceRemaining = GameConfig ? FMath::Max(0.f, GameConfig->WaveStartGraceSeconds) : 2.f;
+	AlienFireLockRemaining = 0.f;
+	if (HUDWidget)
+	{
+		HUDWidget->ClearPrompt();
+	}
+	EnsureAlienPopulation();
+	UE_LOG(LogNightShift, Log, TEXT("Wave %d — %d aliens (target %d), quota %d, accuracy %.0f%%, burst every %.1fs, speed %.0f."),
+		CurrentWave, GetLiveAlienCount(), GetTargetLiveAliens(), GetWaveKillQuota(), GetAlienAccuracy() * 100.f, GetAlienBurstInterval(), GetAlienMoveSpeed());
 }
 
 void AArenaGameMode::EnforceArenaBounds()
@@ -287,7 +484,7 @@ void AArenaGameMode::FindOrCacheArena()
 
 void AArenaGameMode::BuildAlienPool()
 {
-	const int32 MaxLive = GameConfig ? GameConfig->MaxLiveAliens : 6;
+	const int32 MaxLive = GetPoolSize();
 	AlienPool.Reset();
 
 	UWorld* World = GetWorld();
@@ -495,6 +692,10 @@ void AArenaGameMode::StartMatch()
 	KillCount = 0;
 	MatchTimeSeconds = 0.f;
 	bMatchPaused = false;
+	CurrentWave = FMath::Max(1, DebugStartWave);
+	WaveKills = 0;
+	bInWaveBreak = false;
+	WaveBreakRemaining = 0.f;
 	SetMatchState(EArenaMatchState::InProgress);
 	FindOrCacheArena();
 	if (CachedArena)
@@ -511,9 +712,11 @@ void AArenaGameMode::StartMatch()
 		HUDWidget->ClearPrompt();
 	}
 	UpdatePlayerInputMode();
-	UE_LOG(LogNightShift, Log, TEXT("Match started — %d live aliens (target %d, ramp %s), grace %.1fs."),
+	UE_LOG(LogNightShift, Log, TEXT("Match started — %d live aliens (target %d, %s), grace %.1fs."),
 		GetLiveAlienCount(), GetTargetLiveAliens(),
-		(GameConfig && GameConfig->bDifficultyRamp) ? TEXT("on") : TEXT("off"), SpawnGraceRemaining);
+		IsWaveProgression() ? *FString::Printf(TEXT("wave %d of %d, quota %d"), CurrentWave, GetWavesToWin(), GetWaveKillQuota())
+			: ((GameConfig && GameConfig->bDifficultyRamp) ? TEXT("ramp on") : TEXT("ramp off")),
+		SpawnGraceRemaining);
 }
 
 void AArenaGameMode::RequestStartOrRestart()
@@ -544,6 +747,19 @@ void AArenaGameMode::RegisterKill(AActor* /*Victim*/)
 		return;
 	}
 	++KillCount;
+	if (IsWaveProgression())
+	{
+		if (bInWaveBreak)
+		{
+			return; // stragglers during the breather do not count
+		}
+		++WaveKills;
+		if (WaveKills >= GetWaveKillQuota())
+		{
+			OnWaveCleared();
+		}
+		return;
+	}
 	CheckWinCondition();
 	// Bot self-respawns after AlienRespawnSeconds via PerformRespawn → RespawnAlien.
 	// EnsureAlienPopulation is a safety net if a pool slot was lost.
@@ -578,6 +794,10 @@ void AArenaGameMode::SoftRestartInternal(bool bShowPromptIfWaiting)
 	bMatchPaused = false;
 	SpawnGraceRemaining = 0.f;
 	AlienFireLockRemaining = 0.f;
+	CurrentWave = 1;
+	WaveKills = 0;
+	bInWaveBreak = false;
+	WaveBreakRemaining = 0.f;
 	SetMatchState(EArenaMatchState::WaitingToStart);
 
 	ResetPlayerTransform();
@@ -694,6 +914,7 @@ bool AArenaGameMode::RespawnAlien(AAlienBot* Bot)
 	{
 		Bot->GameConfig = GameConfig;
 	}
+	Bot->SetVariant(PickVariantForSpawn());
 	Bot->ActivateAtSpawn(Spawn);
 	return true;
 }
@@ -849,7 +1070,7 @@ void AArenaGameMode::ApplySaferStartSpacing()
 void AArenaGameMode::EnsureAlienPopulation()
 {
 	// Only populate while a match is live — SoftRestart leaves pool despawned in WaitingToStart.
-	if (MatchState != EArenaMatchState::InProgress)
+	if (MatchState != EArenaMatchState::InProgress || bInWaveBreak)
 	{
 		return;
 	}
@@ -907,6 +1128,7 @@ void AArenaGameMode::EnsureAlienPopulation()
 		{
 			Bot->GameConfig = GameConfig;
 		}
+		Bot->SetVariant(PickVariantForSpawn());
 		Bot->ActivateAtSpawn(Spawn);
 		++Live;
 	}

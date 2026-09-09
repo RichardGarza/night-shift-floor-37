@@ -3,6 +3,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "GameConfig.h"
 #include "ArenaGameMode.generated.h"
 
 class UGameConfig;
@@ -67,6 +68,14 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Match")
 	float MatchTimeSeconds = 0.f;
 
+	/** Sprint Z — 1-based wave number (wave mode). Public so tests / debug can jump waves. */
+	UPROPERTY(BlueprintReadOnly, Category = "Match|Waves")
+	int32 CurrentWave = 1;
+
+	/** Kills scored on the current wave. */
+	UPROPERTY(BlueprintReadOnly, Category = "Match|Waves")
+	int32 WaveKills = 0;
+
 	UPROPERTY(BlueprintAssignable, Category = "Match|Events")
 	FOnMatchStateChanged OnMatchStateChanged;
 
@@ -120,12 +129,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Match|EarlyGame")
 	bool IsSpawnGraceActive() const { return SpawnGraceRemaining > 0.f && MatchState == EArenaMatchState::InProgress; }
 
-	/** Grace or post-grace fire lock — aliens must not shoot. */
+	/** Grace, post-grace fire lock, or the between-wave breather — aliens must not shoot. */
 	UFUNCTION(BlueprintPure, Category = "Match|EarlyGame")
 	bool IsAlienFireLocked() const
 	{
 		return MatchState == EArenaMatchState::InProgress
-			&& (SpawnGraceRemaining > 0.f || AlienFireLockRemaining > 0.f);
+			&& (SpawnGraceRemaining > 0.f || AlienFireLockRemaining > 0.f || bInWaveBreak);
 	}
 
 	UFUNCTION(BlueprintPure, Category = "Match|EarlyGame")
@@ -153,6 +162,37 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Match|Ramp")
 	int32 GetThreatTier() const;
 
+	// ----- Sprint Z wave progression -----
+
+	UFUNCTION(BlueprintPure, Category = "Match|Waves")
+	bool IsWaveProgression() const;
+
+	/** Kills needed to clear CurrentWave. */
+	UFUNCTION(BlueprintPure, Category = "Match|Waves")
+	int32 GetWaveKillQuota() const;
+
+	/** WavesToWin from config (0 = endless). */
+	UFUNCTION(BlueprintPure, Category = "Match|Waves")
+	int32 GetWavesToWin() const;
+
+	UFUNCTION(BlueprintPure, Category = "Match|Waves")
+	bool IsInWaveBreak() const { return bInWaveBreak; }
+
+	UFUNCTION(BlueprintPure, Category = "Match|Waves")
+	float GetWaveBreakRemaining() const { return WaveBreakRemaining; }
+
+	/** Alien chase speed (cm/s) for the current wave. */
+	UFUNCTION(BlueprintPure, Category = "Match|Waves")
+	float GetAlienMoveSpeed() const;
+
+	/** Variant for the next activation: fills Brute / Stalker quotas once their wave unlocks, else Grunt. */
+	UFUNCTION(BlueprintPure, Category = "Match|Waves")
+	EAlienVariant PickVariantForSpawn() const;
+
+	/** Force-clear the current wave (debug / self-test). */
+	UFUNCTION(BlueprintCallable, Category = "Match|Waves")
+	void DebugClearWave();
+
 protected:
 	/** Begin grace timer + place player on farthest edge spawn from aliens / push aliens out. */
 	void BeginSpawnGraceAndSafeStart();
@@ -162,6 +202,13 @@ protected:
 	void SetMatchState(EArenaMatchState NewState);
 	void CheckWinCondition();
 	void EnsureAlienPopulation();
+	/** Sprint Z — wave quota met: despawn the floor, restock, start the breather (or win on the last wave). */
+	void OnWaveCleared();
+	/** Sprint Z — breather over: advance the wave, short grace, repopulate. */
+	void StartNextWave();
+	/** Sprint Z — refresh the between-wave banner when the countdown second changes. */
+	void UpdateWaveBreakBanner();
+	int32 GetPoolSize() const;
 	/** Clamp player + live bots into AOfficeArena bounds/ceiling each tick. */
 	void EnforceArenaBounds();
 	void ClampDelta(float& DeltaSeconds) const;
@@ -203,4 +250,11 @@ protected:
 
 	/** Last logged threat tier so the ramp only logs on change. */
 	int32 LoggedThreatTier = 0;
+
+	/** Sprint Z — between-wave breather. */
+	bool bInWaveBreak = false;
+	float WaveBreakRemaining = 0.f;
+	int32 LastBannerSecond = -1;
+	/** -NightShiftStartWave=N (screenshots / smoke runs at a later wave). 0 = unset. */
+	int32 DebugStartWave = 0;
 };

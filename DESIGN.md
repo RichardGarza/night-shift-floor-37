@@ -124,14 +124,14 @@ Kill: 3 body hits or 2 headshots.
 
 Dead alien respawns after 3 s.
 
-### Difficulty ramp
+### Progression
 
-The numbers above are the *full-pressure* values. A match opens easy and ramps to them: 2 live aliens,
-10% accuracy and a burst every 3 s at the start; 6 live, 35% and 1.2 s once the player has 15 kills
-or 150 s have passed, whichever comes first. HUD shows `Threat N / 5`. `UGameConfig` `Ramp*` knobs;
-`bDifficultyRamp = false` gives the flat numbers.
-
-Aliens collide with the map and each other (cheap sphere push-apart).
+Numbered waves, each with a kill quota (4, 5, 6 … = 3 + wave). Clearing a wave empties the floor for a
+5 s breather, restocks ammo and HP, and the next wave arrives at the edges with more, sharper aliens:
+2 live at 10% accuracy and a burst every 3 s on wave 1, up to 8 live at 38% and a burst every 0.9 s on
+wave 8. Brutes (big, slow, 6 body hits, red glow) join from wave 3, Stalkers (small, fast, 2 hits, quick
+bursts, cyan glow) from wave 5. Clearing wave 8 (about 60 kills) is the win. HUD: `Kills 4 / 6`,
+`Wave 3 / 8`. All numbers are `UGameConfig` `Wave*` / `Brute` / `Stalker` knobs; `WavesToWin = 0` is endless.
 
 ---
 
@@ -158,7 +158,7 @@ DOM / UMG overlay:
 - Timer
 - Start: “Click to play”
 - Death: “You died — click to restart”
-- Win at 25 kills, show time
+- Win on clearing the last wave, show waves / kills / time
 
 Restart resets match state without unloading the level.
 

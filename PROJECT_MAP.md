@@ -93,7 +93,9 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint X shooting fix | **Shipped** | Rifle trace uses complex collision + player/alien meshes block Visibility; tracer starts at the rifle muzzle. Root cause of "shots do nothing": hits only registered on the capsule, which no longer matched the visible body |
 | Sprint X lighting lift | **Shipped** | Sun 5.0 / sky 1.6 / fog 0.009, practicals 600 cd, floor/concrete albedo ×2.5, `ExposureBiasEV` 0.6 on the camera. `docs/sprintx_mannequin_aliens.png` |
 | Sprint Y enemies + sprint-fire + ramp | **Shipped** | Aliens face the player and plant to shoot, committed obstacle steering; firing drops sprint to walk; kill/time difficulty ramp 2→6 aliens, 10→35 % accuracy, 3.0→1.2 s bursts with HUD `Threat N / 5`. `ue5-scaffold/SPRINT_Y_ENEMIES_RAMP.md` |
-| Self-test | 35 / 35 | Adds ramp-start, sprint-drop-on-fire, ramp-maxed-at-win checks |
+| Sprint Z waves + variants | **Shipped** | 8 numbered waves with kill quotas, breather + restock between waves, Brute (wave 3) / Stalker (wave 5) variants, win on clearing wave 8 (~60 kills). `-NightShiftStartWave=N` for smoke runs. `ue5-scaffold/SPRINT_Z_WAVES.md` |
+| Alien model swap | **Waiting on files** | Richard picked Mixamo Mutant; `Scripts/import_mixamo_alien.py` ready; drop FBXs in `~/Downloads/NightShiftAlien/` |
+| Self-test | 47 / 47 | Adds wave-clear breather, restock, wave 2 growth, wave reset, final-wave win + variant mix |
 | `Content/Imported` | **Partly committed** | `Aliens/Skel/` (SK_Alien + anims) is committed; office props / fluorescents / `SM_Alien` remain local-only on the Desktop copy — optional Git LFS |
 | UE5 feel | Needs human | Recoil accumulate vs self-cancel still open |
 | Silhouette | **Confirmed** | `docs/sprintx_mannequin_aliens.png` (mannequin + rifle + three aliens in frame) |
@@ -134,6 +136,10 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 ---
 
 ## Next steps
+
+### After Sprint Z (2026-09-08 night)
+
+Richard on Y: wants a real progression, not a ramp; alien model is "super lame". Z ships waves + variants. Model swap is next: Mixamo Mutant FBXs → `import_mixamo_alien.py` → point `UGameConfig` alien soft paths at `/Game/Imported/Aliens/Mutant/`, refit scale/yaw, screenshot. Then: per-variant materials, AnimBlueprint blendspace, recoil model.
 
 ### After Sprint Y (2026-09-08 evening)
 

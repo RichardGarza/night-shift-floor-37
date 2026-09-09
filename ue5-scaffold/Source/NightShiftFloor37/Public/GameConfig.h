@@ -81,6 +81,36 @@ struct FNightShiftAlienAnimCache
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Anim") TObjectPtr<UAnimSequence> Death;
 };
 
+/** Sprint Z — alien variants introduced by the wave progression. */
+UENUM(BlueprintType)
+enum class EAlienVariant : uint8
+{
+	Grunt,
+	Brute,
+	Stalker
+};
+
+/** Sprint Z — how a variant differs from the Grunt (DESIGN numbers). Scale/speed/HP/fire/glow. */
+USTRUCT(BlueprintType)
+struct FAlienVariantTuning
+{
+	GENERATED_BODY()
+
+	/** First wave this variant may appear on. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") int32 FromWave = 3;
+	/** Max fraction of the live target this variant may occupy (at least one once unlocked). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") float MaxShareOfLive = 0.34f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") float ScaleMul = 1.35f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") float SpeedMul = 0.8f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") int32 BodyHitsToKill = 6;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") int32 HeadshotsToKill = 3;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") float BurstIntervalMul = 1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") float AccuracyBonus = 0.f;
+	/** Always-on point light so the variant reads at a glance (the atlas material ignores tints). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") FLinearColor GlowColor = FLinearColor(1.f, 0.15f, 0.05f);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") float GlowIntensity = 400.f;
+};
+
 /**
  * Single source of truth for every gameplay tunable.
  * Create a Data Asset of this class under Content/Data/ and assign it on GameMode / Character / Bots.
@@ -463,6 +493,86 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Ramp")
 	float RampEndBurstIntervalSeconds = 1.2f;
+
+	// -------------------------------------------------------------------------
+	// Wave progression (Sprint Z — Richard: "there should be a progression, not just a ramp to 100 %").
+	// Numbered waves, each with a kill quota. Clearing a wave despawns the floor, restocks ammo/HP and
+	// shows a breather banner; the next wave fields more, sharper aliens and unlocks variants.
+	// Win = clear WavesToWin (0 = endless). When on, this supersedes the Sprint Y ramp and KillsToWin.
+	// -------------------------------------------------------------------------
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	bool bWaveProgression = true;
+
+	/** Waves to clear for the win screen; 0 = endless (HUD shows the wave number only). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves", meta = (ClampMin = "0"))
+	int32 WavesToWin = 8;
+
+	/** Kill quota for wave N = WaveKillQuotaBase + WaveKillQuotaPerWave × N (3 + 1×N → 4, 5, 6 …). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves", meta = (ClampMin = "1"))
+	int32 WaveKillQuotaBase = 3;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves", meta = (ClampMin = "0"))
+	int32 WaveKillQuotaPerWave = 1;
+
+	/** Live aliens on wave N = WaveStartLiveAliens + WaveLiveAliensPerWave × (N − 1), capped at WaveMaxLiveAliens. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves", meta = (ClampMin = "1"))
+	int32 WaveStartLiveAliens = 2;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves", meta = (ClampMin = "0"))
+	int32 WaveLiveAliensPerWave = 1;
+
+	/** Pool size in wave mode (8 edge spawns → 8). MaxLiveAliens still applies when waves are off. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves", meta = (ClampMin = "1"))
+	int32 WaveMaxLiveAliens = 8;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves", meta = (ClampMin = "0", ClampMax = "1"))
+	float WaveAccuracyStart = 0.10f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	float WaveAccuracyPerWave = 0.04f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves", meta = (ClampMin = "0", ClampMax = "1"))
+	float WaveAccuracyMax = 0.45f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	float WaveBurstIntervalStart = 3.0f;
+
+	/** Seconds shaved off the burst interval per wave. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	float WaveBurstIntervalPerWave = 0.3f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	float WaveBurstIntervalMin = 0.8f;
+
+	/** cm/s added to AlienMoveSpeed per wave after the first. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	float WaveMoveSpeedPerWave = 10.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	float WaveMoveSpeedMax = 520.f;
+
+	/** Breather between waves: floor is empty, banner counts down, ammo/HP restock. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	float WaveBreatherSeconds = 5.f;
+
+	/** Grace (aliens idle at the edges) at the start of wave 2+; wave 1 uses SpawnGraceSeconds. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	float WaveStartGraceSeconds = 2.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	bool bWaveClearRefillsAmmo = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	bool bWaveClearHeals = true;
+
+	/** Big, slow, six body hits, red glow. Unlocks wave 3. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	FAlienVariantTuning Brute;
+
+	/** Small, fast, two body hits, quick bursts, cyan glow. Unlocks wave 5 (defaults set in the constructor). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
+	FAlienVariantTuning Stalker;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match")
 	float MaxDeltaTimeClampSeconds = 0.05f; // treat spikes above ~50 ms as 50 ms

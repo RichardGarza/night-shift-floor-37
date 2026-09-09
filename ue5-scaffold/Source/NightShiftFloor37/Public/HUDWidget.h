@@ -42,8 +42,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void ShowDeathPrompt();
 
+	/** Win banner. WavesCleared > 0 adds the wave / kill tally (Sprint Z). */
 	UFUNCTION(BlueprintCallable, Category = "HUD")
-	void ShowWin(float MatchTimeSeconds);
+	void ShowWin(float MatchTimeSeconds, int32 WavesCleared = 0, int32 Kills = 0);
+
+	/** Sprint Z — between-wave banner: title on the prompt line, countdown on the hint line. */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void ShowWaveBanner(const FText& Title, const FText& Hint);
 
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void ClearPrompt();

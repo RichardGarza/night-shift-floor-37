@@ -279,11 +279,52 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 			Check(TargetBot->bSkeletalActive, TEXT("alien uses the skeletal Quaternius body"));
 			Check(TargetBot->GetMesh() && TargetBot->GetMesh()->IsPlaying(), TEXT("alien skeletal animation is playing"));
 			Check(Player->GetMesh() && Player->GetMesh()->IsPlaying(), TEXT("player skeletal animation is playing"));
-			Enter(EStep::GraceWait);
+			Enter(GM->IsWaveProgression() ? EStep::WaveClear : EStep::GraceWait);
 		}
 		else if (StepTime > 6.f)
 		{
 			Fail(TEXT("alien never respawned"));
+			Enter(GM->IsWaveProgression() ? EStep::WaveClear : EStep::GraceWait);
+		}
+		break;
+
+	case EStep::WaveClear:
+		// Sprint Z — meeting the wave quota empties the floor, restocks, and starts the breather.
+		if (bFirst)
+		{
+			Check(GM->CurrentWave == 1, TEXT("match opens on wave 1"));
+			AccuracyAtWave1 = GM->GetAlienAccuracy();
+			if (Player->Rifle) { Player->Rifle->MagAmmo = 3; }
+			GM->WaveKills = GM->GetWaveKillQuota() - 1;
+			GM->RegisterKill(nullptr);
+		}
+		if (StepTime > 0.3f)
+		{
+			int32 Mag = 0, Reserve = 0;
+			if (Player->Rifle) { Player->Rifle->GetAmmo(Mag, Reserve); }
+			const int32 MagSize = GM->GameConfig ? GM->GameConfig->MagSize : 30;
+			Check(GM->IsInWaveBreak(), TEXT("wave quota met → breather"));
+			Check(LiveBots() == 0, FString::Printf(TEXT("floor emptied for the breather (%d live)"), LiveBots()));
+			Check(Mag == MagSize, FString::Printf(TEXT("ammo restocked on wave clear (%d / %d)"), Mag, Reserve));
+			Check(GM->IsAlienFireLocked(), TEXT("aliens cannot fire during the breather"));
+			Enter(EStep::WaveNext);
+		}
+		break;
+
+	case EStep::WaveNext:
+		if (!GM->IsInWaveBreak() && StepTime > 0.5f)
+		{
+			Check(GM->CurrentWave == 2, FString::Printf(TEXT("wave 2 starts after the breather (wave %d)"), GM->CurrentWave));
+			Check(GM->WaveKills == 0, TEXT("wave kill counter reset"));
+			Check(GM->GetTargetLiveAliens() == 3 && LiveBots() == 3,
+				FString::Printf(TEXT("wave 2 fields more aliens (target %d, live %d)"), GM->GetTargetLiveAliens(), LiveBots()));
+			Check(GM->GetAlienAccuracy() > AccuracyAtWave1,
+				FString::Printf(TEXT("wave 2 aliens shoot straighter (%.0f%% → %.0f%%)"), AccuracyAtWave1 * 100.f, GM->GetAlienAccuracy() * 100.f));
+			Enter(EStep::GraceWait);
+		}
+		else if (StepTime > 12.f)
+		{
+			Fail(TEXT("breather never ended"));
 			Enter(EStep::GraceWait);
 		}
 		break;
@@ -297,6 +338,7 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 			const float LockS = GM->GameConfig ? GM->GameConfig->PostGraceAlienFireDelaySeconds : 1.5f;
 			Check(GM->MatchTimeSeconds >= GraceS + LockS - 0.1f,
 				FString::Printf(TEXT("spawn grace + fire lock elapsed (match t=%.1f s, want >= %.1f s)"), GM->MatchTimeSeconds, GraceS + LockS));
+			Check(LiveBots() > 0, FString::Printf(TEXT("aliens are on the floor after the locks (%d live)"), LiveBots()));
 			Check(HitsDuringGraceWait == 0,
 				FString::Printf(TEXT("no alien damage landed before the fire lock ended (%d hits)"), HitsDuringGraceWait));
 			Enter(EStep::PauseHold);
@@ -381,6 +423,7 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 			Check(Player->IsAlive() && Player->Health >= MaxHP - 1.f, FString::Printf(TEXT("HP reset on restart (%.0f)"), Player->Health));
 			Check(GM->KillCount == 0, TEXT("kills reset on restart"));
 			Check(LiveBots() == GM->GetTargetLiveAliens(), FString::Printf(TEXT("aliens repopulated on restart (%d, target %d)"), LiveBots(), GM->GetTargetLiveAliens()));
+			Check(GM->CurrentWave == 1 && GM->WaveKills == 0, TEXT("wave counter reset on restart"));
 			Enter(EStep::Win);
 		}
 		break;
@@ -388,14 +431,34 @@ void ANightShiftSelfTest::Tick(float DeltaSeconds)
 	case EStep::Win:
 		if (bFirst)
 		{
-			GM->KillCount = KillsToWin - 1;
+			if (GM->IsWaveProgression())
+			{
+				// Jump to the last wave, one kill short of its quota; the population keeper follows the wave.
+				GM->CurrentWave = FMath::Max(1, GM->GetWavesToWin());
+				GM->WaveKills = GM->GetWaveKillQuota() - 1;
+				GM->KillCount = 59;
+			}
+			else
+			{
+				GM->KillCount = KillsToWin - 1;
+			}
 			GM->RegisterKill(nullptr);
 		}
 		if (StepTime > 0.3f)
 		{
-			Check(GM->HasWon(), FString::Printf(TEXT("kill %d → Won"), KillsToWin));
-			Check(GM->GetTargetLiveAliens() == MaxLive && GM->GetThreatTier() == 5,
-				FString::Printf(TEXT("difficulty ramp is maxed by the win (%d aliens, threat %d/5)"), GM->GetTargetLiveAliens(), GM->GetThreatTier()));
+			if (GM->IsWaveProgression())
+			{
+				Check(GM->HasWon(), FString::Printf(TEXT("clearing wave %d → Won"), GM->GetWavesToWin()));
+				Check(GM->GetThreatTier() == 5 && GM->GetAlienAccuracy() > AccuracyAtWave1 + 0.1f,
+					FString::Printf(TEXT("final wave is full pressure (threat %d/5, accuracy %.0f%%)"), GM->GetThreatTier(), GM->GetAlienAccuracy() * 100.f));
+				Check(GM->PickVariantForSpawn() != EAlienVariant::Grunt, TEXT("variants are in the spawn mix on the final wave"));
+			}
+			else
+			{
+				Check(GM->HasWon(), FString::Printf(TEXT("kill %d → Won"), KillsToWin));
+				Check(GM->GetTargetLiveAliens() == MaxLive && GM->GetThreatTier() == 5,
+					FString::Printf(TEXT("difficulty ramp is maxed by the win (%d aliens, threat %d/5)"), GM->GetTargetLiveAliens(), GM->GetThreatTier()));
+			}
 			Enter(EStep::Done);
 		}
 		break;

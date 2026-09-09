@@ -205,9 +205,14 @@ void AAlienBot::FitSkeletalBody(USkeletalMesh* Skel)
 	{
 		return;
 	}
-	const float S = GameConfig ? FMath::Max(GameConfig->AlienMeshScale, 0.05f) : 1.f;
+	const float Base = GameConfig ? FMath::Max(GameConfig->AlienMeshScale, 0.05f) : 1.f;
+	const FAlienVariantTuning* VT = GetVariantTuning();
+	const float ScaleMul = VT ? FMath::Max(VT->ScaleMul, 0.1f) : 1.f;
+	const float S = Base * ScaleMul;
+	AppliedScaleMul = ScaleMul;
 	const float Yaw = GameConfig ? GameConfig->AlienMeshYawDegrees : -90.f;
 	const FBoxSphereBounds B = Skel->GetBounds(); // ref-pose bounds in mesh space
+	GruntHalfHeight = FMath::Max(B.BoxExtent.Z * Base, 30.f);
 	const float HalfH = FMath::Max(B.BoxExtent.Z * S, 30.f);
 	const float Radius = FMath::Clamp(FMath::Min(B.BoxExtent.X, B.BoxExtent.Y) * S, 25.f, HalfH * 0.75f);
 	GetCapsuleComponent()->SetCapsuleSize(Radius, HalfH);
@@ -219,6 +224,52 @@ void AAlienBot::FitSkeletalBody(USkeletalMesh* Skel)
 	if (FlashLight)
 	{
 		FlashLight->SetRelativeLocation(FVector(0.f, 0.f, HalfH * 0.3f));
+	}
+}
+
+void AAlienBot::SetVariant(EAlienVariant NewVariant)
+{
+	Variant = NewVariant;
+}
+
+const FAlienVariantTuning* AAlienBot::GetVariantTuning() const
+{
+	if (!GameConfig)
+	{
+		return nullptr;
+	}
+	switch (Variant)
+	{
+	case EAlienVariant::Brute:   return &GameConfig->Brute;
+	case EAlienVariant::Stalker: return &GameConfig->Stalker;
+	default:                     return nullptr;
+	}
+}
+
+void AAlienBot::ApplyVariantPresentation()
+{
+	const FAlienVariantTuning* VT = GetVariantTuning();
+	const float WantMul = VT ? FMath::Max(VT->ScaleMul, 0.1f) : 1.f;
+	if (bSkeletalActive && !FMath::IsNearlyEqual(WantMul, AppliedScaleMul, 0.001f))
+	{
+		if (USkeletalMeshComponent* CharMesh = GetMesh())
+		{
+			if (USkeletalMesh* Skel = CharMesh->GetSkeletalMeshAsset())
+			{
+				FitSkeletalBody(Skel); // caller (ActivateAtSpawn) re-seats the capsule on the floor
+			}
+		}
+	}
+	// Speed: wave-scaled chase speed × variant multiplier.
+	const AArenaGameMode* GM = GetArenaGameMode();
+	const float Speed = GM ? GM->GetAlienMoveSpeed() : (GameConfig ? GameConfig->AlienMoveSpeed : 400.f);
+	GetCharacterMovement()->MaxWalkSpeed = Speed * (VT ? VT->SpeedMul : 1.f);
+	// Glow: always-on tinted light for variants; Grunt keeps the plain hit-flash light.
+	if (FlashLight)
+	{
+		GlowBaseIntensity = VT ? VT->GlowIntensity : 0.f;
+		FlashLight->SetLightColor(VT ? VT->GlowColor : FLinearColor(FColor(210, 255, 220)));
+		FlashLight->SetIntensity(GlowBaseIntensity);
 	}
 }
 
@@ -468,10 +519,10 @@ void AAlienBot::ApplyFlashToMaterials()
 		}
 	}
 
-	// Point light pop — stronger so flash reads even when mat params ignore Color.
+	// Point light pop — stronger so flash reads even when mat params ignore Color. Variants glow at rest.
 	if (FlashLight)
 	{
-		FlashLight->SetIntensity(Flash * 1400.f);
+		FlashLight->SetIntensity(GlowBaseIntensity + Flash * 1400.f);
 	}
 }
 
@@ -533,6 +584,14 @@ void AAlienBot::ActivateAtSpawn(const FTransform& SpawnTransform)
 	}
 	SteerCommitRemaining = 0.f;
 	ApplyConfiguredMeshes();
+	ApplyVariantPresentation();
+	// Spawn transforms assume the Grunt capsule; re-seat so this variant's feet touch the same floor.
+	{
+		const float Half = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		FVector Loc = SpawnTransform.GetLocation();
+		Loc.Z += Half - GruntHalfHeight;
+		SetActorLocation(Loc, false, nullptr, ETeleportType::TeleportPhysics);
+	}
 	BurstCooldownRemaining = 0.f;
 	BurstShotsRemaining = 0;
 	BurstIntraShotRemaining = 0.f;
@@ -798,7 +857,9 @@ void AAlienBot::StrafeAndBurst(float DeltaSeconds)
 
 	const AArenaGameMode* GM = GetArenaGameMode();
 	const int32 BurstCount = GameConfig ? GameConfig->AlienBurstRoundCount : 3;
-	const float BurstInterval = GM ? GM->GetAlienBurstInterval() : (GameConfig ? GameConfig->AlienBurstIntervalSeconds : 1.5f);
+	const FAlienVariantTuning* VT = GetVariantTuning();
+	const float BurstInterval = (GM ? GM->GetAlienBurstInterval() : (GameConfig ? GameConfig->AlienBurstIntervalSeconds : 1.5f))
+		* (VT ? FMath::Max(VT->BurstIntervalMul, 0.1f) : 1.f);
 	const float IntraDelay = GameConfig ? GameConfig->AlienBurstIntraShotDelaySeconds : 0.09f;
 	const float FacingTol = GameConfig ? GameConfig->AlienFireFacingToleranceDegrees : 25.f;
 
@@ -851,7 +912,9 @@ void AAlienBot::TryBurstShot()
 		return;
 	}
 	// Sprint Y — accuracy follows the difficulty ramp (10 % → 35 %); flat DESIGN 30 % when the ramp is off.
-	const float Accuracy = GM ? GM->GetAlienAccuracy() : (GameConfig ? GameConfig->AlienAccuracy : 0.3f);
+	const FAlienVariantTuning* VT = GetVariantTuning();
+	const float Accuracy = FMath::Clamp((GM ? GM->GetAlienAccuracy() : (GameConfig ? GameConfig->AlienAccuracy : 0.3f))
+		+ (VT ? VT->AccuracyBonus : 0.f), 0.f, 1.f);
 	const bool bHit = FMath::FRand() <= Accuracy;
 
 	// Tracer + muzzle light from the bot's muzzle to where the shot went (misses scatter around the player).
@@ -934,8 +997,9 @@ float AAlienBot::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
 
 	PlayHitFlash();
 
-	const int32 BodyNeed = GameConfig ? GameConfig->AlienBodyHitsToKill : 3;
-	const int32 HeadNeed = GameConfig ? GameConfig->AlienHeadshotsToKill : 2;
+	const FAlienVariantTuning* VT = GetVariantTuning();
+	const int32 BodyNeed = VT ? FMath::Max(VT->BodyHitsToKill, 1) : (GameConfig ? GameConfig->AlienBodyHitsToKill : 3);
+	const int32 HeadNeed = VT ? FMath::Max(VT->HeadshotsToKill, 1) : (GameConfig ? GameConfig->AlienHeadshotsToKill : 2);
 	if (HeadHitCount >= HeadNeed || BodyHitCount >= BodyNeed)
 	{
 		Die();
@@ -960,6 +1024,9 @@ void AAlienBot::PlayHitFlash()
 
 void AAlienBot::Die()
 {
+	UE_LOG(LogNightShift, Verbose, TEXT("%s died (%s, body %d head %d)."), *GetName(),
+		Variant == EAlienVariant::Brute ? TEXT("Brute") : Variant == EAlienVariant::Stalker ? TEXT("Stalker") : TEXT("Grunt"),
+		BodyHitCount, HeadHitCount);
 	bIsAlive = false;
 	CombatState = EAlienCombatState::Dead;
 	BurstShotsRemaining = 0;

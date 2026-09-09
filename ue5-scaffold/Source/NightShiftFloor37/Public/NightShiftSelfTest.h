@@ -32,7 +32,7 @@ public:
 protected:
 	enum class EStep : uint8
 	{
-		Boot, Start, Spawns, Aim, Fire, Kill, Respawn, GraceWait, PauseHold, PauseResume, Bounds, Death, Restart, Win, Done, Exit
+		Boot, Start, Spawns, Aim, Fire, Kill, Respawn, WaveClear, WaveNext, GraceWait, PauseHold, PauseResume, Bounds, Death, Restart, Win, Done, Exit
 	};
 
 	EStep Step = EStep::Boot;
@@ -51,6 +51,7 @@ protected:
 	float PausedTime = 0.f;
 	int32 KillsAtFireStart = 0;
 	int32 HitsDuringGraceWait = 0;
+	float AccuracyAtWave1 = 0.f;
 
 	void Enter(EStep Next);
 	void Check(bool bCondition, const FString& What);

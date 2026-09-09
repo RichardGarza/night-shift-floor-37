@@ -282,9 +282,17 @@ void UHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		AmmoText->SetText(FText::FromString(FString::Printf(TEXT("%d / %d"), Mag, Reserve)));
 		AmmoText->SetColorAndOpacity(FSlateColor((Mag == 0 && Reserve == 0) ? HUDPrivate::Red : HUDPrivate::Ink));
 	}
+	const bool bWaves = BoundGameMode->IsWaveProgression();
 	if (KillsText)
 	{
-		KillsText->SetText(FText::FromString(FString::Printf(TEXT("Kills %d / %d"), BoundGameMode->KillCount, KillsToWin)));
+		if (bWaves)
+		{
+			KillsText->SetText(FText::FromString(FString::Printf(TEXT("Kills %d / %d"), BoundGameMode->WaveKills, BoundGameMode->GetWaveKillQuota())));
+		}
+		else
+		{
+			KillsText->SetText(FText::FromString(FString::Printf(TEXT("Kills %d / %d"), BoundGameMode->KillCount, KillsToWin)));
+		}
 	}
 	if (TimerText)
 	{
@@ -293,7 +301,17 @@ void UHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	if (ThreatText)
 	{
 		const int32 Tier = BoundGameMode->GetThreatTier();
-		ThreatText->SetText(FText::FromString(FString::Printf(TEXT("Threat %d / 5"), Tier)));
+		if (bWaves)
+		{
+			const int32 ToWin = BoundGameMode->GetWavesToWin();
+			ThreatText->SetText(FText::FromString(ToWin > 0
+				? FString::Printf(TEXT("Wave %d / %d"), BoundGameMode->CurrentWave, ToWin)
+				: FString::Printf(TEXT("Wave %d"), BoundGameMode->CurrentWave)));
+		}
+		else
+		{
+			ThreatText->SetText(FText::FromString(FString::Printf(TEXT("Threat %d / 5"), Tier)));
+		}
 		ThreatText->SetColorAndOpacity(FSlateColor(Tier >= 5 ? HUDPrivate::Red : Tier >= 3 ? HUDPrivate::Amber : HUDPrivate::Dim));
 	}
 	const bool bPaused = BoundGameMode->IsMatchPaused();
@@ -370,13 +388,41 @@ void UHUDWidget::ShowDeathPrompt()
 	SetPrompt(FText::FromString(TEXT("You died — click to restart")));
 }
 
-void UHUDWidget::ShowWin(float MatchTimeSeconds)
+namespace HUDPrivate
 {
+	const TCHAR* DefaultHint = TEXT("WASD move · Mouse aim · LMB shoot · R reload · Shift sprint · Space jump · Q shoulder · Esc pause");
+}
+
+void UHUDWidget::ShowWin(float MatchTimeSeconds, int32 WavesCleared, int32 Kills)
+{
+	if (PromptHintText)
+	{
+		PromptHintText->SetText(FText::FromString(HUDPrivate::DefaultHint));
+	}
+	if (WavesCleared > 0)
+	{
+		SetPrompt(FText::FromString(FString::Printf(TEXT("Floor cleared — %d waves · %d kills · %s — click to play again"),
+			WavesCleared, Kills, *HUDPrivate::FormatTime(MatchTimeSeconds))));
+		return;
+	}
 	SetPrompt(FText::FromString(FString::Printf(TEXT("Floor cleared — %s — click to play again"), *HUDPrivate::FormatTime(MatchTimeSeconds))));
+}
+
+void UHUDWidget::ShowWaveBanner(const FText& Title, const FText& Hint)
+{
+	if (PromptHintText)
+	{
+		PromptHintText->SetText(Hint);
+	}
+	SetPrompt(Title);
 }
 
 void UHUDWidget::ClearPrompt()
 {
+	if (PromptHintText)
+	{
+		PromptHintText->SetText(FText::FromString(HUDPrivate::DefaultHint));
+	}
 	SetPrompt(FText::GetEmpty());
 }
 

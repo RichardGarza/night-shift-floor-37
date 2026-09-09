@@ -3,6 +3,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "GameConfig.h"
 #include "AlienBot.generated.h"
 
 class UStaticMeshComponent;
@@ -84,6 +85,16 @@ public:
 	/** Sprint X — true once AlienSkeletalMesh replaced the greybox / static body. */
 	UPROPERTY(BlueprintReadOnly, Category = "Visual")
 	bool bSkeletalActive = false;
+
+	/** Sprint Z — Grunt / Brute / Stalker; set by the GameMode before ActivateAtSpawn. */
+	UPROPERTY(BlueprintReadOnly, Category = "Combat")
+	EAlienVariant Variant = EAlienVariant::Grunt;
+
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void SetVariant(EAlienVariant NewVariant);
+
+	/** Tuning for Brute / Stalker; nullptr for the Grunt (DESIGN numbers apply). */
+	const FAlienVariantTuning* GetVariantTuning() const;
 
 	/** Remaining hit-flash time in seconds (DESIGN: 80 ms → 0.08 s). */
 	UPROPERTY(BlueprintReadOnly, Category = "FX")
@@ -219,6 +230,12 @@ protected:
 	void UpdateAlienAnim(float DeltaSeconds);
 	/** Scale + place the skeletal mesh and refit the capsule to its bounds (feet at capsule bottom). */
 	void FitSkeletalBody(USkeletalMesh* Skel);
+	/** Sprint Z — refit for the variant scale, set speed and the always-on glow. Call after ApplyConfiguredMeshes. */
+	void ApplyVariantPresentation();
+	float AppliedScaleMul = 1.f;
+	/** Capsule half-height a Grunt would have (spawn transforms assume it). */
+	float GruntHalfHeight = 88.f;
+	float GlowBaseIntensity = 0.f;
 	void BeginFlashSwap();
 	void EndFlashSwap();
 };

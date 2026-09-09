@@ -5,6 +5,17 @@
 UGameConfig::UGameConfig()
 {
 	// DESIGN numeric defaults live on UPROPERTY initializers.
+	// Sprint Z — the struct defaults describe the Brute; the Stalker is its mirror image.
+	Stalker.FromWave = 5;
+	Stalker.MaxShareOfLive = 0.34f;
+	Stalker.ScaleMul = 0.8f;
+	Stalker.SpeedMul = 1.4f;
+	Stalker.BodyHitsToKill = 2;
+	Stalker.HeadshotsToKill = 1;
+	Stalker.BurstIntervalMul = 0.7f;
+	Stalker.AccuracyBonus = 0.05f;
+	Stalker.GlowColor = FLinearColor(0.2f, 0.9f, 1.0f);
+	Stalker.GlowIntensity = 300.f;
 	EnsurePhase8DefaultSoftPaths();
 }
 
