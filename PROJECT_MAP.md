@@ -95,6 +95,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint Y enemies + sprint-fire + ramp | **Shipped** | Aliens face the player and plant to shoot, committed obstacle steering; firing drops sprint to walk; kill/time difficulty ramp 2→6 aliens, 10→35 % accuracy, 3.0→1.2 s bursts with HUD `Threat N / 5`. `ue5-scaffold/SPRINT_Y_ENEMIES_RAMP.md` |
 | Sprint Z waves + variants | **Shipped** | 8 numbered waves with kill quotas, breather + restock between waves, Brute (wave 3) / Stalker (wave 5) variants, win on clearing wave 8 (~60 kills). `-NightShiftStartWave=N` for smoke runs. `ue5-scaffold/SPRINT_Z_WAVES.md` |
 | Sprint AA Mutant model | **Shipped** | Mixamo Mutant (`/Game/Imported/Aliens/Mutant/SK_Mutant` + 6 clips, root-locked) auto-selected by `bAutoPickAlienModelSet`; Quaternius alien is the fallback. `ue5-scaffold/SPRINT_AA_MUTANT.md`, `docs/sprintaa_mutant_wave4.png` |
+| Sprint AB variant skins | **Shipped** | `M_AlienVariant` (Tint/Emissive params) on SK_Mutant, Brute red / Stalker cyan skins, hit-react stagger, physics asset → per-bone headshots. `ue5-scaffold/SPRINT_AB_VARIANT_SKINS.md` |
 | Self-test | 47 / 47 | Adds wave-clear breather, restock, wave 2 growth, wave reset, final-wave win + variant mix |
 | `Content/Imported` | **Partly committed** | `Aliens/Skel/` (SK_Alien + anims) is committed; office props / fluorescents / `SM_Alien` remain local-only on the Desktop copy — optional Git LFS |
 | UE5 feel | Needs human | Recoil accumulate vs self-cancel still open |

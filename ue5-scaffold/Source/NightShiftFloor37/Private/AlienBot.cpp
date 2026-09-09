@@ -116,6 +116,10 @@ void AAlienBot::ApplyConfiguredMeshes()
 			CharMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 			CharMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 			CharMesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+			// Sprint AB — with a physics asset the rifle trace must reach the bodies, so the capsule steps
+			// aside on Visibility (it still blocks Pawn/Camera and drives movement + soft-lock overlaps).
+			bBodyHasPhysicsAsset = Skel->GetPhysicsAsset() != nullptr;
+			GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, bBodyHasPhysicsAsset ? ECR_Ignore : ECR_Block);
 			CharMesh->SetCastShadow(true);
 			FitSkeletalBody(Skel);
 			SkelOriginalMaterials.Reset();
@@ -337,6 +341,12 @@ void AAlienBot::BeginFlashSwap()
 	{
 		return;
 	}
+	// Sprint AB — the Mutant's M_AlienVariant has real Tint/Emissive params; the white material swap is
+	// only for the Quaternius atlas, which ignores parameters.
+	if (GameConfig && GameConfig->bUsingMutantModel)
+	{
+		return;
+	}
 	if (!FlashSwapMID)
 	{
 		UMaterialInterface* Base = BodyMesh ? BodyMesh->GetMaterial(0) : nullptr;
@@ -442,8 +452,46 @@ void AAlienBot::Tick(float DeltaSeconds)
 		ArenaCollision->PushApartNearbyAliens(this);
 	}
 
+	HitReactCooldownRemaining = FMath::Max(0.f, HitReactCooldownRemaining - DeltaSeconds);
+	if (HitReactRemaining > 0.f)
+	{
+		// Sprint AB — staggered: hold position, drop any burst, keep facing whatever we were facing.
+		HitReactRemaining -= DeltaSeconds;
+		BurstShotsRemaining = 0;
+		BurstIntraShotRemaining = 0.f;
+		if (UCharacterMovementComponent* Move = GetCharacterMovement())
+		{
+			Move->StopMovementImmediately();
+		}
+		if (HitReactRemaining <= 0.f)
+		{
+			CurrentAnim = nullptr; // force the locomotion clip to restart cleanly
+		}
+		return;
+	}
+
 	UpdateAI(DeltaSeconds);
 	UpdateAlienAnim(DeltaSeconds);
+}
+
+void AAlienBot::TryHitReact()
+{
+	if (!bIsAlive || !bSkeletalActive || !GameConfig || !GameConfig->bAlienHitReact)
+	{
+		return;
+	}
+	UAnimSequence* React = GameConfig->CachedAlienAnims.HitReact.Get();
+	if (!React || HitReactRemaining > 0.f || HitReactCooldownRemaining > 0.f)
+	{
+		return;
+	}
+	const float Hold = FMath::Max(GameConfig->AlienHitReactSeconds, 0.1f);
+	const float Rate = FMath::Max(React->GetPlayLength() / Hold, 0.5f);
+	CurrentAnim = nullptr;
+	AttackAnimRemaining = 0.f;
+	PlayAlienAnim(React, false, Rate);
+	HitReactRemaining = Hold;
+	HitReactCooldownRemaining = Hold + FMath::Max(GameConfig->AlienHitReactCooldownSeconds, 0.f);
 }
 
 void AAlienBot::InvalidateFlashMIDs()
@@ -498,7 +546,8 @@ void AAlienBot::ApplyFlashToMaterials()
 		ApplyBioFlashColorToMID(HeadMID, C);
 	}
 
-	// Skeletal path (AlienSkeletalMesh) — all material slots
+	// Skeletal path (AlienSkeletalMesh) — all material slots. Sprint AB: on M_AlienVariant the Tint /
+	// EmissiveColor / EmissiveStrength parameters are real, so variants read on the skin itself.
 	if (USkeletalMeshComponent* CharMesh = GetMesh())
 	{
 		if (CharMesh->GetSkeletalMeshAsset() && !CharMesh->bHiddenInGame && CharMesh->IsVisible())
@@ -512,9 +561,22 @@ void AAlienBot::ApplyFlashToMaterials()
 					SkelMIDs.Add(CharMesh->CreateAndSetMaterialInstanceDynamic(Slot));
 				}
 			}
+			const FAlienVariantTuning* VT = GetVariantTuning();
+			const FLinearColor BaseTint = VT ? VT->Tint : (GameConfig ? GameConfig->AlienGruntTint : FLinearColor::White);
+			const FLinearColor SkinTint = FMath::Lerp(BaseTint, FLinearColor::White, Flash);
+			const FLinearColor Emissive = FLinearColor::White * (Flash * 8.f) + (VT ? VT->GlowColor * VT->RestingEmissive : FLinearColor::Black);
+			const float EmissiveStrength = Flash * 8.f + (VT ? VT->RestingEmissive : 0.f);
 			for (UMaterialInstanceDynamic* MID : SkelMIDs)
 			{
-				ApplyBioFlashColorToMID(MID, C);
+				if (!MID)
+				{
+					continue;
+				}
+				MID->SetVectorParameterValue(TEXT("Tint"), SkinTint);
+				MID->SetVectorParameterValue(TEXT("Color"), SkinTint);
+				MID->SetVectorParameterValue(TEXT("BaseColor"), SkinTint);
+				MID->SetVectorParameterValue(TEXT("EmissiveColor"), Emissive);
+				MID->SetScalarParameterValue(TEXT("EmissiveStrength"), EmissiveStrength);
 			}
 		}
 	}
@@ -577,6 +639,8 @@ void AAlienBot::ActivateAtSpawn(const FTransform& SpawnTransform)
 	bIsAlive = true;
 	BodyHitCount = 0;
 	HeadHitCount = 0;
+	HitReactRemaining = 0.f;
+	HitReactCooldownRemaining = 0.f;
 	CombatState = EAlienCombatState::Chase;
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{
@@ -1004,6 +1068,10 @@ float AAlienBot::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
 	{
 		Die();
 	}
+	else
+	{
+		TryHitReact();
+	}
 	return Applied;
 }
 
@@ -1031,6 +1099,7 @@ void AAlienBot::Die()
 	CombatState = EAlienCombatState::Dead;
 	BurstShotsRemaining = 0;
 	BurstIntraShotRemaining = 0.f;
+	HitReactRemaining = 0.f;
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{
 		Move->StopMovementImmediately();

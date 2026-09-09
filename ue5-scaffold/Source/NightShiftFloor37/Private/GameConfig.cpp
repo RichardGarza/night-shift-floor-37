@@ -23,6 +23,8 @@ UGameConfig::UGameConfig()
 	Stalker.AccuracyBonus = 0.05f;
 	Stalker.GlowColor = FLinearColor(0.2f, 0.9f, 1.0f);
 	Stalker.GlowIntensity = 300.f;
+	Stalker.Tint = FLinearColor(0.45f, 0.85f, 1.0f);
+	Stalker.RestingEmissive = 0.5f;
 	EnsurePhase8DefaultSoftPaths();
 }
 

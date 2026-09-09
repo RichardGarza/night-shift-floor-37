@@ -224,8 +224,15 @@ protected:
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> FlashSwapMID;
 	bool bFlashSwapActive = false;
 	float AttackAnimRemaining = 0.f;
+	/** Sprint AB — > 0 while the hit-react stagger plays (no move / no fire). */
+	float HitReactRemaining = 0.f;
+	float HitReactCooldownRemaining = 0.f;
 	/** > 0 while the death clip plays; actor hides when it reaches 0 (respawn timer runs in parallel). */
 	float DeathHideRemaining = 0.f;
+	/** Sprint AB — true when the skeletal body carries a physics asset (per-bone hits; capsule stops blocking Visibility). */
+	bool bBodyHasPhysicsAsset = false;
+	/** Sprint AB — start the stagger if allowed (alive, clip present, cooldown elapsed). */
+	void TryHitReact();
 	void PlayAlienAnim(UAnimSequence* Seq, bool bLoop, float Rate = 1.f);
 	void UpdateAlienAnim(float DeltaSeconds);
 	/** Scale + place the skeletal mesh and refit the capsule to its bounds (feet at capsule bottom). */

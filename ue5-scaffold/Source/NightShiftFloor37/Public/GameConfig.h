@@ -109,6 +109,10 @@ struct FAlienVariantTuning
 	/** Always-on point light so the variant reads at a glance (the atlas material ignores tints). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") FLinearColor GlowColor = FLinearColor(1.f, 0.15f, 0.05f);
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") float GlowIntensity = 400.f;
+	/** Sprint AB — multiplies the diffuse on M_AlienVariant ("Tint" parameter). White = untinted. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") FLinearColor Tint = FLinearColor(1.0f, 0.42f, 0.38f);
+	/** Sprint AB — resting emissive so the variant glows on its own skin, not just from the point light. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Variant") float RestingEmissive = 0.6f;
 };
 
 /**
@@ -593,6 +597,22 @@ public:
 	/** Small, fast, two body hits, quick bursts, cyan glow. Unlocks wave 5 (defaults set in the constructor). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match|Waves")
 	FAlienVariantTuning Stalker;
+
+	/** Sprint AB — Grunt diffuse tint on M_AlienVariant (white = the Mixamo texture as shipped). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens|Behaviour")
+	FLinearColor AlienGruntTint = FLinearColor::White;
+
+	/** Sprint AB — landing a shot plays the HitReact clip and staggers the alien (no move / no fire). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens|Behaviour")
+	bool bAlienHitReact = true;
+
+	/** Stagger length in seconds (clip is sped up to fit). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens|Behaviour")
+	float AlienHitReactSeconds = 0.4f;
+
+	/** Minimum gap between staggers so sustained fire cannot stun-lock a Brute. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aliens|Behaviour")
+	float AlienHitReactCooldownSeconds = 1.1f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Match")
 	float MaxDeltaTimeClampSeconds = 0.05f; // treat spikes above ~50 ms as 50 ms
