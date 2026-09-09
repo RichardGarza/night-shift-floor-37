@@ -134,6 +134,15 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ## Next steps
 
+### Resume checklist (after the 2026-09-08 Desktop access loss)
+
+1. `git pull` on the Desktop checkout (it was left at `71f694f`; Sprints W+X live at `72a518b`).
+2. Rebuild in place, run the self-test, expect **31 / 31**.
+3. Run with `-NightShiftAutoStart`, confirm mannequin + rifle, animated aliens, brighter arena.
+4. Human playthrough. Knobs if something is off: `ExposureBiasEV` (brightness), `AlienMeshYawDegrees` (facing), `AlienMeshScale` (size).
+5. Follow-ups: AnimBlueprint + blendspace to remove clip pops; physics asset for `SK_Alien` (per-bone headshots); Git LFS decision.
+
+
 Phases 6–8 + Sprints M/N/O/Q/R/V/W/X shipped 2026-09-08. Player is the UE mannequin with a rifle; aliens are animated Quaternius creatures; hitscan hits the visible bodies. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
 
 ### Phase 6: First playthrough + softer start — **SHIPPED**
