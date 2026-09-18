@@ -408,10 +408,17 @@ public:
 
 	/** Sprint W2 — rifle prop offset in socket space so the gun reads in OTS (template SM_Rifle). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
-	FVector RifleRelativeLocation = FVector(0.f, 0.f, 0.f);
+	FVector RifleRelativeLocation = FVector(6.f, 2.f, -3.f);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	FRotator RifleRelativeRotation = FRotator(0.f, 90.f, 0.f);
+
+	/**
+	 * Sprint whole-team — uniform scale for Kenney SM_Rifle on the hand socket.
+	 * 1.0 matches SoftStarter import; raise if the blaster reads tiny in OTS.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float RifleMeshScale = 1.35f;
 
 	/** Sprint W — player rifle-carry animation takes (template Mannequins/Anims/Rifle + Death). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")

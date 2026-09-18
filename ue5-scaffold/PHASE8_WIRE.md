@@ -101,3 +101,10 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 - `RifleMesh` default: `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit `blaster-r` staged as FBX). Soft-miss until Editor `.uasset` import.
 - Player W2 grounding unchanged.
 
+## OTS gun verify (post SoftStarter SM_Rifle.uasset)
+
+- Soft path `/Game/Imported/Weapons/SM_Rifle` resolves after SoftStarter import.
+- `RifleMeshScale` default **1.35**; `RifleRelativeLocation` (6,2,-3) + yaw 90° for OTS read on Manny `HandGrip_R` / `hand_r`.
+- Mutant: `MutantMeshScale` **1.15** (~2.1 m vs Manny ~1.8 m) via `FitSkeletalBody` bounds fit — not tiny/huge.
+- `ResolvePhase8LoadedMeshes` retries null rifle/alien caches after late SoftStarter imports.
+

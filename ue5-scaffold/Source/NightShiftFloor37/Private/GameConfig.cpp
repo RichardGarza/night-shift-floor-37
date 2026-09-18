@@ -163,6 +163,15 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 	// Sprint O — one LoadSynchronous batch; ApplyConfigured* reuses these pointers.
 	if (bPhase8MeshesResolved)
 	{
+		// Late SoftStarter imports (e.g. SM_Rifle.uasset) — retry null caches without full re-resolve.
+		if (!CachedRifleMesh && !RifleMesh.IsNull())
+		{
+			CachedRifleMesh = RifleMesh.LoadSynchronous();
+		}
+		if (!CachedAlienSkeletalMesh && !AlienSkeletalMesh.IsNull())
+		{
+			CachedAlienSkeletalMesh = AlienSkeletalMesh.LoadSynchronous();
+		}
 		return;
 	}
 	EnsurePhase8DefaultSoftPaths();

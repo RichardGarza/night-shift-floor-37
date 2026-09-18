@@ -480,6 +480,10 @@ void ANightShiftCharacter::ApplyConfiguredPlayerVisuals()
 				RifleMeshComp->SetRelativeLocation(GameConfig->RifleRelativeLocation);
 				RifleMeshComp->SetRelativeRotation(GameConfig->RifleRelativeRotation);
 			}
+			const float RS = FMath::Max(GameConfig->RifleMeshScale, 0.05f);
+			RifleMeshComp->SetRelativeScale3D(FVector(RS));
+			RifleMeshComp->bOwnerNoSee = false;
+			RifleMeshComp->SetOnlyOwnerSee(false);
 			RifleMeshComp->SetVisibility(true);
 			RifleMeshComp->SetHiddenInGame(false);
 			RifleMeshComp->SetCastShadow(true);
