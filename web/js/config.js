@@ -33,6 +33,9 @@ export const CONFIG = Object.freeze({
     softLockConeDeg: 8,
     softLockRange: 40,
     softLockStrength: 0.08,
+    // OTS occlusion: pull camera in along pivot→desired ray when a solid blocks
+    collisionSkin: 0.2,
+    minDistance: 0.65,
   },
 
   // Rifle

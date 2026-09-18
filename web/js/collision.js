@@ -86,3 +86,97 @@ export function rampHeightAt(b, x, z) {
   const t = Math.max(0, Math.min(1, along / b.len));
   return b.y0 + (b.y1 - b.y0) * t;
 }
+
+/** Solids that should occlude the OTS camera (walls/cover/racks; not floors/ceilings/ramps). */
+export function blocksCamera(b) {
+  if (!b || b.ceiling || b.ramp || !b.blockXZ) return false;
+  // Thin walkable platforms are floors — colliding with them pulls the cam into the ground
+  if (b.walkable) {
+    const h = b.max.y - b.min.y;
+    if (h < 0.45) return false;
+  }
+  return true;
+}
+
+/**
+ * Ray vs AABB (slab). Returns entry t in [0, maxT], or -1.
+ * Skips hits with t < eps (origin inside / grazing).
+ */
+export function raycastAABB(ox, oy, oz, dx, dy, dz, min, max, maxT, eps = 1e-4) {
+  let tmin = 0;
+  let tmax = maxT;
+  // X
+  if (Math.abs(dx) < 1e-12) {
+    if (ox < min.x || ox > max.x) return -1;
+  } else {
+    let t1 = (min.x - ox) / dx;
+    let t2 = (max.x - ox) / dx;
+    if (t1 > t2) { const s = t1; t1 = t2; t2 = s; }
+    if (t1 > tmin) tmin = t1;
+    if (t2 < tmax) tmax = t2;
+    if (tmin > tmax) return -1;
+  }
+  // Y
+  if (Math.abs(dy) < 1e-12) {
+    if (oy < min.y || oy > max.y) return -1;
+  } else {
+    let t1 = (min.y - oy) / dy;
+    let t2 = (max.y - oy) / dy;
+    if (t1 > t2) { const s = t1; t1 = t2; t2 = s; }
+    if (t1 > tmin) tmin = t1;
+    if (t2 < tmax) tmax = t2;
+    if (tmin > tmax) return -1;
+  }
+  // Z
+  if (Math.abs(dz) < 1e-12) {
+    if (oz < min.z || oz > max.z) return -1;
+  } else {
+    let t1 = (min.z - oz) / dz;
+    let t2 = (max.z - oz) / dz;
+    if (t1 > t2) { const s = t1; t1 = t2; t2 = s; }
+    if (t1 > tmin) tmin = t1;
+    if (t2 < tmax) tmax = t2;
+    if (tmin > tmax) return -1;
+  }
+  if (tmin < eps) {
+    // Origin inside solid — treat as immediate occlusion (pull toward minDistance)
+    return 0;
+  }
+  return tmin <= maxT ? tmin : -1;
+}
+
+/** Ray vs solid (AABB or yaw-OBB). Returns entry t or -1. */
+export function raycastSolid(ox, oy, oz, dx, dy, dz, maxT, b) {
+  if (b.obb) {
+    const o = b.obb;
+    // World → local (yaw about Y; Y unchanged)
+    const pdx = ox - o.cx;
+    const pdz = oz - o.cz;
+    const lx = pdx * o.cos + pdz * o.sin;
+    const lz = -pdx * o.sin + pdz * o.cos;
+    const ldx = dx * o.cos + dz * o.sin;
+    const ldz = -dx * o.sin + dz * o.cos;
+    const min = { x: -o.hx, y: b.min.y, z: -o.hz };
+    const max = { x: o.hx, y: b.max.y, z: o.hz };
+    return raycastAABB(lx, oy, lz, ldx, dy, ldz, min, max, maxT);
+  }
+  return raycastAABB(ox, oy, oz, dx, dy, dz, b.min, b.max, maxT);
+}
+
+/**
+ * Closest camera-blocking hit along ray. Returns distance or -1 if clear.
+ * Hot-path friendly: no allocations.
+ */
+export function raycastCameraSolids(ox, oy, oz, dx, dy, dz, maxDist, solids) {
+  let best = -1;
+  if (!solids || maxDist <= 0) return best;
+  for (let i = 0; i < solids.length; i++) {
+    const b = solids[i];
+    if (!blocksCamera(b)) continue;
+    const t = raycastSolid(ox, oy, oz, dx, dy, dz, maxDist, b);
+    if (t < 0) continue;
+    if (best < 0 || t < best) best = t;
+  }
+  return best;
+}
+

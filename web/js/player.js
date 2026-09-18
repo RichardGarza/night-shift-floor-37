@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
-import { overlapsSolidXZ, resolveSolidAxis, rampHeightAt } from './collision.js';
+import { overlapsSolidXZ, resolveSolidAxis, rampHeightAt, raycastCameraSolids } from './collision.js';
 
 const _fwd = new THREE.Vector3();
 const _right = new THREE.Vector3();
@@ -12,6 +12,8 @@ const _aimOrigin = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
 const _back = new THREE.Vector3();
 const _camRight = new THREE.Vector3();
+const _camPivot = new THREE.Vector3();
+const _camDelta = new THREE.Vector3();
 const _aimRay = { origin: _aimOrigin, dir: _aimDir };
 
 
@@ -76,6 +78,7 @@ export class Player {
     );
     this._camPos = new THREE.Vector3();
     this._lookAt = new THREE.Vector3();
+    this._camSolids = null;
     this.recoilPitch = 0;
     this.recoilYaw = 0;
   }
@@ -183,6 +186,7 @@ export class Player {
   }
 
   update(dt, input, solids, half) {
+    this._camSolids = solids;
     if (!this.alive) {
       this._updateCamera(dt);
       return;
@@ -360,11 +364,40 @@ export class Player {
     _camRight.set(Math.cos(yaw), 0, -Math.sin(yaw));
 
     const target = this.root.position;
+    // Desired OTS pose (pre-collision)
     this._camPos.set(
       target.x + _back.x * dist + _camRight.x * shoulder,
       target.y + height + _back.y * dist,
       target.z + _back.z * dist + _camRight.z * shoulder
     );
+
+    // Pivot near shoulder/eye — ray toward desired cam; pull in if occluded
+    _camPivot.set(
+      target.x + _camRight.x * shoulder * 0.35,
+      target.y + height,
+      target.z + _camRight.z * shoulder * 0.35
+    );
+    _camDelta.copy(this._camPos).sub(_camPivot);
+    const desiredLen = _camDelta.length();
+    if (desiredLen > 1e-6 && this._camSolids) {
+      _camDelta.multiplyScalar(1 / desiredLen);
+      const hit = raycastCameraSolids(
+        _camPivot.x, _camPivot.y, _camPivot.z,
+        _camDelta.x, _camDelta.y, _camDelta.z,
+        desiredLen,
+        this._camSolids
+      );
+      if (hit >= 0) {
+        const skin = CONFIG.camera.collisionSkin ?? 0.2;
+        const minD = CONFIG.camera.minDistance ?? 0.65;
+        const use = Math.max(minD, Math.min(desiredLen, hit - skin));
+        this._camPos.set(
+          _camPivot.x + _camDelta.x * use,
+          _camPivot.y + _camDelta.y * use,
+          _camPivot.z + _camDelta.z * use
+        );
+      }
+    }
 
     // Shake
     if (this.shake > 0) {
