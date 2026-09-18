@@ -1,6 +1,6 @@
 # Night Shift — Floor 37: Project Map
 
-Last updated: 2026-09-08 (Sprints V, W, X). Keep this file current when a phase closes or a tree changes shape.
+Last updated: 2026-09-18 (standing board: done / in flight / next). Keep this file current when a phase closes or a tree changes shape.
 
 One spec, two implementations. `DESIGN.md` is the contract. `web/` is the playable reference. `ue5-scaffold/` is the real target.
 
@@ -77,7 +77,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | DESIGN.md | Stable | Both implementations match every specified number |
 | web/ | Playable, bug-fixed | Loads clean; module-level checks pass; real playthrough after latest fixes still pending |
 | UE5 compile | **Verified** on UE 5.8 Mac | Soft-ref PIE + Sprint O mesh cache |
-| UE5 standalone / PIE | **Visual unlock confirmed** | SoftwareStarter: green Quaternius `SM_Alien` ×6 (not greybox capsules), cubicle stamps, 4 fluorescents |
+| UE5 standalone / PIE | **Visual unlock confirmed** | Cubicle stamps + fluorescents; enemy default is now Mutant (Quaternius `SM_Alien` rejected). Player: Epic Manny |
 | UE5 gameplay loop | **Verified by self-test** | Start → hit → kill → respawn → grace+fire-lock wait → pause → bounds → death → restart → win (26/26, `Saved/selftest-sprintv.log`) |
 | Phase 6 softer start | **Shipped** | Spawn grace 4s + `MinStartSeparation` 18m (superseded by Sprint V) |
 | Phase 7 lighting + knobs | **Shipped** | Greybox lighting; mantle + muzzle intensity on `UGameConfig` |
@@ -87,14 +87,16 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint O mesh cache | **Shipped** | `ResolvePhase8LoadedMeshes` — one LoadSynchronous batch; Cached* reuse |
 | Sprint Q server racks | **Shipped** | `ServerRackPropMesh` on Rack* volumes; Kenney CC0 — `/Game/Imported/Props/Office/SM_ServerRack` **imported** |
 | Sprint R ceiling fluorescents | **Shipped** | Mount Z = CeilingClamp underside − 35cm (`3ac5f1a`) |
-| Sprint V softer start + readability | **Shipped** | Grace 7s, `MinStartSeparation` 24m, `PostGraceAlienFireDelaySeconds` 1.5s (chase OK, no fire); brighter sun/sky, thinner fog, stronger practicals. Self-test waits out grace. `Saved/sprintv_lighting_start.png` |
-| Sprint W player body + rifle | **Shipped** | UE template `SKM_Manny_Simple` on `GetMesh()`, `SM_Rifle` on `HandGrip_R`, single-node clips (idle ADS, walk/jog ×4 dirs, jump/fall/land, reload, death) driven from C++; cylinder stays as soft-miss fallback |
-| Sprint X animated aliens | **Shipped** | `SK_Alien` (Quaternius, 0.55 scale ≈ 1.9 m) with Idle/Run/Walk/Punch/Death takes; capsule refit to mesh bounds so shots hit what you see; death clip plays before hide |
+| Sprint V softer start + readability | **Done** (`71f694f`) | Grace 7s, `MinStartSeparation` 24m, `PostGraceAlienFireDelaySeconds` 1.5s (chase OK, no fire); brighter sun/sky, thinner fog, stronger practicals. Self-test waits out grace. `Saved/sprintv_lighting_start.png` |
+| Sprint W player body + rifle | **Done** | Epic Manny path: `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple` on `GetMesh()`; rifle prop + single-node clips (idle ADS, walk/jog ×4, jump/fall/land, reload, death). Soft-miss → greybox cylinder |
+| Sprint W2 player grounding | **Done** (Testing PASS) | Feet on floor: mesh Z = `-CapsuleHalfHeight + PlayerMeshZOffsetCm`; soft-miss cylinder scaled to capsule (never float). Code unlocked separately; this board row is docs. |
+| Kenney rifle soft path | **Done** (code) | `RifleMesh` → `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit CC0). Soft-miss until `.uasset` import; hitscan still works. Template Epic rifle retired as default. |
+| Sprint X animated aliens | **Superseded** | Quaternius `SK_Alien` / `SM_Alien` **rejected** as the enemy look (Richard). Kept only as last-resort skeletal soft-miss if Mutant package missing — never default `SM_Alien` |
 | Sprint X shooting fix | **Shipped** | Rifle trace uses complex collision + player/alien meshes block Visibility; tracer starts at the rifle muzzle. Root cause of "shots do nothing": hits only registered on the capsule, which no longer matched the visible body |
 | Sprint X lighting lift | **Shipped** | Sun 5.0 / sky 1.6 / fog 0.009, practicals 600 cd, floor/concrete albedo ×2.5, `ExposureBiasEV` 0.6 on the camera. `docs/sprintx_mannequin_aliens.png` |
 | Sprint Y enemies + sprint-fire + ramp | **Shipped** | Aliens face the player and plant to shoot, committed obstacle steering; firing drops sprint to walk; kill/time difficulty ramp 2→6 aliens, 10→35 % accuracy, 3.0→1.2 s bursts with HUD `Threat N / 5`. `ue5-scaffold/SPRINT_Y_ENEMIES_RAMP.md` |
 | Sprint Z waves + variants | **Shipped** | 8 numbered waves with kill quotas, breather + restock between waves, Brute (wave 3) / Stalker (wave 5) variants, win on clearing wave 8 (~60 kills). `-NightShiftStartWave=N` for smoke runs. `ue5-scaffold/SPRINT_Z_WAVES.md` |
-| Sprint AA Mutant model | **Shipped** | Mixamo Mutant (`/Game/Imported/Aliens/Mutant/SK_Mutant` + 6 clips, root-locked) auto-selected by `bAutoPickAlienModelSet`; Quaternius alien is the fallback. `ue5-scaffold/SPRINT_AA_MUTANT.md`, `docs/sprintaa_mutant_wave4.png` |
+| Sprint AA Mutant model | **Done** | **Default enemy**: Mixamo Mutant `/Game/Imported/Aliens/Mutant/SK_Mutant` (+ 6 clips) via `bAutoPickAlienModelSet`. Quaternius rejected as primary. `ue5-scaffold/SPRINT_AA_MUTANT.md`, `docs/sprintaa_mutant_wave4.png` |
 | Sprint AB variant skins | **Shipped** | `M_AlienVariant` (Tint/Emissive params) on SK_Mutant, Brute red / Stalker cyan skins, hit-react stagger, physics asset → per-bone headshots. `ue5-scaffold/SPRINT_AB_VARIANT_SKINS.md` |
 | Sprint AC arena surfaces | **Shipped** | Poly Haven CC0 textures on a world-projected master material: wet tile floor, peeling painted 2 m walls + dirty-glass band + neon trim, concrete tower, corrugated ramps. Fixed invisible cover blocks and a stale serialized greybox list. `ue5-scaffold/SPRINT_AC_SURFACES.md`, `docs/sprintac_textured_arena_wave5.png` |
 | Sprint AD dressing | **Shipped** | Darker glass band, under-plate atrium lights, `M_Resin` on egg cover, 8 perimeter desk pods; office props committed. `ue5-scaffold/SPRINT_AD_DRESSING.md` |
@@ -106,6 +108,27 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | UE5 feel | Needs human | Recoil accumulate vs self-cancel still open |
 | Silhouette | **Confirmed** | `docs/sprintx_mannequin_aliens.png` (mannequin + rifle + three aliens in frame) |
 | Art / audio / packaging | Art + audio in | Mutant aliens, textured arena with neon, synthesized SFX + ambience. Packaging still open |
+
+
+## Standing board (2026-09-18)
+
+Richard rule: short sprints, commit often after Testing OK, document continuously here as **done / in flight / next**.
+
+### Done
+- **Sprint V** (`71f694f`): brightness + grace 7s + `MinStartSeparation` 24m + post-grace fire lock 1.5s.
+- **Epic Manny player path**: `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple` (Sprint W).
+- **Mutant enemy default**: `/Game/Imported/Aliens/Mutant/SK_Mutant` (Sprint AA+); Quaternius aliens **rejected** as the primary enemy look.
+- **Sprint W2 grounding**: Testing PASS — feet/capsule mesh align; unlocked for code commit separately from this docs board.
+- **Kenney rifle**: soft ref `/Game/Imported/Weapons/SM_Rifle` (Blaster Kit CC0).
+
+### In flight
+- Kenney `SM_Rifle` **`.uasset` import** (FBX staged; soft-miss OK until SoftwareStarter imports).
+- Any leftover local grounding polish after the unlocked W2 commit — separate small slice; does not block this docs board.
+
+### Next
+- Human feel: recoil model.
+- Optional Git LFS for remaining `Content/Imported`.
+- Phase 9 web polish + Phase 10 package (parallel/last).
 
 ## Build and run
 
@@ -143,6 +166,10 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ## Next steps
 
+### After standing board (2026-09-18)
+
+Board above is authoritative for done / in flight / next. Tip `9031263` includes Sprint V (`71f694f`). W2/Mutant code Testing PASS + GitHub unlocked; this docs board is a separate short sprint. Mutant is the enemy default; Quaternius is not.
+
 ### After Sprint AC (2026-09-09)
 
 Arena is textured and lit with neon trim; Mutant variants tinted (Brute red, Stalker cyan). Richard to judge in play. Candidates next: darker glass band, tower fill light, resin cover material, more office dressing, ceiling decision, AnimBlueprint blends, recoil.
@@ -168,7 +195,7 @@ Richard's read after W+X: light great, character great, enemies weak, shooting o
 5. Follow-ups: AnimBlueprint + blendspace to remove clip pops; physics asset for `SK_Alien` (per-bone headshots); Git LFS decision.
 
 
-Phases 6–8 + Sprints M/N/O/Q/R/V/W/X shipped 2026-09-08. Player is the UE mannequin with a rifle; aliens are animated Quaternius creatures; hitscan hits the visible bodies. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
+Phases 6–8 + Sprints M/N/O/Q/R/V/W/X/AA+ shipped through 2026-09-18 tip. Player is Epic Manny with Kenney rifle soft path; **default enemies are Mixamo Mutant** (Quaternius rejected as primary); hitscan hits the visible bodies. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
 
 ### Phase 6: First playthrough + softer start — **SHIPPED**
 

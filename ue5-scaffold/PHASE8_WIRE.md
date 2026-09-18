@@ -84,3 +84,20 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 - Cached via `UGameConfig::ResolvePhase8LoadedMeshes` (`CachedServerRackPropMesh`).
 - Stand-in mesh: Kenney Space Station Kit **CC0** (`SM_ServerRack.fbx` under `Content/Imported/Props/Office/` and `Props/Server/`). Soft miss until Editor `.uasset` import. Not expecting Sketchfab Dreadler for this sprint.
 
+
+## Sprint W2 — player grounded + rifle OTS (NumberFourCoding)
+
+`ANightShiftCharacter::ApplyConfiguredPlayerVisuals`:
+- Soft refs: `PlayerSkeletalMesh` (Manny), `PlayerBodyMesh` (optional static), `RifleMesh` (`SM_Rifle`)
+- Feet: skeletal/static mesh Z = `-CapsuleHalfHeight + PlayerMeshZOffsetCm` (always re-applied)
+- Soft-miss: grounded greybox cylinder (must not float)
+- Rifle: socket try order `RifleSocketName` → `HandGrip_R` → `hand_r` → `weapon_r` → `ik_hand_gun`, then `RifleRelativeLocation` / `RifleRelativeRotation` (default yaw 90°) for OTS read
+
+
+## Enemy swap — Mutant default + Kenney blaster
+
+- `AlienSkeletalMesh` default: `/Game/Imported/Aliens/Mutant/SK_Mutant` (Mixamo Mutant) when package exists.
+- `AlienBodyMesh` is **not** defaulted to Quaternius `SM_Alien`.
+- `RifleMesh` default: `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit `blaster-r` staged as FBX). Soft-miss until Editor `.uasset` import.
+- Player W2 grounding unchanged.
+
