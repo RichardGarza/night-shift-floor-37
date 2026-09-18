@@ -111,7 +111,7 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 ## Optional KayKit Warrior (secondary enemy set)
 
 - Toggle: `UGameConfig::bPreferKayKitWarrior` (**default false** — Mutant stays primary).
-- Soft path: `/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior` (`KayKitWarriorMesh`).
+- Soft path: `/Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior` (`KayKitWarriorMesh`) — SoftStarter import name.
 - Requires SoftStarter FBX→uasset; if package missing with toggle on → warning, keep Mutant.
 - Scale/yaw: `KayKitWarriorMeshScale` / `KayKitWarriorMeshYawDegrees` (1.0 / -90).
 - Anims: Mutant clips as stand-in until KayKit anims imported.

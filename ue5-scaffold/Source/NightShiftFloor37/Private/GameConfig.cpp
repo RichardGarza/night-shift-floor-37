@@ -7,7 +7,7 @@ namespace GameConfigPrivate
 {
 	const TCHAR* MutantPackage = TEXT("/Game/Imported/Aliens/Mutant/SK_Mutant");
 	const TCHAR* QuaterniusPackage = TEXT("/Game/Imported/Aliens/Skel/SK_Alien");
-	const TCHAR* KayKitPackage = TEXT("/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior");
+	const TCHAR* KayKitPackage = TEXT("/Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior");
 }
 
 UGameConfig::UGameConfig()
@@ -85,7 +85,7 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	(void)SoftAnim;
 	if (KayKitWarriorMesh.IsNull())
 	{
-		KayKitWarriorMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior.SK_KayKit_Warrior")));
+		KayKitWarriorMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior.SK_Skeleton_Warrior")));
 	}
 	if (AlienSkeletalMesh.IsNull() || bAutoPickAlienModelSet)
 	{
@@ -98,7 +98,7 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 		{
 			if (bPreferKayKitWarrior)
 			{
-				UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: bPreferKayKitWarrior set but SK_KayKit_Warrior missing — keeping Mutant primary."));
+				UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: bPreferKayKitWarrior set but SK_Skeleton_Warrior missing — keeping Mutant primary."));
 			}
 			const bool bMutant = FPackageName::DoesPackageExist(GameConfigPrivate::MutantPackage);
 			if (!bMutant)
@@ -183,7 +183,7 @@ void UGameConfig::ApplyKayKitWarriorModelSet()
 	bUsingKayKitWarrior = true;
 	bUsingMutantModel = false;
 	AlienSkeletalMesh = KayKitWarriorMesh.IsNull()
-		? TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior.SK_KayKit_Warrior")))
+		? TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior.SK_Skeleton_Warrior")))
 		: KayKitWarriorMesh;
 	AlienBodyMesh.Reset();
 	AlienHeadMesh.Reset();
