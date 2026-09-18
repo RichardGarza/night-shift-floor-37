@@ -399,8 +399,8 @@ public:
 	TSoftObjectPtr<UStaticMesh> PlayerBodyMesh;
 
 	/**
-	 * Sprint W — player skeletal mesh (UE template Manny). When resolved, hides the greybox
-	 * cylinder and drives ACharacter::GetMesh(). Default: /Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.
+	 * Player skeletal mesh. Prefers /Game/Imported/Player/SK_Mixamo_YBot when imported;
+	 * else Epic Manny interim. Soft-miss / unset → grounded greybox cylinder (W2).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	TSoftObjectPtr<USkeletalMesh> PlayerSkeletalMesh;

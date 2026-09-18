@@ -77,7 +77,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | DESIGN.md | Stable | Both implementations match every specified number |
 | web/ | **Playable + softer start** | Grace/spacing mirror UE V (`f73a1f5`); OTS camera collision vs walls/cover (`520d834`). Module checks pass; human feel still open |
 | UE5 compile | **Verified** on UE 5.8 Mac | Soft-ref PIE + Sprint O mesh cache |
-| UE5 standalone / PIE | **Visual unlock confirmed** | Cubicle stamps + fluorescents; enemy default is now Mutant (Quaternius `SM_Alien` rejected). Player: Epic Manny |
+| UE5 standalone / PIE | **Visual unlock confirmed** | Cubicle stamps + fluorescents; enemy default Mutant. Player soft-ref: Mixamo Y Bot `/Game/Imported/Player/SK_Mixamo_YBot` (Manny interim on soft-miss) |
 | UE5 gameplay loop | **Verified by self-test** | Start → hit → kill → respawn → grace+fire-lock wait → pause → bounds → death → restart → win (26/26, `Saved/selftest-sprintv.log`) |
 | Phase 6 softer start | **Shipped** | Spawn grace 4s + `MinStartSeparation` 18m (superseded by Sprint V) |
 | Phase 7 lighting + knobs | **Shipped** | Greybox lighting; mantle + muzzle intensity on `UGameConfig` |
@@ -88,7 +88,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint Q server racks | **Shipped** | `ServerRackPropMesh` on Rack* volumes; Kenney CC0 — `/Game/Imported/Props/Office/SM_ServerRack` **imported** |
 | Sprint R ceiling fluorescents | **Shipped** | Mount Z = CeilingClamp underside − 35cm (`3ac5f1a`) |
 | Sprint V softer start + readability | **Done** (`71f694f`) | Grace 7s, `MinStartSeparation` 24m, `PostGraceAlienFireDelaySeconds` 1.5s (chase OK, no fire); brighter sun/sky, thinner fog, stronger practicals. Self-test waits out grace. `Saved/sprintv_lighting_start.png` |
-| Sprint W player body + rifle | **Done** | Epic Manny path: `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple` on `GetMesh()`; Kenney rifle soft `/Game/Imported/Weapons/SM_Rifle` + single-node clips (idle ADS, walk/jog ×4, jump/fall/land, reload, death). Soft-miss → greybox cylinder |
+| Sprint W player body + rifle | **Done** | Player soft-ref prefers `/Game/Imported/Player/SK_Mixamo_YBot`; soft-miss → Epic Manny. Kenney rifle `/Game/Imported/Weapons/SM_Rifle` + rifle clips. W2 grounding kept. Soft-miss mesh → grounded cylinder |
 | Sprint W2 player grounding | **Done** | Feet on floor: mesh Z = `-CapsuleHalfHeight + PlayerMeshZOffsetCm`; soft-miss cylinder **scale-to-capsule** (`72a354b`). |
 | Kenney rifle soft path | **Done** | `RifleMesh` → `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit CC0). `.uasset` imported; `RifleRelative*` always-after-attach (`72a354b`). |
 | Sprint X animated aliens | **Superseded** | Quaternius `SK_Alien` / `SM_Alien` **rejected** as the enemy look (Richard). Kept only as last-resort skeletal soft-miss if Mutant package missing — never default `SM_Alien` |
@@ -123,7 +123,7 @@ Tip: **`af5c939`**.
 - **Web softer start** (`f73a1f5`): grace 7s + spawn spacing 24m + post-grace fire delay 1.5s (UE V mirror).
 - **Web OTS camera collision** (`520d834`): camera pulls in against walls/cover.
 - **UE Mutant enemy default**: `/Game/Imported/Aliens/Mutant/SK_Mutant` (Quaternius rejected as primary).
-- **Epic Manny player path**: `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple`.
+- **Player soft-ref**: `/Game/Imported/Player/SK_Mixamo_YBot` (Mixamo Y Bot); soft-miss → Epic Manny `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple`.
 - **Kenney rifle + grounding**: `/Game/Imported/Weapons/SM_Rifle` + cylinder scale-to-capsule / `RifleRelative*` (`72a354b`).
 - **KayKit dual-path** (`09c5f65` / `067ab0d`): optional Warrior soft-ref (`KayKitWarrior` or `KayKit_Staged`); Mutant stays default unless `bPreferKayKitWarrior`.
 - **Sprint V** (`71f694f`): UE brightness + grace/separation/fire lock.
@@ -133,7 +133,7 @@ Tip: **`af5c939`**.
 
 ### Next / open
 - Human feel: **recoil** model.
-- Optional **Mixamo player** body (Manny remains default).
+- Mixamo Y Bot player soft-ref staged; SoftStarter `.uasset` import may still be pending (Manny interim).
 - Optional **Git LFS** for remaining `Content/Imported`.
 - Phase 9 web polish + Phase 10 package (parallel/last).
 
@@ -176,7 +176,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ### After standing board (2026-09-18)
 
-Board above is authoritative for done / in flight / next. Tip `af5c939`: web softer start + camera collision shipped; UE Mutant / Manny / Kenney rifle / grounding / KayKit dual-path. Open: recoil feel, optional Mixamo player, Git LFS.
+Board above is authoritative for done / in flight / next. Tip `af5c939`: web softer start + camera collision shipped; UE Mutant / Manny / Kenney rifle / grounding / KayKit dual-path. Open: recoil feel, SoftStarter Y Bot `.uasset` if missing, Git LFS.
 
 ### After Sprint AC (2026-09-09)
 
@@ -203,7 +203,7 @@ Richard's read after W+X: light great, character great, enemies weak, shooting o
 5. Follow-ups: AnimBlueprint + blendspace to remove clip pops; physics asset for `SK_Alien` (per-bone headshots); Git LFS decision.
 
 
-Phases 6–8 + Sprints M/N/O/Q/R/V/W/X/AA+ shipped through 2026-09-18 tip. Player is Epic Manny with Kenney rifle soft path; **default enemies are Mixamo Mutant** (Quaternius rejected as primary); hitscan hits the visible bodies. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
+Phases 6–8 + Sprints M/N/O/Q/R/V/W/X/AA+ shipped through 2026-09-18 tip. Player soft-ref is Mixamo Y Bot (Manny interim on soft-miss) with Kenney rifle; **default enemies are Mixamo Mutant** (Quaternius rejected as primary); hitscan hits the visible bodies. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
 
 ### Phase 6: First playthrough + softer start — **SHIPPED**
 

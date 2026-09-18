@@ -122,3 +122,10 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 - If KayKit skeletal soft-misses at resolve time → Mutant model set.
 - Toggle remains for when KayKit anims land.
 
+## Player soft-ref — Mixamo Y Bot
+
+- **Default soft path:** `/Game/Imported/Player/SK_Mixamo_YBot` (ModelFinder Mixamo Y Bot).
+- **Soft-miss:** `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple` (Epic Manny interim).
+- Not defaulting to Quaternius `SK_Player`.
+- W2 grounding + rifle OTS offsets unchanged after mesh swap.
+

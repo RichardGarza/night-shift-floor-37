@@ -9,6 +9,7 @@ namespace GameConfigPrivate
 	const TCHAR* QuaterniusPackage = TEXT("/Game/Imported/Aliens/Skel/SK_Alien");
 	const TCHAR* KayKitPackage = TEXT("/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior");
 	const TCHAR* KayKitPackageAlt = TEXT("/Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior");
+	const TCHAR* YBotPackage = TEXT("/Game/Imported/Player/SK_Mixamo_YBot");
 }
 
 UGameConfig::UGameConfig()
@@ -119,7 +120,8 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	// Sprint W — UE template mannequin + rifle (copied from Engine/Templates/TemplateResources).
 	if (PlayerSkeletalMesh.IsNull())
 	{
-		PlayerSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple")));
+		// Default soft path: Mixamo Y Bot. Soft-miss at resolve → Manny interim (not Quaternius SK_Player).
+		PlayerSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Player/SK_Mixamo_YBot.SK_Mixamo_YBot")));
 	}
 	if (RifleMesh.IsNull())
 	{
@@ -208,6 +210,12 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 		{
 			CachedAlienSkeletalMesh = AlienSkeletalMesh.LoadSynchronous();
 		}
+		// Late SoftStarter: Mixamo Y Bot imported after first resolve — upgrade from Manny if soft path still null-loaded.
+		if (!CachedPlayerSkeletalMesh && FPackageName::DoesPackageExist(GameConfigPrivate::YBotPackage))
+		{
+			PlayerSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Player/SK_Mixamo_YBot.SK_Mixamo_YBot")));
+			CachedPlayerSkeletalMesh = PlayerSkeletalMesh.LoadSynchronous();
+		}
 		return;
 	}
 	EnsurePhase8DefaultSoftPaths();
@@ -235,6 +243,13 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 	CachedFluorescentLightMesh = FluorescentLightMesh.LoadSynchronous();
 	CachedPlayerBodyMesh = PlayerBodyMesh.LoadSynchronous();
 	CachedPlayerSkeletalMesh = PlayerSkeletalMesh.LoadSynchronous();
+	if (!CachedPlayerSkeletalMesh)
+	{
+		// Soft-miss Y Bot (or other) → Epic Manny interim; keep grounding/rifle offsets on character.
+		UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: PlayerSkeletalMesh soft-miss — falling back to SKM_Manny_Simple."));
+		PlayerSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple")));
+		CachedPlayerSkeletalMesh = PlayerSkeletalMesh.LoadSynchronous();
+	}
 	CachedRifleMesh = RifleMesh.LoadSynchronous();
 	CachedSurfaceFloor    = SurfaceFloor.LoadSynchronous();
 	CachedSurfaceConcrete = SurfaceConcrete.LoadSynchronous();
