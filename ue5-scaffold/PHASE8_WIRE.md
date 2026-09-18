@@ -116,3 +116,9 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 - Scale/yaw: `KayKitWarriorMeshScale` / `KayKitWarriorMeshYawDegrees` (1.0 / -90).
 - Anims: Mutant clips as stand-in until KayKit anims imported.
 
+## Audit-C — KayKit soft-miss → Mutant
+
+- If `bPreferKayKitWarrior` is on but KayKit **anims** are not staged, `ApplyKayKitWarriorModelSet` falls back to the **full Mutant model set** (mesh+anims) — not greybox, not Mutant clips on a KayKit skeleton.
+- If KayKit skeletal soft-misses at resolve time → Mutant model set.
+- Toggle remains for when KayKit anims land.
+

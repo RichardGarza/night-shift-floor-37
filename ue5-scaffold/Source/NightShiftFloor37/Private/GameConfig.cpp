@@ -186,34 +186,12 @@ void UGameConfig::ApplyAlienModelSet(bool bMutant)
 
 void UGameConfig::ApplyKayKitWarriorModelSet()
 {
-	auto SoftAnim = [](const TCHAR* Path) { return TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(Path)); };
-	bUsingKayKitWarrior = true;
-	bUsingMutantModel = false;
-	if (KayKitWarriorMesh.IsNull())
-	{
-		const bool bPrimary = FPackageName::DoesPackageExist(GameConfigPrivate::KayKitPackage);
-		AlienSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(
-			bPrimary
-				? TEXT("/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior.SK_KayKit_Warrior")
-				: TEXT("/Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior.SK_Skeleton_Warrior")));
-	}
-	else
-	{
-		AlienSkeletalMesh = KayKitWarriorMesh;
-	}
-	AlienBodyMesh.Reset();
-	AlienHeadMesh.Reset();
-	// Mutant clips as stand-in until KayKit anims land.
-	AlienAnims.Idle     = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Idle.A_Mutant_Idle"));
-	AlienAnims.Walk     = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Walking.A_Mutant_Walking"));
-	AlienAnims.Run      = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Run.A_Mutant_Run"));
-	AlienAnims.Attack   = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Punch.A_Mutant_Punch"));
-	AlienAnims.HitReact = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Hit_Reaction.A_Mutant_Hit_Reaction"));
-	AlienAnims.Death    = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Dying.A_Mutant_Dying"));
-	AlienMeshScale = KayKitWarriorMeshScale;
-	AlienMeshYawDegrees = KayKitWarriorMeshYawDegrees;
-	AlienRunAnimRefSpeed = MutantRunAnimRefSpeed;
-	UE_LOG(LogNightShift, Log, TEXT("UGameConfig: optional KayKit Warrior soft set active (toggle; Mutant remains default)."));
+	// Audit-C: no dedicated KayKit anim package yet. Mismatched Mutant clips on the KayKit
+	// skeleton are unsafe — fall back to the full Mutant model set (mesh+anims), not greybox.
+	// When KayKit Idle/Run anims are staged, wire them here and keep the KayKit mesh path.
+	UE_LOG(LogNightShift, Warning,
+		TEXT("UGameConfig: bPreferKayKitWarrior on but KayKit anims not staged — safe Mutant model-set fallback (not greybox)."));
+	ApplyAlienModelSet(true);
 }
 
 void UGameConfig::ResolvePhase8LoadedMeshes()
@@ -236,6 +214,13 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 	CachedAlienBodyMesh = AlienBodyMesh.LoadSynchronous();
 	CachedAlienHeadMesh = AlienHeadMesh.LoadSynchronous();
 	CachedAlienSkeletalMesh = AlienSkeletalMesh.LoadSynchronous();
+	if (!CachedAlienSkeletalMesh && bUsingKayKitWarrior)
+	{
+		// Audit-C: KayKit soft-miss → Mutant model set (not null/greybox).
+		UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: KayKit skeletal soft-miss — falling back to Mutant model set."));
+		ApplyAlienModelSet(true);
+		CachedAlienSkeletalMesh = AlienSkeletalMesh.LoadSynchronous();
+	}
 	if (!CachedAlienSkeletalMesh && bUsingMutantModel)
 	{
 		// Mutant package present but LoadSynchronous failed — last-resort Quaternius SK_Alien (skeletal), never SM_Alien.
