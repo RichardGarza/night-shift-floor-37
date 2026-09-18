@@ -347,14 +347,20 @@ void ANightShiftCharacter::ApplyConfiguredPlayerVisuals()
 	const float MeshZ = -HalfH + GameConfig->PlayerMeshZOffsetCm;
 
 	// --- Soft-miss / greybox: keep capsule, ground the cylinder (never float). ---
-	auto GroundCylinder = [this, MeshZ]()
+	auto GroundCylinder = [this, HalfH]()
 	{
 		if (!BodyMesh)
 		{
 			return;
 		}
-		// Engine cylinder is centered; scale Z maps half-height ≈ capsule half-height.
-		BodyMesh->SetRelativeLocation(FVector(0.f, 0.f, 0.f));
+		const float Radius = GetCapsuleComponent()
+			? GetCapsuleComponent()->GetScaledCapsuleRadius()
+			: (GameConfig ? GameConfig->CapsuleRadiusCm : 42.f);
+		// Engine BasicShapes/Cylinder: 100uu, pivot center — scale to capsule so feet sit on the floor.
+		const float Sxy = (Radius * 2.f) / 100.f;
+		const float Sz  = (HalfH * 2.f) / 100.f;
+		BodyMesh->SetRelativeScale3D(FVector(Sxy, Sxy, Sz));
+		BodyMesh->SetRelativeLocation(FVector::ZeroVector);
 		BodyMesh->SetRelativeRotation(FRotator::ZeroRotator);
 		BodyMesh->SetVisibility(true);
 		BodyMesh->SetHiddenInGame(false);
@@ -468,18 +474,19 @@ void ANightShiftCharacter::ApplyConfiguredPlayerVisuals()
 			else if (AttachParent)
 			{
 				RifleMeshComp->AttachToComponent(AttachParent, FAttachmentTransformRules::KeepRelativeTransform);
-				// Capsule / body fallback: place gun in front of right shoulder for OTS.
-				RifleMeshComp->SetRelativeLocation(FVector(30.f, 25.f, 40.f));
-				RifleMeshComp->SetRelativeRotation(FRotator(0.f, 90.f, 0.f));
 				UE_LOG(LogNightShift, Warning,
-					TEXT("Player mesh has no rifle socket — rifle attached with OTS shoulder fallback."));
+					TEXT("Player mesh has no rifle socket — rifle soft-attached; applying RifleRelative* (OTS shoulder default if location is zero)."));
 			}
 
-			if (bSocketOk)
+			// Always apply config offsets after attach (socket or soft-miss fallback).
+			FVector RifleLoc = GameConfig->RifleRelativeLocation;
+			if (!bSocketOk && RifleLoc.IsNearlyZero())
 			{
-				RifleMeshComp->SetRelativeLocation(GameConfig->RifleRelativeLocation);
-				RifleMeshComp->SetRelativeRotation(GameConfig->RifleRelativeRotation);
+				// Soft-miss socket: OTS shoulder default only when config location is ZeroVector.
+				RifleLoc = FVector(30.f, 25.f, 40.f);
 			}
+			RifleMeshComp->SetRelativeLocation(RifleLoc);
+			RifleMeshComp->SetRelativeRotation(GameConfig->RifleRelativeRotation);
 			const float RS = FMath::Max(GameConfig->RifleMeshScale, 0.05f);
 			RifleMeshComp->SetRelativeScale3D(FVector(RS));
 			RifleMeshComp->bOwnerNoSee = false;

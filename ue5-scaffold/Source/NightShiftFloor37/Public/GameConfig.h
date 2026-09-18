@@ -423,7 +423,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	float PlayerMeshZOffsetCm = 0.f;
 
-	/** Sprint W2 — rifle prop offset in socket space so the gun reads in OTS (template SM_Rifle). */
+	/** Sprint W2 — rifle prop offset in socket space so the gun reads in OTS (Kenney Blaster /Game/Imported/Weapons/SM_Rifle — uasset imported). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	FVector RifleRelativeLocation = FVector(6.f, 2.f, -3.f);
 

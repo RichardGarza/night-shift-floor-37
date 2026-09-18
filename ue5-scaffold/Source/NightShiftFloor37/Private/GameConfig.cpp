@@ -116,7 +116,7 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	}
 	if (RifleMesh.IsNull())
 	{
-		// Kenney Blaster Kit staged as SM_Rifle.fbx (CC0). Soft-miss until SoftwareStarter imports .uasset.
+		// Kenney Blaster Kit staged as SM_Rifle (CC0); .uasset present under Content/Imported/Weapons/.
 		RifleMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Weapons/SM_Rifle.SM_Rifle")));
 	}
 	static const TCHAR* R = TEXT("/Game/Characters/Mannequins/Anims/Rifle/");

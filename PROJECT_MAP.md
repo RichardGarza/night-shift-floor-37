@@ -122,7 +122,7 @@ Richard rule: short sprints, commit often after Testing OK, document continuousl
 - **Kenney rifle**: soft ref `/Game/Imported/Weapons/SM_Rifle` (Blaster Kit CC0).
 
 ### In flight
-- **NumberTwoCoding polish**: leftover player grounding (cylinder scale-to-capsule) + Kenney rifle `RifleRelative*` soft-attach after `SM_Rifle.uasset` (`/Game/Imported/Weapons/SM_Rifle`).
+- **NumberTwoCoding polish** (ready for Testing): cylinder scale-to-capsule + Kenney rifle `RifleRelative*` always-after-attach (`SM_Rifle.uasset` at `/Game/Imported/Weapons/SM_Rifle`). Tip base `067ab0d`.
 
 ### Next
 - Human feel: recoil model.
@@ -167,7 +167,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ### After standing board (2026-09-18)
 
-Board above is authoritative for done / in flight / next. Tip `c744fcb` includes Sprint V (`71f694f`). W2/Mutant code Testing PASS + GitHub unlocked; this docs board is a separate short sprint. Mutant is the enemy default; Quaternius is not.
+Board above is authoritative for done / in flight / next. Tip `067ab0d` includes Sprint V (`71f694f`). W2/Mutant code Testing PASS + GitHub unlocked; this docs board is a separate short sprint. Mutant is the enemy default; Quaternius is not.
 
 ### After Sprint AC (2026-09-09)
 
