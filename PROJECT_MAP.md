@@ -90,7 +90,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint V softer start + readability | **Done** (`71f694f`) | Grace 7s, `MinStartSeparation` 24m, `PostGraceAlienFireDelaySeconds` 1.5s (chase OK, no fire); brighter sun/sky, thinner fog, stronger practicals. Self-test waits out grace. `Saved/sprintv_lighting_start.png` |
 | Sprint W player body + rifle | **Done** | Epic Manny path: `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple` on `GetMesh()`; rifle prop + single-node clips (idle ADS, walk/jog ×4, jump/fall/land, reload, death). Soft-miss → greybox cylinder |
 | Sprint W2 player grounding | **Done** (Testing PASS) | Feet on floor: mesh Z = `-CapsuleHalfHeight + PlayerMeshZOffsetCm`; soft-miss cylinder scaled to capsule (never float). Code unlocked separately; this board row is docs. |
-| Kenney rifle soft path | **Done** (code) | `RifleMesh` → `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit CC0). Soft-miss until `.uasset` import; hitscan still works. Template Epic rifle retired as default. |
+| Kenney rifle soft path | **Done** | `RifleMesh` → `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit CC0). **`.uasset` imported** (SoftwareStarter); polish in flight for relative OTS offsets. |
 | Sprint X animated aliens | **Superseded** | Quaternius `SK_Alien` / `SM_Alien` **rejected** as the enemy look (Richard). Kept only as last-resort skeletal soft-miss if Mutant package missing — never default `SM_Alien` |
 | Sprint X shooting fix | **Shipped** | Rifle trace uses complex collision + player/alien meshes block Visibility; tracer starts at the rifle muzzle. Root cause of "shots do nothing": hits only registered on the capsule, which no longer matched the visible body |
 | Sprint X lighting lift | **Shipped** | Sun 5.0 / sky 1.6 / fog 0.009, practicals 600 cd, floor/concrete albedo ×2.5, `ExposureBiasEV` 0.6 on the camera. `docs/sprintx_mannequin_aliens.png` |
@@ -122,8 +122,7 @@ Richard rule: short sprints, commit often after Testing OK, document continuousl
 - **Kenney rifle**: soft ref `/Game/Imported/Weapons/SM_Rifle` (Blaster Kit CC0).
 
 ### In flight
-- Kenney `SM_Rifle` **`.uasset` import** (FBX staged; soft-miss OK until SoftwareStarter imports).
-- Any leftover local grounding polish after the unlocked W2 commit — separate small slice; does not block this docs board.
+- **NumberTwoCoding polish**: leftover player grounding (cylinder scale-to-capsule) + Kenney rifle `RifleRelative*` soft-attach after `SM_Rifle.uasset` (`/Game/Imported/Weapons/SM_Rifle`).
 
 ### Next
 - Human feel: recoil model.
@@ -168,7 +167,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ### After standing board (2026-09-18)
 
-Board above is authoritative for done / in flight / next. Tip `9031263` includes Sprint V (`71f694f`). W2/Mutant code Testing PASS + GitHub unlocked; this docs board is a separate short sprint. Mutant is the enemy default; Quaternius is not.
+Board above is authoritative for done / in flight / next. Tip `c744fcb` includes Sprint V (`71f694f`). W2/Mutant code Testing PASS + GitHub unlocked; this docs board is a separate short sprint. Mutant is the enemy default; Quaternius is not.
 
 ### After Sprint AC (2026-09-09)
 
