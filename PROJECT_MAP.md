@@ -1,6 +1,6 @@
 # Night Shift — Floor 37: Project Map
 
-Last updated: 2026-09-18 (standing board: done / in flight / next). Keep this file current when a phase closes or a tree changes shape.
+Last updated: 2026-09-18 (standing board tip `f73a1f5`). Keep this file current when a phase closes or a tree changes shape.
 
 One spec, two implementations. `DESIGN.md` is the contract. `web/` is the playable reference. `ue5-scaffold/` is the real target.
 
@@ -75,7 +75,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Area | State | Evidence |
 |---|---|---|
 | DESIGN.md | Stable | Both implementations match every specified number |
-| web/ | Playable, bug-fixed | Loads clean; module-level checks pass; real playthrough after latest fixes still pending |
+| web/ | **Playable + softer start** | Grace/spacing mirror UE V (`f73a1f5`); OTS camera collision vs walls/cover (`520d834`). Module checks pass; human feel still open |
 | UE5 compile | **Verified** on UE 5.8 Mac | Soft-ref PIE + Sprint O mesh cache |
 | UE5 standalone / PIE | **Visual unlock confirmed** | Cubicle stamps + fluorescents; enemy default is now Mutant (Quaternius `SM_Alien` rejected). Player: Epic Manny |
 | UE5 gameplay loop | **Verified by self-test** | Start → hit → kill → respawn → grace+fire-lock wait → pause → bounds → death → restart → win (26/26, `Saved/selftest-sprintv.log`) |
@@ -89,8 +89,8 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint R ceiling fluorescents | **Shipped** | Mount Z = CeilingClamp underside − 35cm (`3ac5f1a`) |
 | Sprint V softer start + readability | **Done** (`71f694f`) | Grace 7s, `MinStartSeparation` 24m, `PostGraceAlienFireDelaySeconds` 1.5s (chase OK, no fire); brighter sun/sky, thinner fog, stronger practicals. Self-test waits out grace. `Saved/sprintv_lighting_start.png` |
 | Sprint W player body + rifle | **Done** | Epic Manny path: `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple` on `GetMesh()`; rifle prop + single-node clips (idle ADS, walk/jog ×4, jump/fall/land, reload, death). Soft-miss → greybox cylinder |
-| Sprint W2 player grounding | **Done** (Testing PASS) | Feet on floor: mesh Z = `-CapsuleHalfHeight + PlayerMeshZOffsetCm`; soft-miss cylinder scaled to capsule (never float). Code unlocked separately; this board row is docs. |
-| Kenney rifle soft path | **Done** | `RifleMesh` → `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit CC0). **`.uasset` imported** (SoftwareStarter); polish in flight for relative OTS offsets. |
+| Sprint W2 player grounding | **Done** | Feet on floor: mesh Z = `-CapsuleHalfHeight + PlayerMeshZOffsetCm`; soft-miss cylinder **scale-to-capsule** (`72a354b`). |
+| Kenney rifle soft path | **Done** | `RifleMesh` → `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit CC0). `.uasset` imported; `RifleRelative*` always-after-attach (`72a354b`). |
 | Sprint X animated aliens | **Superseded** | Quaternius `SK_Alien` / `SM_Alien` **rejected** as the enemy look (Richard). Kept only as last-resort skeletal soft-miss if Mutant package missing — never default `SM_Alien` |
 | Sprint X shooting fix | **Shipped** | Rifle trace uses complex collision + player/alien meshes block Visibility; tracer starts at the rifle muzzle. Root cause of "shots do nothing": hits only registered on the capsule, which no longer matched the visible body |
 | Sprint X lighting lift | **Shipped** | Sun 5.0 / sky 1.6 / fog 0.009, practicals 600 cd, floor/concrete albedo ×2.5, `ExposureBiasEV` 0.6 on the camera. `docs/sprintx_mannequin_aliens.png` |
@@ -103,9 +103,12 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint AE infestation | **Shipped** | Resin growth clusters, flickering neon trim, "Wave N" start banners. `ue5-scaffold/SPRINT_AE_INFESTATION.md` |
 | Sprint AF audio | **Shipped** | 12 synthesized WAVs (rifle, reload, hits, growl, death, bolts, hurt, footsteps, wave sting/clear, neon snap, hum loop) via `NightShiftAudio` helpers + `UGameConfig` soft refs. `ue5-scaffold/SPRINT_AF_AUDIO.md` |
 | Sprint AG autopilot demo | **Shipped** | `-NightShiftDemo` or 25 s idle on the start prompt → `ANightShiftDemoPilot` plays for 60 s (aim, fire, strafe, reload), click takes over. Ambient hum regenerated without hiss. `ue5-scaffold/SPRINT_AG_DEMO.md` |
+| Web OTS camera collision | **Done** (`520d834`) | Pull camera in along pivot→desired ray when walls/cover block; `CONFIG.camera.collisionSkin` |
+| Web softer start (UE V mirror) | **Done** (`f73a1f5`) | `spawnGraceSeconds` 7, `minStartSeparationMeters` 24, `postGraceAlienFireDelaySeconds` 1.5; aggro/fire flags match UE |
+| KayKit Warrior dual-path | **Done** (`09c5f65`) | Optional `bPreferKayKitWarrior` — soft-ref `KayKitWarrior/SK_KayKit_Warrior` **or** `KayKit_Staged/SK_Skeleton_Warrior`; default remains Mutant |
 | Self-test | 49 / 49 | + audio wiring checks (rifle sound resolved, ambient loop playing) |
 | `Content/Imported` | **Partly committed** | `Aliens/Skel/` (SK_Alien + anims) is committed; office props / fluorescents / `SM_Alien` remain local-only on the Desktop copy — optional Git LFS |
-| UE5 feel | Needs human | Recoil accumulate vs self-cancel still open |
+| UE5 / web feel | Needs human | **Open:** recoil feel; optional Mixamo player; optional Git LFS |
 | Silhouette | **Confirmed** | `docs/sprintx_mannequin_aliens.png` (mannequin + rifle + three aliens in frame) |
 | Art / audio / packaging | Art + audio in | Mutant aliens, textured arena with neon, synthesized SFX + ambience. Packaging still open |
 
@@ -114,20 +117,26 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 
 Richard rule: short sprints, commit often after Testing OK, document continuously here as **done / in flight / next**.
 
+Tip: **`f73a1f5`**.
+
 ### Done
-- **Sprint V** (`71f694f`): brightness + grace 7s + `MinStartSeparation` 24m + post-grace fire lock 1.5s.
-- **Epic Manny player path**: `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple` (Sprint W).
-- **Mutant enemy default**: `/Game/Imported/Aliens/Mutant/SK_Mutant` (Sprint AA+); Quaternius aliens **rejected** as the primary enemy look.
-- **Sprint W2 grounding**: Testing PASS — feet/capsule mesh align; unlocked for code commit separately from this docs board.
-- **Kenney rifle**: soft ref `/Game/Imported/Weapons/SM_Rifle` (Blaster Kit CC0).
+- **Web softer start** (`f73a1f5`): grace 7s + spawn spacing 24m + post-grace fire delay 1.5s (UE V mirror).
+- **Web OTS camera collision** (`520d834`): camera pulls in against walls/cover.
+- **UE Mutant enemy default**: `/Game/Imported/Aliens/Mutant/SK_Mutant` (Quaternius rejected as primary).
+- **Epic Manny player path**: `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple`.
+- **Kenney rifle + grounding**: `/Game/Imported/Weapons/SM_Rifle` + cylinder scale-to-capsule / `RifleRelative*` (`72a354b`).
+- **KayKit dual-path** (`09c5f65` / `067ab0d`): optional Warrior soft-ref (`KayKitWarrior` or `KayKit_Staged`); Mutant stays default unless `bPreferKayKitWarrior`.
+- **Sprint V** (`71f694f`): UE brightness + grace/separation/fire lock.
 
 ### In flight
-- **NumberTwoCoding polish** (ready for Testing): cylinder scale-to-capsule + Kenney rifle `RifleRelative*` always-after-attach (`SM_Rifle.uasset` at `/Game/Imported/Weapons/SM_Rifle`). Tip base `067ab0d`.
+- _(none — short docs board only)_
 
-### Next
-- Human feel: recoil model.
-- Optional Git LFS for remaining `Content/Imported`.
+### Next / open
+- Human feel: **recoil** model.
+- Optional **Mixamo player** body (Manny remains default).
+- Optional **Git LFS** for remaining `Content/Imported`.
 - Phase 9 web polish + Phase 10 package (parallel/last).
+
 
 ## Build and run
 
@@ -167,7 +176,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ### After standing board (2026-09-18)
 
-Board above is authoritative for done / in flight / next. Tip `067ab0d` includes Sprint V (`71f694f`). W2/Mutant code Testing PASS + GitHub unlocked; this docs board is a separate short sprint. Mutant is the enemy default; Quaternius is not.
+Board above is authoritative for done / in flight / next. Tip `f73a1f5`: web softer start + camera collision shipped; UE Mutant / Manny / Kenney rifle / grounding / KayKit dual-path. Open: recoil feel, optional Mixamo player, Git LFS.
 
 ### After Sprint AC (2026-09-09)
 
