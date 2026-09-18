@@ -1,6 +1,6 @@
 # Night Shift — Floor 37: Project Map
 
-Last updated: 2026-09-18 (standing board tip `f73a1f5`). Keep this file current when a phase closes or a tree changes shape.
+Last updated: 2026-09-18 (standing board tip `af5c939`). Keep this file current when a phase closes or a tree changes shape.
 
 One spec, two implementations. `DESIGN.md` is the contract. `web/` is the playable reference. `ue5-scaffold/` is the real target.
 
@@ -40,7 +40,7 @@ night-shift-floor-37/
     ├── Config/               DefaultEngine / DefaultGame / DefaultInput merge stubs.
     ├── Content/Maps/Floor37.umap  Generated map: OfficeArena + FXPoolManager + PlayerStart.
     ├── Content/Characters/Mannequins/  UE template Manny/Quinn + rifle/death/unarmed anims (Sprint W, committed).
-    ├── Content/Weapons/Rifle/     UE template SM_Rifle / SKM_Rifle (Sprint W, committed).
+    ├── Content/Imported/Weapons/SM_Rifle  Kenney Blaster Kit CC0 (soft ref `/Game/Imported/Weapons/SM_Rifle`; Sprint W2+).
     ├── Content/Imported/Aliens/Skel/  Quaternius Alien as SK_Alien + 14 anim takes + atlas (Sprint X, committed).
     ├── Scripts/make_floor37_map.py  Headless map generator (Python commandlet).
     ├── Scripts/import_alien_skeletal.py  Headless FBX → skeletal mesh + anims import (Sprint X).
@@ -88,7 +88,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint Q server racks | **Shipped** | `ServerRackPropMesh` on Rack* volumes; Kenney CC0 — `/Game/Imported/Props/Office/SM_ServerRack` **imported** |
 | Sprint R ceiling fluorescents | **Shipped** | Mount Z = CeilingClamp underside − 35cm (`3ac5f1a`) |
 | Sprint V softer start + readability | **Done** (`71f694f`) | Grace 7s, `MinStartSeparation` 24m, `PostGraceAlienFireDelaySeconds` 1.5s (chase OK, no fire); brighter sun/sky, thinner fog, stronger practicals. Self-test waits out grace. `Saved/sprintv_lighting_start.png` |
-| Sprint W player body + rifle | **Done** | Epic Manny path: `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple` on `GetMesh()`; rifle prop + single-node clips (idle ADS, walk/jog ×4, jump/fall/land, reload, death). Soft-miss → greybox cylinder |
+| Sprint W player body + rifle | **Done** | Epic Manny path: `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple` on `GetMesh()`; Kenney rifle soft `/Game/Imported/Weapons/SM_Rifle` + single-node clips (idle ADS, walk/jog ×4, jump/fall/land, reload, death). Soft-miss → greybox cylinder |
 | Sprint W2 player grounding | **Done** | Feet on floor: mesh Z = `-CapsuleHalfHeight + PlayerMeshZOffsetCm`; soft-miss cylinder **scale-to-capsule** (`72a354b`). |
 | Kenney rifle soft path | **Done** | `RifleMesh` → `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit CC0). `.uasset` imported; `RifleRelative*` always-after-attach (`72a354b`). |
 | Sprint X animated aliens | **Superseded** | Quaternius `SK_Alien` / `SM_Alien` **rejected** as the enemy look (Richard). Kept only as last-resort skeletal soft-miss if Mutant package missing — never default `SM_Alien` |
@@ -117,7 +117,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 
 Richard rule: short sprints, commit often after Testing OK, document continuously here as **done / in flight / next**.
 
-Tip: **`f73a1f5`**.
+Tip: **`af5c939`**.
 
 ### Done
 - **Web softer start** (`f73a1f5`): grace 7s + spawn spacing 24m + post-grace fire delay 1.5s (UE V mirror).
@@ -176,7 +176,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ### After standing board (2026-09-18)
 
-Board above is authoritative for done / in flight / next. Tip `f73a1f5`: web softer start + camera collision shipped; UE Mutant / Manny / Kenney rifle / grounding / KayKit dual-path. Open: recoil feel, optional Mixamo player, Git LFS.
+Board above is authoritative for done / in flight / next. Tip `af5c939`: web softer start + camera collision shipped; UE Mutant / Manny / Kenney rifle / grounding / KayKit dual-path. Open: recoil feel, optional Mixamo player, Git LFS.
 
 ### After Sprint AC (2026-09-09)
 
