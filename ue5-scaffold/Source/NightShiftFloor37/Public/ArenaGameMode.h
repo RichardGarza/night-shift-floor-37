@@ -287,6 +287,13 @@ protected:
 	FTimerHandle DemoRespawnTimer;
 	void DemoRespawnAfterDeath();
 
+	/** Sprint AH — frame-time telemetry: one LogNightShift line every 10 s (avg / worst / FPS / hitches). */
+	float PerfWindowSeconds = 0.f;
+	int32 PerfFrames = 0;
+	float PerfWorstMs = 0.f;
+	int32 PerfHitches = 0;
+	void AccumulatePerf(float RawDeltaSeconds);
+
 	/** Sprint AE — "Wave N" banner at wave start; cleared by timer while still in play. */
 	FTimerHandle WaveBannerTimer;
 	void ShowWaveStartBanner();

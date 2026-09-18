@@ -341,32 +341,86 @@ void ANightShiftCharacter::ApplyConfiguredPlayerVisuals()
 	}
 
 	USkeletalMeshComponent* CharMesh = GetMesh();
-	USkeletalMesh* Skel = GameConfig->CachedPlayerSkeletalMesh.Get();
-	if (!CharMesh || !Skel)
-	{
-		return; // soft-miss → keep the greybox cylinder
-	}
+	const float HalfH = GetCapsuleComponent()
+		? GetCapsuleComponent()->GetScaledCapsuleHalfHeight()
+		: (GameConfig->CapsuleHalfHeightCm);
+	const float MeshZ = -HalfH + GameConfig->PlayerMeshZOffsetCm;
 
-	if (CharMesh->GetSkeletalMeshAsset() != Skel)
+	// --- Soft-miss / greybox: keep capsule, ground the cylinder (never float). ---
+	auto GroundCylinder = [this, MeshZ]()
 	{
-		CharMesh->SetSkeletalMesh(Skel);
-		// Template mannequin: feet at capsule bottom, faces +X after -90 yaw.
-		const float HalfH = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-		CharMesh->SetRelativeLocation(FVector(0.f, 0.f, -HalfH));
+		if (!BodyMesh)
+		{
+			return;
+		}
+		// Engine cylinder is centered; scale Z maps half-height ≈ capsule half-height.
+		BodyMesh->SetRelativeLocation(FVector(0.f, 0.f, 0.f));
+		BodyMesh->SetRelativeRotation(FRotator::ZeroRotator);
+		BodyMesh->SetVisibility(true);
+		BodyMesh->SetHiddenInGame(false);
+		BodyMesh->SetCastShadow(true);
+	};
+
+	USkeletalMesh* Skel = GameConfig->CachedPlayerSkeletalMesh.Get();
+	UStaticMesh* BodySM = GameConfig->CachedPlayerBodyMesh.Get();
+
+	if (CharMesh && Skel)
+	{
+		if (CharMesh->GetSkeletalMeshAsset() != Skel)
+		{
+			CharMesh->SetSkeletalMesh(Skel);
+		}
+		// Always re-apply feet-to-floor offset (template mannequin: feet at capsule bottom).
+		CharMesh->SetRelativeLocation(FVector(0.f, 0.f, MeshZ));
 		CharMesh->SetRelativeRotation(FRotator(0.f, GameConfig->PlayerMeshYawDegrees, 0.f));
 		CharMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 		CharMesh->SetVisibility(true);
 		CharMesh->SetHiddenInGame(false);
-		// Third-person: the owner sees their own body (OTS camera), so no owner-no-see.
 		CharMesh->bOwnerNoSee = false;
+		CharMesh->SetCastShadow(true);
+		if (BodyMesh)
+		{
+			BodyMesh->SetVisibility(false);
+			BodyMesh->SetHiddenInGame(true);
+		}
+		bUsingSkeletalBody = true;
 	}
-	if (BodyMesh)
+	else if (BodyMesh && BodySM)
 	{
-		BodyMesh->SetVisibility(false);
-		BodyMesh->SetHiddenInGame(true);
+		// Static body override — grounded cylinder replacement.
+		if (BodyMesh->GetStaticMesh() != BodySM)
+		{
+			BodyMesh->SetStaticMesh(BodySM);
+		}
+		BodyMesh->SetRelativeLocation(FVector(0.f, 0.f, MeshZ));
+		BodyMesh->SetRelativeRotation(FRotator(0.f, GameConfig->PlayerMeshYawDegrees, 0.f));
+		BodyMesh->SetRelativeScale3D(FVector(1.f, 1.f, 1.f));
+		BodyMesh->SetVisibility(true);
+		BodyMesh->SetHiddenInGame(false);
+		if (CharMesh)
+		{
+			CharMesh->SetVisibility(false);
+			CharMesh->SetHiddenInGame(true);
+		}
+		bUsingSkeletalBody = false;
 	}
-	bUsingSkeletalBody = true;
+	else
+	{
+		// Soft-miss: grounded greybox cylinder (Boss W2 — must not float).
+		GroundCylinder();
+		if (CharMesh)
+		{
+			CharMesh->SetVisibility(false);
+			CharMesh->SetHiddenInGame(true);
+		}
+		bUsingSkeletalBody = false;
+		UE_LOG(LogNightShift, Log,
+			TEXT("ANightShiftCharacter::ApplyConfiguredPlayerVisuals — soft-miss; grounded cylinder (skel=%s body=%s)."),
+			Skel ? TEXT("ok") : TEXT("null"),
+			BodySM ? TEXT("ok") : TEXT("null"));
+	}
 
+	// --- Rifle prop: socket + OTS-readable offset. ---
 	if (RifleMeshComp)
 	{
 		if (UStaticMesh* RifleSM = GameConfig->CachedRifleMesh.Get())
@@ -375,30 +429,80 @@ void ANightShiftCharacter::ApplyConfiguredPlayerVisuals()
 			{
 				RifleMeshComp->SetStaticMesh(RifleSM);
 			}
-			const FName Socket = GameConfig->RifleSocketName;
-			if (CharMesh->DoesSocketExist(Socket))
+
+			USceneComponent* AttachParent = CharMesh && bUsingSkeletalBody ? static_cast<USceneComponent*>(CharMesh)
+				: (BodyMesh ? static_cast<USceneComponent*>(BodyMesh) : GetCapsuleComponent());
+
+			FName Socket = GameConfig->RifleSocketName;
+			bool bSocketOk = false;
+			if (CharMesh && bUsingSkeletalBody)
+			{
+				static const FName Fallbacks[] = {
+					FName(TEXT("HandGrip_R")),
+					FName(TEXT("hand_r")),
+					FName(TEXT("weapon_r")),
+					FName(TEXT("ik_hand_gun")),
+					FName(TEXT("hand_r_socket")),
+				};
+				TArray<FName> TryOrder;
+				TryOrder.Add(Socket);
+				for (const FName& F : Fallbacks)
+				{
+					TryOrder.AddUnique(F);
+				}
+				for (const FName& Candidate : TryOrder)
+				{
+					if (CharMesh->DoesSocketExist(Candidate))
+					{
+						Socket = Candidate;
+						bSocketOk = true;
+						break;
+					}
+				}
+			}
+
+			if (bSocketOk)
 			{
 				RifleMeshComp->AttachToComponent(CharMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, Socket);
 			}
-			else
+			else if (AttachParent)
 			{
-				RifleMeshComp->AttachToComponent(CharMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("hand_r"));
-				UE_LOG(LogNightShift, Warning, TEXT("Player mesh has no socket %s — rifle attached to hand_r."), *Socket.ToString());
+				RifleMeshComp->AttachToComponent(AttachParent, FAttachmentTransformRules::KeepRelativeTransform);
+				// Capsule / body fallback: place gun in front of right shoulder for OTS.
+				RifleMeshComp->SetRelativeLocation(FVector(30.f, 25.f, 40.f));
+				RifleMeshComp->SetRelativeRotation(FRotator(0.f, 90.f, 0.f));
+				UE_LOG(LogNightShift, Warning,
+					TEXT("Player mesh has no rifle socket — rifle attached with OTS shoulder fallback."));
+			}
+
+			if (bSocketOk)
+			{
+				RifleMeshComp->SetRelativeLocation(GameConfig->RifleRelativeLocation);
+				RifleMeshComp->SetRelativeRotation(GameConfig->RifleRelativeRotation);
 			}
 			RifleMeshComp->SetVisibility(true);
 			RifleMeshComp->SetHiddenInGame(false);
+			RifleMeshComp->SetCastShadow(true);
+		}
+		else
+		{
+			RifleMeshComp->SetVisibility(false);
+			RifleMeshComp->SetHiddenInGame(true);
 		}
 	}
 
-	if (CurrentAnim == nullptr)
+	if (bUsingSkeletalBody && CurrentAnim == nullptr)
 	{
 		PlayBodyAnim(GameConfig->CachedPlayerAnims.Idle, true);
 	}
-	UE_LOG(LogNightShift, Log, TEXT("ANightShiftCharacter::ApplyConfiguredPlayerVisuals — skeletal body %s, rifle %s, idle anim %s."),
-		*Skel->GetName(),
+	UE_LOG(LogNightShift, Log,
+		TEXT("ANightShiftCharacter::ApplyConfiguredPlayerVisuals — skeletal=%s bodySM=%s rifle=%s meshZ=%.1f."),
+		(bUsingSkeletalBody && GameConfig->CachedPlayerSkeletalMesh.Get()) ? *GameConfig->CachedPlayerSkeletalMesh->GetName() : TEXT("no"),
+		BodySM ? *BodySM->GetName() : TEXT("no"),
 		(RifleMeshComp && RifleMeshComp->GetStaticMesh()) ? *RifleMeshComp->GetStaticMesh()->GetName() : TEXT("none"),
-		GameConfig->CachedPlayerAnims.Idle ? TEXT("ok") : TEXT("missing"));
+		MeshZ);
 }
+
 
 FVector ANightShiftCharacter::GetMuzzleLocation() const
 {

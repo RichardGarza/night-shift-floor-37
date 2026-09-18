@@ -32,10 +32,8 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 {
 	// Sprint G — expected Editor-imported StaticMesh asset paths (FBX staged under Content/Imported).
 	// SoftLoad fails quietly → greybox fallback until SoftwareStarter / Editor import lands .uasset.
-	if (AlienBodyMesh.IsNull())
-	{
-		AlienBodyMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Aliens/SM_Alien.SM_Alien")));
-	}
+	// Sprint W2 enemy swap — do NOT default AlienBodyMesh to Quaternius SM_Alien.
+	// Skeletal Mutant is the default enemy; static body stays unset (greybox only if skeletal soft-misses).
 	if (CoverPropMesh.IsNull())
 	{
 		CoverPropMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Office/SM_Cubicle.SM_Cubicle")));
@@ -81,12 +79,16 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	if (SoundNeonSnap.IsNull())    { SoundNeonSnap    = SoftSnd(TEXT("sfx_neon_snap")); }
 	if (SoundAmbientLoop.IsNull()) { SoundAmbientLoop = SoftSnd(TEXT("amb_office_hum_loop")); }
 
-	// Sprint AA — alien model set: Mixamo Mutant when imported, else the Sprint X Quaternius alien.
+	// Enemy swap — Mixamo Mutant is the default soft set when present. Quaternius is last-resort only.
 	auto SoftAnim = [](const TCHAR* Path) { return TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(Path)); };
 	(void)SoftAnim;
 	if (AlienSkeletalMesh.IsNull() || bAutoPickAlienModelSet)
 	{
-		const bool bMutant = bAutoPickAlienModelSet && FPackageName::DoesPackageExist(GameConfigPrivate::MutantPackage);
+		const bool bMutant = FPackageName::DoesPackageExist(GameConfigPrivate::MutantPackage);
+		if (!bMutant)
+		{
+			UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: SK_Mutant missing — falling back to Quaternius SK_Alien (not SM_Alien)."));
+		}
 		ApplyAlienModelSet(bMutant);
 	}
 
@@ -97,7 +99,8 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	}
 	if (RifleMesh.IsNull())
 	{
-		RifleMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Weapons/Rifle/Meshes/SM_Rifle.SM_Rifle")));
+		// Kenney Blaster Kit staged as SM_Rifle.fbx (CC0). Soft-miss until SoftwareStarter imports .uasset.
+		RifleMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Weapons/SM_Rifle.SM_Rifle")));
 	}
 	static const TCHAR* R = TEXT("/Game/Characters/Mannequins/Anims/Rifle/");
 	auto RifleAnim = [&SoftAnim](const TCHAR* Sub, const TCHAR* Name)
@@ -129,6 +132,8 @@ void UGameConfig::ApplyAlienModelSet(bool bMutant)
 	if (bMutant)
 	{
 		AlienSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Aliens/Mutant/SK_Mutant.SK_Mutant")));
+		AlienBodyMesh.Reset();
+		AlienHeadMesh.Reset();
 		AlienAnims.Idle     = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Idle.A_Mutant_Idle"));
 		AlienAnims.Walk     = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Walking.A_Mutant_Walking"));
 		AlienAnims.Run      = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Run.A_Mutant_Run"));
@@ -166,8 +171,8 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 	CachedAlienSkeletalMesh = AlienSkeletalMesh.LoadSynchronous();
 	if (!CachedAlienSkeletalMesh && bUsingMutantModel)
 	{
-		// Mutant package present but failed to load — fall back to the Quaternius set rather than greybox.
-		UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: SK_Mutant did not load; falling back to SK_Alien."));
+		// Mutant package present but LoadSynchronous failed — last-resort Quaternius SK_Alien (skeletal), never SM_Alien.
+		UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: SK_Mutant did not load; last-resort SK_Alien skeletal (not SM_Alien)."));
 		ApplyAlienModelSet(false);
 		CachedAlienSkeletalMesh = AlienSkeletalMesh.LoadSynchronous();
 	}
@@ -176,6 +181,7 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 	CachedChairPropMesh = ChairPropMesh.LoadSynchronous();
 	CachedServerRackPropMesh = ServerRackPropMesh.LoadSynchronous();
 	CachedFluorescentLightMesh = FluorescentLightMesh.LoadSynchronous();
+	CachedPlayerBodyMesh = PlayerBodyMesh.LoadSynchronous();
 	CachedPlayerSkeletalMesh = PlayerSkeletalMesh.LoadSynchronous();
 	CachedRifleMesh = RifleMesh.LoadSynchronous();
 	CachedSurfaceFloor    = SurfaceFloor.LoadSynchronous();

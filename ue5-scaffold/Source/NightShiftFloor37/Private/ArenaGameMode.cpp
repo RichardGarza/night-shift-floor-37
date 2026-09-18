@@ -119,9 +119,26 @@ void AArenaGameMode::BeginPlay()
 		GameConfig ? *GameConfig->GetName() : TEXT("null"));
 }
 
+void AArenaGameMode::AccumulatePerf(float RawDeltaSeconds)
+{
+	PerfWindowSeconds += RawDeltaSeconds;
+	++PerfFrames;
+	const float Ms = RawDeltaSeconds * 1000.f;
+	PerfWorstMs = FMath::Max(PerfWorstMs, Ms);
+	PerfHitches += Ms > 50.f;
+	if (PerfWindowSeconds >= 10.f && PerfFrames > 0)
+	{
+		const float AvgMs = PerfWindowSeconds * 1000.f / PerfFrames;
+		UE_LOG(LogNightShift, Log, TEXT("PERF: avg %.1f ms (%.0f fps), worst %.1f ms, hitches>50ms %d, live aliens %d, state %d"),
+			AvgMs, 1000.f / AvgMs, PerfWorstMs, PerfHitches, GetLiveAlienCount(), (int32)MatchState);
+		PerfWindowSeconds = 0.f; PerfFrames = 0; PerfWorstMs = 0.f; PerfHitches = 0;
+	}
+}
+
 void AArenaGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	AccumulatePerf(DeltaSeconds);
 	ClampDelta(DeltaSeconds);
 	// Sprint AG — attract mode: idle on the start prompt long enough and the game demos itself.
 	if (MatchState == EArenaMatchState::WaitingToStart && !DemoPilot && GameConfig && GameConfig->DemoIdleSeconds > 0.f

@@ -319,8 +319,8 @@ public:
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Quaternius Alien static mesh (replaces BasicShapes Cylinder).
-	 * Default soft path: /Game/Imported/Aliens/SM_Alien — greybox if asset missing.
+	 * Optional static alien body. Left unset by default — Mixamo Mutant skeletal is the enemy default.
+	 * Do not default this to Quaternius SM_Alien.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	TSoftObjectPtr<UStaticMesh> AlienBodyMesh;
@@ -375,6 +375,13 @@ public:
 	float MutantRunAnimRefSpeed = 420.f;
 
 	/**
+	 * Sprint W2 — optional player body static mesh (replaces greybox cylinder when no skeletal).
+	 * Soft-miss → grounded cylinder. Expected override: /Game/Imported/Player/SM_PlayerBody.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	TSoftObjectPtr<UStaticMesh> PlayerBodyMesh;
+
+	/**
 	 * Sprint W — player skeletal mesh (UE template Manny). When resolved, hides the greybox
 	 * cylinder and drives ACharacter::GetMesh(). Default: /Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.
 	 */
@@ -386,14 +393,25 @@ public:
 	float PlayerMeshYawDegrees = -90.f;
 
 	/**
-	 * Sprint W — rifle static mesh attached to the player mesh socket RifleSocketName.
-	 * Default: /Game/Weapons/Rifle/Meshes/SM_Rifle. Null / soft-miss → no rifle prop (hitscan still works).
+	 * Sprint W / enemy-swap — rifle/blaster static mesh on RifleSocketName.
+	 * Default: /Game/Imported/Weapons/SM_Rifle (Kenney Blaster Kit CC0). Soft-miss → no prop (hitscan still works).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	TSoftObjectPtr<UStaticMesh> RifleMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	FName RifleSocketName = TEXT("HandGrip_R");
+
+	/** Sprint W2 — additive mesh Z (cm) after -CapsuleHalfHeight so feet sit on the floor. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float PlayerMeshZOffsetCm = 0.f;
+
+	/** Sprint W2 — rifle prop offset in socket space so the gun reads in OTS (template SM_Rifle). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	FVector RifleRelativeLocation = FVector(0.f, 0.f, 0.f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	FRotator RifleRelativeRotation = FRotator(0.f, 90.f, 0.f);
 
 	/** Sprint W — player rifle-carry animation takes (template Mannequins/Anims/Rifle + Death). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
@@ -805,6 +823,9 @@ public:
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
 	TObjectPtr<UStaticMesh> CachedFluorescentLightMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedPlayerBodyMesh;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
 	TObjectPtr<USkeletalMesh> CachedPlayerSkeletalMesh;
