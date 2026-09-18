@@ -95,6 +95,12 @@ export const CONFIG = Object.freeze({
   // Match
   match: {
     winKills: 25,
+    // Sprint V softer start (mirrors UE UGameConfig Match|EarlyGame)
+    spawnGraceSeconds: 7,
+    spawnGraceBlocksAlienAggro: true,
+    spawnGracePlayerDamageImmune: true,
+    minStartSeparationMeters: 24,
+    postGraceAlienFireDelaySeconds: 1.5,
   },
 
   // Arena visual — readability-first (dreary cast, lifted blacks)

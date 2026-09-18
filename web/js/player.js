@@ -103,6 +103,7 @@ export class Player {
     this.hp = CONFIG.player.hpMax;
     this.timeSinceDamage = Infinity;
     this.alive = true;
+    this.spawnGraceImmune = false;
     this.onGround = true;
     this.airborneFromY = 0;
     this.recoilPitch = 0;
@@ -113,6 +114,7 @@ export class Player {
 
   takeDamage(amount) {
     if (!this.alive) return;
+    if (this.spawnGraceImmune) return;
     this.hp = Math.max(0, this.hp - amount);
     this.timeSinceDamage = 0;
     this.shake = Math.min(0.35, this.shake + 0.12);

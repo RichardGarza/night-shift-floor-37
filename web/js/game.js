@@ -14,6 +14,10 @@ export class Game {
     this.running = false;
     this.kills = 0;
     this.elapsed = 0;
+    /** Spawn grace remaining (s); only reset in softReset, not pause/resume */
+    this.graceT = 0;
+    /** After grace ends: aliens may chase but cannot fire until this hits 0 */
+    this.postGraceFireDelayT = 0;
     this.locked = false;
     /** After UI click / unpause / pointer-lock re-acquire: ignore fire until LMB up */
     this.suppressFireUntilUp = false;
@@ -141,6 +145,8 @@ export class Game {
   softReset() {
     this.kills = 0;
     this.elapsed = 0;
+    this.graceT = CONFIG.match.spawnGraceSeconds;
+    this.postGraceFireDelayT = CONFIG.match.postGraceAlienFireDelaySeconds;
     this.player.reset(new THREE.Vector3(0, 0, 10));
     this.rifle.reset();
     this.aliens.softReset(this.player.position);
@@ -231,6 +237,18 @@ export class Game {
     if (this.running && this.hud.mode === 'playing') {
       this.elapsed += dt;
 
+      // Soft start: tick grace then post-grace fire delay (pause does not reset these)
+      if (this.graceT > 0) {
+        this.graceT = Math.max(0, this.graceT - dt);
+      } else if (this.postGraceFireDelayT > 0) {
+        this.postGraceFireDelayT = Math.max(0, this.postGraceFireDelayT - dt);
+      }
+      const inGrace = this.graceT > 0;
+      const blockAggro = inGrace && CONFIG.match.spawnGraceBlocksAlienAggro;
+      const canFire = !inGrace && this.postGraceFireDelayT <= 0;
+      this.player.spawnGraceImmune =
+        inGrace && CONFIG.match.spawnGracePlayerDamageImmune;
+
       // Soft lock before movement camera update
       this.player.applySoftLock(this.aliens.aliens, dt);
 
@@ -260,7 +278,11 @@ export class Game {
         }
       );
 
-      this.aliens.update(dt, this.player, this.solids, this.combat, this.half);
+      this.aliens.update(dt, this.player, this.solids, this.combat, this.half, {
+        inGrace,
+        blockAggro,
+        canFire,
+      });
 
       if (!this.player.alive) {
         this.running = false;

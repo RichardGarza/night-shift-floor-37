@@ -138,7 +138,7 @@ export class Alien {
     return false;
   }
 
-  update(dt, player, solids, aliens, combat, half) {
+  update(dt, player, solids, aliens, combat, half, grace = {}) {
     if (!this.alive) return;
 
     if (this.flashT > 0) {
@@ -149,39 +149,59 @@ export class Alien {
       }
     }
 
+    const blockAggro = !!grace.blockAggro;
+    const canFire = grace.canFire !== false; // default true if flags omitted
+
     const pos = this.root.position;
     _to.copy(player.position).sub(pos);
     _to.y = 0;
     const dist = _to.length();
     if (dist > 0.01) _to.multiplyScalar(1 / dist);
 
+    // Spawn grace: idle — zero velocity, clear burst, no chase/fire
+    if (blockAggro) {
+      this.velocity.set(0, 0, 0);
+      this.burstLeft = 0;
+      this.burstCd = Math.max(this.burstCd, 0.25);
+      this.shotCd = 0;
+      this._stuckT = 0;
+      this._detourT = 0;
+      this.root.rotation.y = Math.atan2(_to.x, _to.z);
+      return;
+    }
+
     const hasLos = dist <= CONFIG.alien.engageRange && this._hasLos(player, solids);
     const chasing = !(hasLos && dist <= CONFIG.alien.engageRange);
 
     if (!chasing) {
-      // Stop, strafe, burst
+      // Stop, strafe, burst (post-grace fire delay: chase/strafe ok, no fire / no new bursts)
       _side.set(-_to.z, 0, _to.x).multiplyScalar(this.strafeDir);
       this.velocity.x = _side.x * CONFIG.alien.speed * 0.7;
       this.velocity.z = _side.z * CONFIG.alien.speed * 0.7;
       if (Math.random() < dt * 0.4) this.strafeDir *= -1;
 
-      this.burstCd -= dt;
-      if (this.burstLeft > 0) {
-        this.shotCd -= dt;
-        if (this.shotCd <= 0) {
-          // Per-shot LoS: if broken mid-burst, abort and let chase take over next frame
-          if (!this._hasLos(player, solids)) {
-            this.burstLeft = 0;
-          } else {
-            this._fireAt(player, combat, solids);
-            this.burstLeft -= 1;
-            this.shotCd = 60 / CONFIG.alien.burstRpm;
-          }
-        }
-      } else if (this.burstCd <= 0) {
-        this.burstLeft = CONFIG.alien.burstShots;
-        this.burstCd = CONFIG.alien.burstInterval;
+      if (!canFire) {
+        this.burstLeft = 0;
         this.shotCd = 0;
+      } else {
+        this.burstCd -= dt;
+        if (this.burstLeft > 0) {
+          this.shotCd -= dt;
+          if (this.shotCd <= 0) {
+            // Per-shot LoS: if broken mid-burst, abort and let chase take over next frame
+            if (!this._hasLos(player, solids)) {
+              this.burstLeft = 0;
+            } else {
+              this._fireAt(player, combat, solids);
+              this.burstLeft -= 1;
+              this.shotCd = 60 / CONFIG.alien.burstRpm;
+            }
+          }
+        } else if (this.burstCd <= 0) {
+          this.burstLeft = CONFIG.alien.burstShots;
+          this.burstCd = CONFIG.alien.burstInterval;
+          this.shotCd = 0;
+        }
       }
       this._stuckT = 0;
       this._detourT = 0;
@@ -406,20 +426,34 @@ export class AlienManager {
     }
   }
 
-  /** Index of the spawn point farthest from playerPos, skipping indices in `used` (any point if all used). */
+  /**
+   * Prefer farthest spawn with distance ≥ minStartSeparationMeters from playerPos,
+   * skipping indices in `used`. If none qualify, fall back to farthest overall
+   * (never softlock). Applies on softReset batch and mid-match respawn.
+   */
   _pickSpawnIndex(playerPos, used) {
-    let best = -1;
-    let bestD = -1;
-    for (let pass = 0; pass < 2 && best < 0; pass++) {
-      for (let i = 0; i < this.spawnPoints.length; i++) {
-        if (pass === 0 && used.indexOf(i) !== -1) continue;
-        const d = this.spawnPoints[i].distanceToSquared(playerPos);
-        if (d > bestD) {
-          bestD = d;
-          best = i;
+    const minSep = CONFIG.match.minStartSeparationMeters ?? 0;
+    const minSepSq = minSep * minSep;
+
+    const pickFarthest = (requireSep) => {
+      let best = -1;
+      let bestD = -1;
+      for (let pass = 0; pass < 2 && best < 0; pass++) {
+        for (let i = 0; i < this.spawnPoints.length; i++) {
+          if (pass === 0 && used.indexOf(i) !== -1) continue;
+          const d = this.spawnPoints[i].distanceToSquared(playerPos);
+          if (requireSep && d < minSepSq) continue;
+          if (d > bestD) {
+            bestD = d;
+            best = i;
+          }
         }
       }
-    }
+      return best;
+    };
+
+    let best = pickFarthest(true);
+    if (best < 0) best = pickFarthest(false);
     return best;
   }
 
@@ -458,7 +492,7 @@ export class AlienManager {
     }
   }
 
-  update(dt, player, solids, combat, half) {
+  update(dt, player, solids, combat, half, grace = {}) {
     for (let i = 0; i < this.aliens.length; i++) {
       const a = this.aliens[i];
       if (!a.alive) {
@@ -473,7 +507,7 @@ export class AlienManager {
         }
         continue;
       }
-      a.update(dt, player, solids, this.aliens, combat, half);
+      a.update(dt, player, solids, this.aliens, combat, half, grace);
     }
   }
 

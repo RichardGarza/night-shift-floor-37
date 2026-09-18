@@ -29,3 +29,17 @@ Click the overlay to start (pointer lock). Esc pauses. Controls are listed on th
 | `js/hud.js` | DOM overlay |
 
 No build step, no dependencies beyond the CDN import.
+
+## Softer start
+
+Mirrors UE `UGameConfig` **Match|EarlyGame** (Sprint V). Mid/late DESIGN combat numbers (accuracy, damage, 6 aliens, win at 25 kills, etc.) are unchanged.
+
+| Tunable | Value | Effect |
+|---|---|---|
+| `spawnGraceSeconds` | **7** | Match start / restart grace window |
+| `spawnGraceBlocksAlienAggro` | **true** | Aliens idle during grace (no chase / fire) |
+| `spawnGracePlayerDamageImmune` | **true** | Player takes no damage during grace |
+| `minStartSeparationMeters` | **24** | Hard floor on start + mid-match respawn picks (prefer ≥24 m; else farthest) |
+| `postGraceAlienFireDelaySeconds` | **1.5** | After grace: aliens may chase/strafe but cannot fire for 1.5 s |
+
+Grace timers reset only in `softReset()` (new match / restart). Pause / resume does **not** reset grace or the post-grace fire delay.
