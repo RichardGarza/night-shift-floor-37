@@ -364,12 +364,12 @@ public:
 
 	/**
 	 * Optional secondary enemy set (KayKit Warrior CC0). Default false — Mutant stays primary.
-	 * When true AND /Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior exists, soft-refs point there.
+	 * When true AND KayKitWarrior/SK_KayKit_Warrior (or KayKit_Staged/SK_Skeleton_Warrior) exists, soft-refs point there.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	bool bPreferKayKitWarrior = false;
 
-	/** Soft path: /Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior (SoftStarter import). */
+	/** Soft path preferred: /Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior (alt: KayKit_Staged/SK_Skeleton_Warrior). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	TSoftObjectPtr<USkeletalMesh> KayKitWarriorMesh;
 

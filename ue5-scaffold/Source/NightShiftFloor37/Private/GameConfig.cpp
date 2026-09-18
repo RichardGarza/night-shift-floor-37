@@ -7,7 +7,8 @@ namespace GameConfigPrivate
 {
 	const TCHAR* MutantPackage = TEXT("/Game/Imported/Aliens/Mutant/SK_Mutant");
 	const TCHAR* QuaterniusPackage = TEXT("/Game/Imported/Aliens/Skel/SK_Alien");
-	const TCHAR* KayKitPackage = TEXT("/Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior");
+	const TCHAR* KayKitPackage = TEXT("/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior");
+	const TCHAR* KayKitPackageAlt = TEXT("/Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior");
 }
 
 UGameConfig::UGameConfig()
@@ -85,20 +86,26 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	(void)SoftAnim;
 	if (KayKitWarriorMesh.IsNull())
 	{
-		KayKitWarriorMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior.SK_Skeleton_Warrior")));
+		KayKitWarriorMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior.SK_KayKit_Warrior")));
 	}
 	if (AlienSkeletalMesh.IsNull() || bAutoPickAlienModelSet)
 	{
-		const bool bKayKit = bPreferKayKitWarrior && FPackageName::DoesPackageExist(GameConfigPrivate::KayKitPackage);
+		const bool bKayKitPrimary = FPackageName::DoesPackageExist(GameConfigPrivate::KayKitPackage);
+		const bool bKayKitAlt = FPackageName::DoesPackageExist(GameConfigPrivate::KayKitPackageAlt);
+		const bool bKayKit = bPreferKayKitWarrior && (bKayKitPrimary || bKayKitAlt);
 		if (bKayKit)
 		{
+			if (!bKayKitPrimary && bKayKitAlt)
+			{
+				KayKitWarriorMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior.SK_Skeleton_Warrior")));
+			}
 			ApplyKayKitWarriorModelSet();
 		}
 		else
 		{
 			if (bPreferKayKitWarrior)
 			{
-				UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: bPreferKayKitWarrior set but SK_Skeleton_Warrior missing — keeping Mutant primary."));
+				UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: bPreferKayKitWarrior set but KayKit uasset missing (tried KayKitWarrior + KayKit_Staged) — keeping Mutant primary."));
 			}
 			const bool bMutant = FPackageName::DoesPackageExist(GameConfigPrivate::MutantPackage);
 			if (!bMutant)
@@ -182,9 +189,18 @@ void UGameConfig::ApplyKayKitWarriorModelSet()
 	auto SoftAnim = [](const TCHAR* Path) { return TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(Path)); };
 	bUsingKayKitWarrior = true;
 	bUsingMutantModel = false;
-	AlienSkeletalMesh = KayKitWarriorMesh.IsNull()
-		? TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior.SK_Skeleton_Warrior")))
-		: KayKitWarriorMesh;
+	if (KayKitWarriorMesh.IsNull())
+	{
+		const bool bPrimary = FPackageName::DoesPackageExist(GameConfigPrivate::KayKitPackage);
+		AlienSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(
+			bPrimary
+				? TEXT("/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior.SK_KayKit_Warrior")
+				: TEXT("/Game/Imported/Enemies/KayKit_Staged/SK_Skeleton_Warrior.SK_Skeleton_Warrior")));
+	}
+	else
+	{
+		AlienSkeletalMesh = KayKitWarriorMesh;
+	}
 	AlienBodyMesh.Reset();
 	AlienHeadMesh.Reset();
 	// Mutant clips as stand-in until KayKit anims land.
