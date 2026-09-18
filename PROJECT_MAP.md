@@ -1,6 +1,6 @@
 # Night Shift — Floor 37: Project Map
 
-Last updated: 2026-09-18 (standing board tip `af5c939`). Keep this file current when a phase closes or a tree changes shape.
+Last updated: 2026-09-18 (standing board tip `09e85ee` + mouse sens). Keep this file current when a phase closes or a tree changes shape.
 
 One spec, two implementations. `DESIGN.md` is the contract. `web/` is the playable reference. `ue5-scaffold/` is the real target.
 
@@ -108,6 +108,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | KayKit Warrior dual-path | **Done** (`09c5f65`) | Optional `bPreferKayKitWarrior` — soft-ref `KayKitWarrior/SK_KayKit_Warrior` **or** `KayKit_Staged/SK_Skeleton_Warrior`; default remains Mutant |
 | Self-test | 49 / 49 | + audio wiring checks (rifle sound resolved, ambient loop playing) |
 | `Content/Imported` | **Partly committed** | `Aliens/Skel/` (SK_Alien + anims) is committed; office props / fluorescents / `SM_Alien` remain local-only on the Desktop copy — optional Git LFS |
+| Mouse sensitivity default | **Done** | `DefaultMouseSensitivity` / character / Esc slider seed `0.18` (was `0.35`). Slider kept. |
 | UE5 / web feel | Needs human | **Open:** recoil feel; optional Mixamo player; optional Git LFS |
 | Silhouette | **Confirmed** | `docs/sprintx_mannequin_aliens.png` (mannequin + rifle + three aliens in frame) |
 | Art / audio / packaging | Art + audio in | Mutant aliens, textured arena with neon, synthesized SFX + ambience. Packaging still open |
@@ -117,9 +118,10 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 
 Richard rule: short sprints, commit often after Testing OK, document continuously here as **done / in flight / next**.
 
-Tip: **`af5c939`**.
+Tip: **`09e85ee`**.
 
 ### Done
+- **Default mouse sensitivity** `0.18` °/count (was `0.35`) — Esc slider unchanged (`0.05`–`1.5`). Saved GameUserSettings still win if present.
 - **Web softer start** (`f73a1f5`): grace 7s + spawn spacing 24m + post-grace fire delay 1.5s (UE V mirror).
 - **Web OTS camera collision** (`520d834`): camera pulls in against walls/cover.
 - **UE Mutant enemy default**: `/Game/Imported/Aliens/Mutant/SK_Mutant` (Quaternius rejected as primary).
@@ -176,7 +178,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ### After standing board (2026-09-18)
 
-Board above is authoritative for done / in flight / next. Tip `af5c939`: web softer start + camera collision shipped; UE Mutant / Manny / Kenney rifle / grounding / KayKit dual-path. Open: recoil feel, SoftStarter Y Bot `.uasset` if missing, Git LFS.
+Board above is authoritative for done / in flight / next. Tip `09e85ee`: web softer start + camera collision shipped; UE Mutant / Manny / Kenney rifle / grounding / KayKit dual-path. Open: recoil feel, SoftStarter Y Bot `.uasset` if missing, Git LFS.
 
 ### After Sprint AC (2026-09-09)
 

@@ -165,7 +165,7 @@ public:
 
 	/** Degrees of camera turn per mouse count. Player-adjustable in the Esc menu; this is the default. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-	float DefaultMouseSensitivity = 0.35f;
+	float DefaultMouseSensitivity = 0.18f; // was 0.35 — Richard: too sensitive
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player")
 	float CapsuleHalfHeightCm = 90.f; // ~1.8 m total height

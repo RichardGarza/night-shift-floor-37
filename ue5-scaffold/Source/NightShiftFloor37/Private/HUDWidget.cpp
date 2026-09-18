@@ -136,7 +136,7 @@ void UHUDWidget::BuildPauseMenu(UCanvasPanel* Canvas)
 		SensitivityLabel->SetFont(F);
 	}
 	SensitivityLabel->SetColorAndOpacity(FSlateColor(HUDPrivate::Dim));
-	RefreshSensitivityLabel(0.35f);
+	RefreshSensitivityLabel(0.18f);
 	AddRow(SensitivityLabel, 18.f, HAlign_Left);
 
 	USizeBox* SliderBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("SliderBox"));
@@ -145,7 +145,7 @@ void UHUDWidget::BuildPauseMenu(UCanvasPanel* Canvas)
 	SensitivitySlider->SetMinValue(0.05f);
 	SensitivitySlider->SetMaxValue(1.5f);
 	SensitivitySlider->SetStepSize(0.05f);
-	SensitivitySlider->SetValue(0.35f);
+	SensitivitySlider->SetValue(0.18f);
 	SensitivitySlider->SetSliderBarColor(FLinearColor(0.2f, 0.3f, 0.25f));
 	SensitivitySlider->SetSliderHandleColor(HUDPrivate::Green);
 	SensitivitySlider->OnValueChanged.AddDynamic(this, &UHUDWidget::HandleSensitivityChanged);

@@ -166,7 +166,7 @@ public:
 
 	/** Degrees per mouse count. Loaded from GameUserSettings.ini, default from UGameConfig. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	float MouseSensitivity = 0.35f;
+	float MouseSensitivity = 0.18f; // synced from UGameConfig::DefaultMouseSensitivity
 
 	/** Clamp, apply, and persist to GameUserSettings.ini. */
 	UFUNCTION(BlueprintCallable, Category = "Input")

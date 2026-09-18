@@ -128,7 +128,7 @@ void ANightShiftCharacter::BeginPlay()
 	ApplyResolvedGameConfig();
 	Health = GameConfig ? GameConfig->PlayerMaxHealth : 100.f;
 	TimeSinceLastDamage = GameConfig ? GameConfig->PlayerRegenDelaySeconds : 5.f;
-	MouseSensitivity = GameConfig ? GameConfig->DefaultMouseSensitivity : 0.35f;
+	MouseSensitivity = GameConfig ? GameConfig->DefaultMouseSensitivity : 0.18f;
 	LoadMouseSensitivity();
 	LastGroundedZ = GetActorLocation().Z;
 	bWasMovingOnGround = GetCharacterMovement() && GetCharacterMovement()->IsMovingOnGround();
