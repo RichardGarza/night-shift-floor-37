@@ -362,6 +362,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	bool bAutoPickAlienModelSet = true;
 
+	/**
+	 * Optional secondary enemy set (KayKit Warrior CC0). Default false — Mutant stays primary.
+	 * When true AND /Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior exists, soft-refs point there.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	bool bPreferKayKitWarrior = false;
+
+	/** Soft path for optional KayKit Warrior skeletal (after SoftStarter import). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	TSoftObjectPtr<USkeletalMesh> KayKitWarriorMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float KayKitWarriorMeshScale = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
+	float KayKitWarriorMeshYawDegrees = -90.f;
+
 	/** Mutant is 1.86 m at native scale; 1.15 → ~2.1 m so the Grunt already looms over the mannequin. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	float MutantMeshScale = 1.15f;
@@ -800,9 +817,16 @@ public:
 	/** Sprint AA — point the alien soft paths at the Mutant (Mixamo) or Quaternius set + matching scale/yaw. */
 	void ApplyAlienModelSet(bool bMutant);
 
+	/** Optional KayKit Warrior soft set (only when bPreferKayKitWarrior and package exists). */
+	void ApplyKayKitWarriorModelSet();
+
 	/** True once ApplyAlienModelSet picked the Mutant. */
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
 	bool bUsingMutantModel = false;
+
+	/** True when optional KayKit Warrior soft set is active. */
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	bool bUsingKayKitWarrior = false;
 
 	/** Sprint O — LoadSynchronous once; reuse cached meshes (avoids per-alien PIE hitch). */
 	void ResolvePhase8LoadedMeshes();

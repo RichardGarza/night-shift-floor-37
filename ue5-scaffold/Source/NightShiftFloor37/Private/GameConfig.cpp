@@ -7,6 +7,7 @@ namespace GameConfigPrivate
 {
 	const TCHAR* MutantPackage = TEXT("/Game/Imported/Aliens/Mutant/SK_Mutant");
 	const TCHAR* QuaterniusPackage = TEXT("/Game/Imported/Aliens/Skel/SK_Alien");
+	const TCHAR* KayKitPackage = TEXT("/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior");
 }
 
 UGameConfig::UGameConfig()
@@ -79,17 +80,33 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	if (SoundNeonSnap.IsNull())    { SoundNeonSnap    = SoftSnd(TEXT("sfx_neon_snap")); }
 	if (SoundAmbientLoop.IsNull()) { SoundAmbientLoop = SoftSnd(TEXT("amb_office_hum_loop")); }
 
-	// Enemy swap — Mixamo Mutant is the default soft set when present. Quaternius is last-resort only.
+	// Mutant primary. Optional KayKit when bPreferKayKitWarrior + package. Quaternius last-resort.
 	auto SoftAnim = [](const TCHAR* Path) { return TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(Path)); };
 	(void)SoftAnim;
+	if (KayKitWarriorMesh.IsNull())
+	{
+		KayKitWarriorMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior.SK_KayKit_Warrior")));
+	}
 	if (AlienSkeletalMesh.IsNull() || bAutoPickAlienModelSet)
 	{
-		const bool bMutant = FPackageName::DoesPackageExist(GameConfigPrivate::MutantPackage);
-		if (!bMutant)
+		const bool bKayKit = bPreferKayKitWarrior && FPackageName::DoesPackageExist(GameConfigPrivate::KayKitPackage);
+		if (bKayKit)
 		{
-			UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: SK_Mutant missing — falling back to Quaternius SK_Alien (not SM_Alien)."));
+			ApplyKayKitWarriorModelSet();
 		}
-		ApplyAlienModelSet(bMutant);
+		else
+		{
+			if (bPreferKayKitWarrior)
+			{
+				UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: bPreferKayKitWarrior set but SK_KayKit_Warrior missing — keeping Mutant primary."));
+			}
+			const bool bMutant = FPackageName::DoesPackageExist(GameConfigPrivate::MutantPackage);
+			if (!bMutant)
+			{
+				UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: SK_Mutant missing — falling back to Quaternius SK_Alien (not SM_Alien)."));
+			}
+			ApplyAlienModelSet(bMutant);
+		}
 	}
 
 	// Sprint W — UE template mannequin + rifle (copied from Engine/Templates/TemplateResources).
@@ -129,6 +146,7 @@ void UGameConfig::ApplyAlienModelSet(bool bMutant)
 {
 	auto SoftAnim = [](const TCHAR* Path) { return TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(Path)); };
 	bUsingMutantModel = bMutant;
+	bUsingKayKitWarrior = false;
 	if (bMutant)
 	{
 		AlienSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Aliens/Mutant/SK_Mutant.SK_Mutant")));
@@ -156,6 +174,30 @@ void UGameConfig::ApplyAlienModelSet(bool bMutant)
 	AlienMeshScale = 0.55f;
 	AlienMeshYawDegrees = -90.f;
 	AlienRunAnimRefSpeed = 350.f;
+}
+
+
+void UGameConfig::ApplyKayKitWarriorModelSet()
+{
+	auto SoftAnim = [](const TCHAR* Path) { return TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(Path)); };
+	bUsingKayKitWarrior = true;
+	bUsingMutantModel = false;
+	AlienSkeletalMesh = KayKitWarriorMesh.IsNull()
+		? TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior.SK_KayKit_Warrior")))
+		: KayKitWarriorMesh;
+	AlienBodyMesh.Reset();
+	AlienHeadMesh.Reset();
+	// Mutant clips as stand-in until KayKit anims land.
+	AlienAnims.Idle     = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Idle.A_Mutant_Idle"));
+	AlienAnims.Walk     = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Walking.A_Mutant_Walking"));
+	AlienAnims.Run      = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Run.A_Mutant_Run"));
+	AlienAnims.Attack   = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Punch.A_Mutant_Punch"));
+	AlienAnims.HitReact = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Hit_Reaction.A_Mutant_Hit_Reaction"));
+	AlienAnims.Death    = SoftAnim(TEXT("/Game/Imported/Aliens/Mutant/A_Mutant_Dying.A_Mutant_Dying"));
+	AlienMeshScale = KayKitWarriorMeshScale;
+	AlienMeshYawDegrees = KayKitWarriorMeshYawDegrees;
+	AlienRunAnimRefSpeed = MutantRunAnimRefSpeed;
+	UE_LOG(LogNightShift, Log, TEXT("UGameConfig: optional KayKit Warrior soft set active (toggle; Mutant remains default)."));
 }
 
 void UGameConfig::ResolvePhase8LoadedMeshes()

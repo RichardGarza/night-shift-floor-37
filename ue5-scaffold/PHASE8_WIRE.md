@@ -108,3 +108,11 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 - Mutant: `MutantMeshScale` **1.15** (~2.1 m vs Manny ~1.8 m) via `FitSkeletalBody` bounds fit — not tiny/huge.
 - `ResolvePhase8LoadedMeshes` retries null rifle/alien caches after late SoftStarter imports.
 
+## Optional KayKit Warrior (secondary enemy set)
+
+- Toggle: `UGameConfig::bPreferKayKitWarrior` (**default false** — Mutant stays primary).
+- Soft path: `/Game/Imported/Enemies/KayKitWarrior/SK_KayKit_Warrior` (`KayKitWarriorMesh`).
+- Requires SoftStarter FBX→uasset; if package missing with toggle on → warning, keep Mutant.
+- Scale/yaw: `KayKitWarriorMeshScale` / `KayKitWarriorMeshYawDegrees` (1.0 / -90).
+- Anims: Mutant clips as stand-in until KayKit anims imported.
+
