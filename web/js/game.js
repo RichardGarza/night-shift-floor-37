@@ -147,12 +147,29 @@ export class Game {
     this.elapsed = 0;
     this.graceT = CONFIG.match.spawnGraceSeconds;
     this.postGraceFireDelayT = CONFIG.match.postGraceAlienFireDelaySeconds;
-    this.player.reset(new THREE.Vector3(0, 0, 10));
+    // UE BeginSpawnGraceAndSafeStart: farthest edge spawn from arena center
+    this.player.reset(this._farthestSpawnFromCenter());
     this.rifle.reset();
     this.aliens.softReset(this.player.position);
     this.combat.vignette = 0;
     // Clear held fire on reset
     this.input.shoot = false;
+  }
+
+  /** Parity with AOfficeArena::GetFarthestSpawnFrom(ArenaOrigin). */
+  _farthestSpawnFromCenter() {
+    const pts = this.spawnPoints;
+    let best = pts[0];
+    let bestD = -1;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      const d = p.x * p.x + p.z * p.z;
+      if (d > bestD) {
+        bestD = d;
+        best = p;
+      }
+    }
+    return best.clone();
   }
 
   _resize() {
