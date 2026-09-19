@@ -1,6 +1,6 @@
 # Night Shift — Floor 37: Project Map
 
-Last updated: 2026-09-18 (standing board tip `09e85ee` + mouse sens). Keep this file current when a phase closes or a tree changes shape.
+Last updated: 2026-09-18 (standing board tip `3c3d6ed` — YBot uasset imported). Keep this file current when a phase closes or a tree changes shape.
 
 One spec, two implementations. `DESIGN.md` is the contract. `web/` is the playable reference. `ue5-scaffold/` is the real target.
 
@@ -91,6 +91,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint W player body + rifle | **Done** | Player soft-ref prefers `/Game/Imported/Player/SK_Mixamo_YBot`; soft-miss → Epic Manny. Kenney rifle `/Game/Imported/Weapons/SM_Rifle` + rifle clips. W2 grounding kept. Soft-miss mesh → grounded cylinder |
 | Sprint W2 player grounding | **Done** | Feet on floor: mesh Z = `-CapsuleHalfHeight + PlayerMeshZOffsetCm`; soft-miss cylinder **scale-to-capsule** (`72a354b`). |
 | Kenney rifle soft path | **Done** | `RifleMesh` → `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit CC0). `.uasset` imported; `RifleRelative*` always-after-attach (`72a354b`). |
+| Mixamo Y Bot player import | **Done** | `SK_Mixamo_YBot.uasset` at `/Game/Imported/Player/SK_Mixamo_YBot` (SoftwareStarter). Soft-ref live; no longer pending. Soft-miss → Manny. |
 | Sprint X animated aliens | **Superseded** | Quaternius `SK_Alien` / `SM_Alien` **rejected** as the enemy look (Richard). Kept only as last-resort skeletal soft-miss if Mutant package missing — never default `SM_Alien` |
 | Sprint X shooting fix | **Shipped** | Rifle trace uses complex collision + player/alien meshes block Visibility; tracer starts at the rifle muzzle. Root cause of "shots do nothing": hits only registered on the capsule, which no longer matched the visible body |
 | Sprint X lighting lift | **Shipped** | Sun 5.0 / sky 1.6 / fog 0.009, practicals 600 cd, floor/concrete albedo ×2.5, `ExposureBiasEV` 0.6 on the camera. `docs/sprintx_mannequin_aliens.png` |
@@ -109,7 +110,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Self-test | 49 / 49 | + audio wiring checks (rifle sound resolved, ambient loop playing) |
 | `Content/Imported` | **Partly committed** | `Aliens/Skel/` (SK_Alien + anims) is committed; office props / fluorescents / `SM_Alien` remain local-only on the Desktop copy — optional Git LFS |
 | Mouse sensitivity default | **Done** | `DefaultMouseSensitivity` / character / Esc slider seed `0.18` (was `0.35`). Slider kept. |
-| UE5 / web feel | Needs human | **Open:** recoil feel; optional Mixamo player; optional Git LFS |
+| UE5 / web feel | Needs human | **Open:** recoil feel; optional Git LFS |
 | Silhouette | **Confirmed** | `docs/sprintx_mannequin_aliens.png` (mannequin + rifle + three aliens in frame) |
 | Art / audio / packaging | Art + audio in | Mutant aliens, textured arena with neon, synthesized SFX + ambience. Packaging still open |
 
@@ -118,14 +119,14 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 
 Richard rule: short sprints, commit often after Testing OK, document continuously here as **done / in flight / next**.
 
-Tip: **`09e85ee`**.
+Tip: **`3c3d6ed`**.
 
 ### Done
 - **Default mouse sensitivity** `0.18` °/count (was `0.35`) — Esc slider unchanged (`0.05`–`1.5`). Saved GameUserSettings still win if present.
 - **Web softer start** (`f73a1f5`): grace 7s + spawn spacing 24m + post-grace fire delay 1.5s (UE V mirror).
 - **Web OTS camera collision** (`520d834`): camera pulls in against walls/cover.
 - **UE Mutant enemy default**: `/Game/Imported/Aliens/Mutant/SK_Mutant` (Quaternius rejected as primary).
-- **Player soft-ref**: `/Game/Imported/Player/SK_Mixamo_YBot` (Mixamo Y Bot); soft-miss → Epic Manny `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple`.
+- **Mixamo Y Bot player**: `SK_Mixamo_YBot.uasset` **imported** at `/Game/Imported/Player/SK_Mixamo_YBot` (no longer pending). Soft-miss → Epic Manny.
 - **Kenney rifle + grounding**: `/Game/Imported/Weapons/SM_Rifle` + cylinder scale-to-capsule / `RifleRelative*` (`72a354b`).
 - **KayKit dual-path** (`09c5f65` / `067ab0d`): optional Warrior soft-ref (`KayKitWarrior` or `KayKit_Staged`); Mutant stays default unless `bPreferKayKitWarrior`.
 - **Sprint V** (`71f694f`): UE brightness + grace/separation/fire lock.
@@ -135,7 +136,6 @@ Tip: **`09e85ee`**.
 
 ### Next / open
 - Human feel: **recoil** model.
-- Mixamo Y Bot player soft-ref staged; SoftStarter `.uasset` import may still be pending (Manny interim).
 - Optional **Git LFS** for remaining `Content/Imported`.
 - Phase 9 web polish + Phase 10 package (parallel/last).
 
@@ -178,7 +178,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ### After standing board (2026-09-18)
 
-Board above is authoritative for done / in flight / next. Tip `09e85ee`: web softer start + camera collision shipped; UE Mutant / Manny / Kenney rifle / grounding / KayKit dual-path. Open: recoil feel, SoftStarter Y Bot `.uasset` if missing, Git LFS.
+Board above is authoritative for done / in flight / next. Tip `3c3d6ed`: `SK_Mixamo_YBot.uasset` imported (no longer pending). Open: recoil feel, Git LFS.
 
 ### After Sprint AC (2026-09-09)
 

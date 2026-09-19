@@ -41,3 +41,10 @@ Import from `Content/Imported/` into project Content (suggested folders: `Props/
 - License: **CC0** (Kenney Space Station Kit) — see `Props/Office/SM_ServerRack.ATTRIBUTION.txt`
 - Editor: import FBX → `/Game/Imported/Props/Office/SM_ServerRack` for PIE soft-ref resolve
 - Optional later: Sketchfab Dreadler Server Rack (CC-BY) if Sketchfab login available
+
+## Player — Mixamo Y Bot — READY (FBX + uasset)
+- Soft path: `/Game/Imported/Player/SK_Mixamo_YBot`
+- FBX: `Content/Imported/Player/SK_Mixamo_YBot.fbx` (1,982,368 B)
+- Editor: `SK_Mixamo_YBot.uasset` + Skeleton + PhysicsAsset
+- Soft-miss: Epic Manny
+

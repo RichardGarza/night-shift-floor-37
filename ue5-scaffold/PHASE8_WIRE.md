@@ -125,6 +125,7 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 ## Player soft-ref — Mixamo Y Bot
 
 - **Default soft path:** `/Game/Imported/Player/SK_Mixamo_YBot` (ModelFinder Mixamo Y Bot).
+- **Editor uasset:** READY — `SK_Mixamo_YBot.uasset` + Skeleton + PhysicsAsset (SoftStarter). Soft-ref should resolve in PIE.
 - **Soft-miss:** `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple` (Epic Manny interim).
 - Not defaulting to Quaternius `SK_Player`.
 - W2 grounding + rifle OTS offsets unchanged after mesh swap.
