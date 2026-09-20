@@ -416,6 +416,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	TSoftObjectPtr<UStaticMesh> RifleMesh;
 
+	/** Preferred rifle socket; apply path also tries HandGrip_R, hand_r, weapon_r, ik_hand_gun, hand_r_socket. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	FName RifleSocketName = TEXT("HandGrip_R");
 
@@ -423,16 +424,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	float PlayerMeshZOffsetCm = 0.f;
 
-	/** Sprint W2 — rifle prop offset in socket space so the gun reads in OTS (Kenney Blaster /Game/Imported/Weapons/SM_Rifle — uasset imported). */
+	/**
+	 * Rifle OTS attach polish (locked defaults) — applied after socket attach in
+	 * ANightShiftCharacter::ApplyConfiguredPlayerVisuals (socket OR soft-attach).
+	 * Good values for Kenney SM_Rifle on HandGrip_R / hand_r (Manny or Y Bot):
+	 *   Location (6, 2, -3) cm · Rotation yaw 90° · Scale 1.35
+	 * Soft-miss socket + ZeroVector location → code falls back to (30, 25, 40) shoulder.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	FVector RifleRelativeLocation = FVector(6.f, 2.f, -3.f);
 
+	/** Rifle OTS — Pitch/Yaw/Roll; default yaw 90° so Kenney blaster barrel reads forward in OTS. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	FRotator RifleRelativeRotation = FRotator(0.f, 90.f, 0.f);
 
 	/**
-	 * Sprint whole-team — uniform scale for Kenney SM_Rifle on the hand socket.
-	 * 1.0 matches SoftStarter import; raise if the blaster reads tiny in OTS.
+	 * Uniform scale for Kenney SM_Rifle on the hand socket.
+	 * Locked default 1.35 (OTS-readable); 1.0 = SoftStarter import size (tiny in OTS).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	float RifleMeshScale = 1.35f;

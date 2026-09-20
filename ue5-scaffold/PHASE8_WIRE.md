@@ -88,25 +88,50 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 ## Sprint W2 — player grounded + rifle OTS (NumberFourCoding)
 
 `ANightShiftCharacter::ApplyConfiguredPlayerVisuals`:
-- Soft refs: `PlayerSkeletalMesh` (Manny), `PlayerBodyMesh` (optional static), `RifleMesh` (`SM_Rifle`)
+- Soft refs: `PlayerSkeletalMesh` (Y Bot default / Manny soft-miss), `PlayerBodyMesh` (optional static), `RifleMesh` (`SM_Rifle`)
 - Feet: skeletal/static mesh Z = `-CapsuleHalfHeight + PlayerMeshZOffsetCm` (always re-applied)
 - Soft-miss: grounded greybox cylinder (must not float)
-- Rifle: socket try order `RifleSocketName` → `HandGrip_R` → `hand_r` → `weapon_r` → `ik_hand_gun`, then `RifleRelativeLocation` / `RifleRelativeRotation` (default yaw 90°) for OTS read
+- Rifle: socket try order `RifleSocketName` → `HandGrip_R` → `hand_r` → `weapon_r` → `ik_hand_gun` → `hand_r_socket`; then always apply `RifleRelative*` + `RifleMeshScale`
 
 
 ## Enemy swap — Mutant default + Kenney blaster
 
 - `AlienSkeletalMesh` default: `/Game/Imported/Aliens/Mutant/SK_Mutant` (Mixamo Mutant) when package exists.
 - `AlienBodyMesh` is **not** defaulted to Quaternius `SM_Alien`.
-- `RifleMesh` default: `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit `blaster-r` staged as FBX). Soft-miss until Editor `.uasset` import.
+- `RifleMesh` default: `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit `blaster-r`). **uasset READY.**
 - Player W2 grounding unchanged.
 
 ## OTS gun verify (post SoftStarter SM_Rifle.uasset)
 
-- Soft path `/Game/Imported/Weapons/SM_Rifle` resolves after SoftStarter import.
-- `RifleMeshScale` default **1.35**; `RifleRelativeLocation` (6,2,-3) + yaw 90° for OTS read on Manny `HandGrip_R` / `hand_r`.
-- Mutant: `MutantMeshScale` **1.15** (~2.1 m vs Manny ~1.8 m) via `FitSkeletalBody` bounds fit — not tiny/huge.
+- Soft path `/Game/Imported/Weapons/SM_Rifle` resolves (uasset on disk).
+- Locked OTS attach defaults — see **Rifle OTS attach polish** below.
+- Mutant: `MutantMeshScale` **1.15** (~2.1 m vs player ~1.8 m) via `FitSkeletalBody` bounds fit — not tiny/huge.
 - `ResolvePhase8LoadedMeshes` retries null rifle/alien caches after late SoftStarter imports.
+
+
+## Rifle OTS attach polish (NumberFourCoding)
+
+Locked `UGameConfig` defaults (Kenney `SM_Rifle`, OTS-readable on Y Bot / Manny hand sockets). Do not change casually — prior Testing PASS.
+
+| Property | Default | Notes |
+|----------|---------|-------|
+| `RifleSocketName` | `HandGrip_R` | Fallbacks: Mixamo `mixamorig:RightHand` / `RightHand`, then `hand_r`, `weapon_r`, `ik_hand_gun`, `hand_r_socket` |
+| `RifleRelativeLocation` | `(6, 2, -3)` cm | Socket-space offset after attach |
+| `RifleRelativeRotation` | `(0, 90, 0)` | Yaw 90° — barrel forward in OTS |
+| `RifleMeshScale` | `1.35` | Import size 1.0 reads tiny; clamp ≥0.05 in apply |
+
+Apply path (`ApplyConfiguredPlayerVisuals`):
+1. Attach to first existing socket (or soft-attach to skeletal/body/capsule).
+2. Always set `RifleRelativeLocation` / `RifleRelativeRotation` / `RifleMeshScale`.
+3. Soft-miss socket **and** ZeroVector location → hard-coded shoulder `(30, 25, 40)` (config location wins when non-zero).
+4. Soft-miss mesh → hide prop (hitscan still works).
+
+
+## Audit P2 — late Y Bot upgrade + Mixamo rifle sockets (NumberFourCoding)
+
+1. **Late Y Bot after Manny soft-miss:** `ResolvePhase8LoadedMeshes` sets `bPlayerSkeletalMannySoftMiss` when soft-miss fills the cache with `SKM_Manny_Simple`. On later calls (after SoftStarter import), if `/Game/Imported/Player/SK_Mixamo_YBot` exists and that flag is set (or cache still null), upgrade soft-ref + cache to Y Bot — no longer blocked by a filled Manny cache.
+2. **Mixamo rifle sockets:** socket try order now includes `mixamorig:RightHand`, `mixamorig_RightHand`, `RightHand`, `Hand_R` before mesh-root soft-attach. `RifleRelative*` still applied for HandGrip / all socket hits (HandGrip-tuned defaults kept).
+
 
 ## Optional KayKit Warrior (secondary enemy set)
 
