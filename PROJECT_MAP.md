@@ -140,7 +140,7 @@ Tip: **`c5c440d`**.
 
 ### Next / open
 - Optional **Git LFS** for remaining `Content/Imported`.
-- Phase 9 web polish + Phase 10 package (parallel/last).
+- Phase 9 web: softer-start + OTS camera collision **shipped** (`f73a1f5` / `520d834`); remaining Phase 9 opens + Phase 10 package still parallel/last.
 
 
 ## Build and run
@@ -208,7 +208,7 @@ Richard's read after W+X: light great, character great, enemies weak, shooting o
 5. Follow-ups: AnimBlueprint + blendspace to remove clip pops; physics asset for `SK_Alien` (per-bone headshots); Git LFS decision.
 
 
-Phases 6–8 + Sprints M/N/O/Q/R/V/W/X/AA+ shipped through 2026-09-18 tip. Player soft-ref is Mixamo Y Bot (Manny interim on soft-miss) with Kenney rifle; **default enemies are Mixamo Mutant** (Quaternius rejected as primary); hitscan hits the visible bodies. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`. Phase 9 web + Phase 10 package remain parallel/last.
+Phases 6–8 + Sprints M/N/O/Q/R/V/W/X/AA+ shipped through 2026-09-18 tip. Player soft-ref is Mixamo Y Bot (Manny interim on soft-miss) with Kenney rifle; **default enemies are Mixamo Mutant** (Quaternius rejected as primary); hitscan hits the visible bodies. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`. Phase 9 softer-start + OTS camera **shipped**; other Phase 9 opens + Phase 10 package remain parallel/last.
 
 ### Phase 6: First playthrough + softer start — **SHIPPED**
 
