@@ -157,6 +157,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cover|Phase8")
 	TArray<TObjectPtr<UStaticMeshComponent>> ServerRackPropVisuals;
 
+	/** SoftStarter resin/crate dress visuals (barrel + crates on Resin covers). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cover|Phase8")
+	TArray<TObjectPtr<UStaticMeshComponent>> ResinCoverDressVisuals;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Greybox")
 	TObjectPtr<UDirectionalLightComponent> SunLight;
 
@@ -277,6 +281,10 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Cover|Phase8")
 	void ApplyConfiguredServerRackMeshes();
+
+	/** SoftStarter-local — stamp resin barrel + crate dress on Resin* cover volumes (non-colliding). Soft-miss → skip. */
+	UFUNCTION(BlueprintCallable, Category = "Cover|Phase8")
+	void ApplyConfiguredResinCoverDressMeshes();
 
 protected:
 	void BuildGreybox();

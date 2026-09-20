@@ -510,6 +510,33 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	TSoftObjectPtr<UStaticMesh> ServerRackPropMesh;
 
+	/**
+	 * SoftStarter-local resin/cover dress (non-colliding). Soft-miss → skip that mesh only.
+	 * Barrel: /Game/Imported/Props/Resin/Barrel_03/SM_barrel_03
+	 * PolyHaven crates: WoodenCrate_01 / PlasticCrate_01 / CardboardBox_01
+	 * Kenney crates: SM_Crate_Small / Medium / Wide under Props/Cover/
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8|ResinCover")
+	TSoftObjectPtr<UStaticMesh> ResinBarrelMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8|ResinCover")
+	TSoftObjectPtr<UStaticMesh> WoodenCrateMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8|ResinCover")
+	TSoftObjectPtr<UStaticMesh> PlasticCrateMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8|ResinCover")
+	TSoftObjectPtr<UStaticMesh> CardboardBoxMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8|ResinCover")
+	TSoftObjectPtr<UStaticMesh> CrateSmallMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8|ResinCover")
+	TSoftObjectPtr<UStaticMesh> CrateMediumMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8|ResinCover")
+	TSoftObjectPtr<UStaticMesh> CrateWideMesh;
+
 	// Sprint AC — arena surfaces (Poly Haven CC0 via Scripts/build_surface_materials.py). Instances of
 	// M_WorldSurface (world-projected UVs) so the scaled greybox cubes tile correctly. Soft-miss → colour.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Surfaces")
@@ -858,13 +885,15 @@ public:
 	bool bPlayerSkeletalMannySoftMiss = false;
 
 	/** Re-entry guard for ReapplyConfiguredPlayerVisualsAfterLateUpgrade. */
+	UPROPERTY(Transient)
 	bool bInsidePlayerVisualReapply = false;
+
+	/** Sprint O — LoadSynchronous once; reuse cached meshes (avoids per-alien PIE hitch). */
+	void ResolvePhase8LoadedMeshes();
 
 	/** After late Y Bot cache upgrade — re-stamp live ANightShiftCharacter meshes (not wait for restart). */
 	void ReapplyConfiguredPlayerVisualsAfterLateUpgrade();
 
-	/** Sprint O — LoadSynchronous once; reuse cached meshes (avoids per-alien PIE hitch). */
-	void ResolvePhase8LoadedMeshes();
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
 	TObjectPtr<UStaticMesh> CachedAlienBodyMesh;
@@ -886,6 +915,27 @@ public:
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
 	TObjectPtr<UStaticMesh> CachedServerRackPropMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedResinBarrelMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedWoodenCrateMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedPlasticCrateMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedCardboardBoxMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedCrateSmallMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedCrateMediumMesh;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
+	TObjectPtr<UStaticMesh> CachedCrateWideMesh;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
 	TObjectPtr<UStaticMesh> CachedFluorescentLightMesh;

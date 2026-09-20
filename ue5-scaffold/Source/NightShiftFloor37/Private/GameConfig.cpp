@@ -55,6 +55,34 @@ void UGameConfig::EnsurePhase8DefaultSoftPaths()
 	{
 		ServerRackPropMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Office/SM_ServerRack.SM_ServerRack")));
 	}
+	if (ResinBarrelMesh.IsNull())
+	{
+		ResinBarrelMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Resin/Barrel_03/SM_barrel_03.SM_barrel_03")));
+	}
+	if (WoodenCrateMesh.IsNull())
+	{
+		WoodenCrateMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Cover/WoodenCrate_01/SM_wooden_crate_01.SM_wooden_crate_01")));
+	}
+	if (PlasticCrateMesh.IsNull())
+	{
+		PlasticCrateMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Cover/PlasticCrate_01/SM_plastic_crate_01.SM_plastic_crate_01")));
+	}
+	if (CardboardBoxMesh.IsNull())
+	{
+		CardboardBoxMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Cover/CardboardBox_01/SM_cardboard_box_01.SM_cardboard_box_01")));
+	}
+	if (CrateSmallMesh.IsNull())
+	{
+		CrateSmallMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Cover/SM_Crate_Small.SM_Crate_Small")));
+	}
+	if (CrateMediumMesh.IsNull())
+	{
+		CrateMediumMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Cover/SM_Crate_Medium.SM_Crate_Medium")));
+	}
+	if (CrateWideMesh.IsNull())
+	{
+		CrateWideMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Cover/SM_Crate_Wide.SM_Crate_Wide")));
+	}
 	if (FluorescentLightMesh.IsNull())
 	{
 		FluorescentLightMesh = TSoftObjectPtr<UStaticMesh>(FSoftObjectPath(TEXT("/Game/Imported/Props/Lights/SM_MountedFluorescent.SM_MountedFluorescent")));
@@ -280,6 +308,13 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 	CachedDeskPropMesh = DeskPropMesh.LoadSynchronous();
 	CachedChairPropMesh = ChairPropMesh.LoadSynchronous();
 	CachedServerRackPropMesh = ServerRackPropMesh.LoadSynchronous();
+	CachedResinBarrelMesh = ResinBarrelMesh.LoadSynchronous();
+	CachedWoodenCrateMesh = WoodenCrateMesh.LoadSynchronous();
+	CachedPlasticCrateMesh = PlasticCrateMesh.LoadSynchronous();
+	CachedCardboardBoxMesh = CardboardBoxMesh.LoadSynchronous();
+	CachedCrateSmallMesh = CrateSmallMesh.LoadSynchronous();
+	CachedCrateMediumMesh = CrateMediumMesh.LoadSynchronous();
+	CachedCrateWideMesh = CrateWideMesh.LoadSynchronous();
 	CachedFluorescentLightMesh = FluorescentLightMesh.LoadSynchronous();
 	CachedPlayerBodyMesh = PlayerBodyMesh.LoadSynchronous();
 	CachedPlayerSkeletalMesh = PlayerSkeletalMesh.LoadSynchronous();

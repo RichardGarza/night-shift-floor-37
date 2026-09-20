@@ -838,6 +838,86 @@ void AOfficeArena::ApplyConfiguredServerRackMeshes()
 		ServerRackPropVisuals.Num());
 }
 
+
+void AOfficeArena::ApplyConfiguredResinCoverDressMeshes()
+{
+	// SoftStarter-local — barrel + crates on Resin* volumes only (Desk/Chair/Cubicle/Rack untouched).
+	// Soft-miss any mesh → skip that stamp; all miss → no-op.
+	if (!GameConfig)
+	{
+		return;
+	}
+	GameConfig->ResolvePhase8LoadedMeshes();
+
+	TArray<UStaticMesh*> CratePool;
+	auto AddIf = [&CratePool](UStaticMesh* M)
+	{
+		if (M) { CratePool.Add(M); }
+	};
+	AddIf(GameConfig->CachedWoodenCrateMesh.Get());
+	AddIf(GameConfig->CachedPlasticCrateMesh.Get());
+	AddIf(GameConfig->CachedCardboardBoxMesh.Get());
+	AddIf(GameConfig->CachedCrateSmallMesh.Get());
+	AddIf(GameConfig->CachedCrateMediumMesh.Get());
+	AddIf(GameConfig->CachedCrateWideMesh.Get());
+	UStaticMesh* Barrel = GameConfig->CachedResinBarrelMesh.Get();
+	if (!Barrel && CratePool.Num() == 0)
+	{
+		return;
+	}
+
+	for (UStaticMeshComponent* Old : ResinCoverDressVisuals)
+	{
+		if (Old) { Old->DestroyComponent(); }
+	}
+	ResinCoverDressVisuals.Reset();
+
+	auto Stamp = [this](UStaticMesh* Mesh, UBoxComponent* Vol, const FVector& RelLoc, const FRotator& RelRot, float UniformScale) -> void
+	{
+		if (!Mesh || !Vol) { return; }
+		UStaticMeshComponent* Vis = NewObject<UStaticMeshComponent>(this, NAME_None, RF_Transient);
+		if (!Vis) { return; }
+		Vis->SetStaticMesh(Mesh);
+		Vis->SetupAttachment(Vol);
+		Vis->SetRelativeLocation(RelLoc);
+		Vis->SetRelativeRotation(RelRot);
+		Vis->SetRelativeScale3D(FVector(UniformScale));
+		Vis->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Vis->SetCastShadow(true);
+		Vis->RegisterComponent();
+		ResinCoverDressVisuals.Add(Vis);
+	};
+
+	int32 CoverIndex = 0;
+	for (UBoxComponent* Vol : CoverVolumes)
+	{
+		if (!Vol || !Vol->GetName().Contains(TEXT("Resin"), ESearchCase::IgnoreCase))
+		{
+			continue;
+		}
+		FRandomStream Rand(4200 + 31 * CoverIndex++);
+		const FVector E = Vol->GetUnscaledBoxExtent();
+		// One barrel planted on the cover top / center.
+		if (Barrel)
+		{
+			Stamp(Barrel, Vol, FVector(0.f, 0.f, E.Z * 0.15f), FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), Rand.FRandRange(0.85f, 1.1f));
+		}
+		// 3–4 crates spilled around the block (floor-ish relative Z).
+		const int32 N = CratePool.Num() > 0 ? FMath::Min(4, CratePool.Num() + 1) : 0;
+		for (int32 i = 0; i < N; ++i)
+		{
+			UStaticMesh* Mesh = CratePool[Rand.RandRange(0, CratePool.Num() - 1)];
+			const float Ang = Rand.FRandRange(0.f, 2.f * PI);
+			const float R = Rand.FRandRange(E.X * 0.55f, E.X + 90.f);
+			const FVector Loc(FMath::Cos(Ang) * R, FMath::Sin(Ang) * R, -E.Z + Rand.FRandRange(20.f, 55.f));
+			Stamp(Mesh, Vol, Loc, FRotator(0.f, Rand.FRandRange(0.f, 360.f), 0.f), Rand.FRandRange(0.7f, 1.15f));
+		}
+	}
+	UE_LOG(LogNightShift, Log,
+		TEXT("AOfficeArena::ApplyConfiguredResinCoverDressMeshes — stamped %d resin/crate props on %d resin covers (soft-miss OK)."),
+		ResinCoverDressVisuals.Num(), CoverIndex);
+}
+
 void AOfficeArena::ApplyConfiguredFluorescentMeshes()
 {
 	// Sprint H/R — Poly Haven SM_MountedFluorescent; ≤4 ceiling mounts at true ceiling Z (not on practical PointLights).
@@ -934,6 +1014,7 @@ void AOfficeArena::BeginPlay()
 	ApplyConfiguredCoverMeshes(); // Phase 8 soft ref — no-op when CoverPropMesh unset
 	ApplyConfiguredOfficeDressMeshes(); // Sprint N — desk/chair near cubicles
 	ApplyConfiguredServerRackMeshes(); // Sprint Q — rack mesh on rack volumes
+	ApplyConfiguredResinCoverDressMeshes(); // SoftStarter resin barrel + crates
 	ApplyConfiguredFluorescentMeshes(); // Sprint H — few ceiling fluorescents
 }
 

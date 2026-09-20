@@ -588,6 +588,7 @@ void AArenaGameMode::ResolveAndPropagateGameConfig()
 		CachedArena->ApplyConfiguredCoverMeshes();
 		CachedArena->ApplyConfiguredOfficeDressMeshes();
 		CachedArena->ApplyConfiguredServerRackMeshes();
+		CachedArena->ApplyConfiguredResinCoverDressMeshes();
 		CachedArena->ApplyConfiguredFluorescentMeshes();
 	}
 

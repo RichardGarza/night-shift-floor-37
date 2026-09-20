@@ -1,6 +1,6 @@
 # Night Shift — Floor 37: Project Map
 
-Last updated: 2026-09-20 (standing board tip `c147555` — SoftStarter-local Y Bot/rifle honesty). Keep this file current when a phase closes or a tree changes shape.
+Last updated: 2026-09-20 (standing board tip `e6fa8a9` — SoftStarter resin/crate soft-refs). Keep this file current when a phase closes or a tree changes shape.
 
 One spec, two implementations. `DESIGN.md` is the contract. `web/` is the playable reference. `ue5-scaffold/` is the real target.
 
@@ -108,6 +108,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Web OTS camera collision | **Done** (`520d834`) | Pull camera in along pivot→desired ray when walls/cover block; `CONFIG.camera.collisionSkin` |
 | Web softer start (UE V mirror) | **Done** (`f73a1f5`) | `spawnGraceSeconds` 7, `minStartSeparationMeters` 24, `postGraceAlienFireDelaySeconds` 1.5; aggro/fire flags match UE |
 | KayKit Warrior dual-path | **Done** (`09c5f65`) | Optional `bPreferKayKitWarrior` — soft-ref `KayKitWarrior/SK_KayKit_Warrior` **or** `KayKit_Staged/SK_Skeleton_Warrior`; default remains Mutant |
+| SoftStarter resin/crate dress | **Done** (code) | Soft-refs + `ApplyConfiguredResinCoverDressMeshes` on Resin* volumes: `SM_barrel_03`, Wooden/Plastic/Cardboard crates, Kenney `SM_Crate_Small/Medium/Wide`. SoftStarter-local `.uasset`; Desk/Chair/Cubicle/Rack unchanged. `PHASE8_WIRE.md`. |
 | Self-test | 49 / 49 | + audio wiring checks (rifle sound resolved, ambient loop playing) |
 | `Content/Imported` | **Partly committed** | Git has Mutant/Skel/Props/Surfaces/Audio + manifest. **Y Bot / SM_Rifle packages NOT READY on tip** (`Player/**` + `Weapons/**` = 0). SoftStarter-local or optional LFS later. |
 | Mouse sensitivity default | **Done** | `DefaultMouseSensitivity` / character / Esc slider seed `0.18` (was `0.35`). Slider kept. |
@@ -124,6 +125,7 @@ Richard rule: short sprints, commit often after Testing OK, document continuousl
 Tip: **`c147555`**.
 
 ### Done
+- **SoftStarter-local resin/crate dress**: barrel + Wooden/Plastic/Cardboard + Kenney Small/Medium/Wide soft-refs; apply on Resin* covers only.
 - **Audit P1 Y Bot anims**: skip Epic Mannequin `PlayerAnims` when mesh skeleton mismatches (Mixamo Y Bot) — no wrong-skeleton `PlayBodyAnim` / T-pose.
 - **Recoil feel**: DESIGN kick+recover — pitch 1.55° / yaw 0.5° / minFrac 0.45 / recover 14 / persist **0** (self-cancel). Knobs on `UGameConfig` `Rifle|Recoil`.
 - **Default mouse sensitivity** `0.18` °/count (was `0.35`) — Esc slider unchanged (`0.05`–`1.5`). Saved GameUserSettings still win if present.
@@ -181,7 +183,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ### After standing board (2026-09-18)
 
-Board above is authoritative for done / in flight / next. Tip `c147555`: Y Bot skips Mannequin PlayerAnims (no T-pose); recoil knobs tuned. Open: optional Git LFS.
+Board above is authoritative for done / in flight / next. Tip `e6fa8a9`: SoftStarter-local resin barrel + cover crates wired. Open: optional Git LFS.
 
 ### After Sprint AC (2026-09-09)
 

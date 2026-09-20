@@ -157,3 +157,20 @@ Apply path (`ApplyConfiguredPlayerVisuals`):
 - Not defaulting to Quaternius `SK_Player`.
 - W2 grounding + rifle OTS offsets unchanged after mesh swap.
 
+## SoftStarter-local — resin barrel + cover crates
+
+Soft-refs on `UGameConfig` (`Art|Phase8|ResinCover`). Soft-miss per mesh is OK (Desktop SoftStarter-local `.uasset`s; not necessarily monorepo/Git LFS).
+
+| Soft ref | Expected path |
+|---|---|
+| `ResinBarrelMesh` | `/Game/Imported/Props/Resin/Barrel_03/SM_barrel_03` |
+| `WoodenCrateMesh` | `/Game/Imported/Props/Cover/WoodenCrate_01/SM_wooden_crate_01` |
+| `PlasticCrateMesh` | `/Game/Imported/Props/Cover/PlasticCrate_01/SM_plastic_crate_01` |
+| `CardboardBoxMesh` | `/Game/Imported/Props/Cover/CardboardBox_01/SM_cardboard_box_01` |
+| `CrateSmallMesh` | `/Game/Imported/Props/Cover/SM_Crate_Small` |
+| `CrateMediumMesh` | `/Game/Imported/Props/Cover/SM_Crate_Medium` |
+| `CrateWideMesh` | `/Game/Imported/Props/Cover/SM_Crate_Wide` |
+
+Apply: `AOfficeArena::ApplyConfiguredResinCoverDressMeshes` — stamps barrel + crate pool on **Resin*** cover volumes only (non-colliding). Cubicle / Desk / Chair / ServerRack paths unchanged.
+
+Cached via `ResolvePhase8LoadedMeshes` (`CachedResinBarrelMesh`, `Cached*Crate*`, …).
