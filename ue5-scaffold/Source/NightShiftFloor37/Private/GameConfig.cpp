@@ -1,5 +1,7 @@
 #include "GameConfig.h"
+#include "NightShiftCharacter.h"
 #include "NightShiftFloor37.h"
+#include "UObject/UObjectIterator.h"
 #include "UObject/SoftObjectPath.h"
 #include "Misc/PackageName.h"
 
@@ -196,6 +198,32 @@ void UGameConfig::ApplyKayKitWarriorModelSet()
 	ApplyAlienModelSet(true);
 }
 
+
+void UGameConfig::ReapplyConfiguredPlayerVisualsAfterLateUpgrade()
+{
+	// Avoid re-entry: ApplyConfiguredPlayerVisuals → ResolvePhase8LoadedMeshes (early-out, no upgrade).
+	if (bInsidePlayerVisualReapply)
+	{
+		return;
+	}
+	bInsidePlayerVisualReapply = true;
+	int32 Count = 0;
+	for (TObjectIterator<ANightShiftCharacter> It; It; ++It)
+	{
+		ANightShiftCharacter* Char = *It;
+		if (!IsValid(Char) || !Char->GetWorld() || !Char->GetWorld()->IsGameWorld())
+		{
+			continue;
+		}
+		Char->GameConfig = this;
+		Char->ApplyConfiguredPlayerVisuals();
+		++Count;
+	}
+	bInsidePlayerVisualReapply = false;
+	UE_LOG(LogNightShift, Log,
+		TEXT("UGameConfig: re-ApplyConfiguredPlayerVisuals after late Y Bot upgrade on %d character(s)."), Count);
+}
+
 void UGameConfig::ResolvePhase8LoadedMeshes()
 {
 	// Sprint O — one LoadSynchronous batch; ApplyConfigured* reuses these pointers.
@@ -224,6 +252,8 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 				bPlayerSkeletalMannySoftMiss = false;
 				UE_LOG(LogNightShift, Log,
 					TEXT("UGameConfig: late SoftStarter upgrade — PlayerSkeletalMesh → SK_Mixamo_YBot (was Manny soft-miss or null)."));
+				// Re-stamp spawned characters now — otherwise they keep Manny until restart.
+				ReapplyConfiguredPlayerVisualsAfterLateUpgrade();
 			}
 		}
 		return;

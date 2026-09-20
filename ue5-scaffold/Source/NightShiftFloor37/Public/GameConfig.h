@@ -857,6 +857,12 @@ public:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8")
 	bool bPlayerSkeletalMannySoftMiss = false;
 
+	/** Re-entry guard for ReapplyConfiguredPlayerVisualsAfterLateUpgrade. */
+	bool bInsidePlayerVisualReapply = false;
+
+	/** After late Y Bot cache upgrade — re-stamp live ANightShiftCharacter meshes (not wait for restart). */
+	void ReapplyConfiguredPlayerVisualsAfterLateUpgrade();
+
 	/** Sprint O — LoadSynchronous once; reuse cached meshes (avoids per-alien PIE hitch). */
 	void ResolvePhase8LoadedMeshes();
 
