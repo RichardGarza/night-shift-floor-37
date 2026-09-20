@@ -210,11 +210,21 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 		{
 			CachedAlienSkeletalMesh = AlienSkeletalMesh.LoadSynchronous();
 		}
-		// Late SoftStarter: Mixamo Y Bot imported after first resolve — upgrade from Manny if soft path still null-loaded.
-		if (!CachedPlayerSkeletalMesh && FPackageName::DoesPackageExist(GameConfigPrivate::YBotPackage))
+		// Late SoftStarter: Mixamo Y Bot may land AFTER soft-miss already cached Manny.
+		// Upgrade whenever Y Bot package exists and we still hold the Manny soft-miss (or null cache).
+		if (FPackageName::DoesPackageExist(GameConfigPrivate::YBotPackage)
+			&& (bPlayerSkeletalMannySoftMiss || !CachedPlayerSkeletalMesh))
 		{
-			PlayerSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Imported/Player/SK_Mixamo_YBot.SK_Mixamo_YBot")));
-			CachedPlayerSkeletalMesh = PlayerSkeletalMesh.LoadSynchronous();
+			TSoftObjectPtr<USkeletalMesh> YBotSoft(
+				FSoftObjectPath(TEXT("/Game/Imported/Player/SK_Mixamo_YBot.SK_Mixamo_YBot")));
+			if (USkeletalMesh* YBot = YBotSoft.LoadSynchronous())
+			{
+				PlayerSkeletalMesh = YBotSoft;
+				CachedPlayerSkeletalMesh = YBot;
+				bPlayerSkeletalMannySoftMiss = false;
+				UE_LOG(LogNightShift, Log,
+					TEXT("UGameConfig: late SoftStarter upgrade — PlayerSkeletalMesh → SK_Mixamo_YBot (was Manny soft-miss or null)."));
+			}
 		}
 		return;
 	}
@@ -246,9 +256,15 @@ void UGameConfig::ResolvePhase8LoadedMeshes()
 	if (!CachedPlayerSkeletalMesh)
 	{
 		// Soft-miss Y Bot (or other) → Epic Manny interim; keep grounding/rifle offsets on character.
+		// Flag so a later SoftStarter import can still upgrade to Y Bot even though cache is filled.
 		UE_LOG(LogNightShift, Warning, TEXT("UGameConfig: PlayerSkeletalMesh soft-miss — falling back to SKM_Manny_Simple."));
 		PlayerSkeletalMesh = TSoftObjectPtr<USkeletalMesh>(FSoftObjectPath(TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple")));
 		CachedPlayerSkeletalMesh = PlayerSkeletalMesh.LoadSynchronous();
+		bPlayerSkeletalMannySoftMiss = CachedPlayerSkeletalMesh != nullptr;
+	}
+	else
+	{
+		bPlayerSkeletalMannySoftMiss = false;
 	}
 	CachedRifleMesh = RifleMesh.LoadSynchronous();
 	CachedSurfaceFloor    = SurfaceFloor.LoadSynchronous();

@@ -443,9 +443,15 @@ void ANightShiftCharacter::ApplyConfiguredPlayerVisuals()
 			bool bSocketOk = false;
 			if (CharMesh && bUsingSkeletalBody)
 			{
+				// Epic HandGrip first (Manny), then Mixamo hand bones, then other common names.
+				// RifleRelative* still applied after attach for all paths (HandGrip-tuned defaults).
 				static const FName Fallbacks[] = {
 					FName(TEXT("HandGrip_R")),
+					FName(TEXT("mixamorig:RightHand")),
+					FName(TEXT("mixamorig_RightHand")),
+					FName(TEXT("RightHand")),
 					FName(TEXT("hand_r")),
+					FName(TEXT("Hand_R")),
 					FName(TEXT("weapon_r")),
 					FName(TEXT("ik_hand_gun")),
 					FName(TEXT("hand_r_socket")),

@@ -852,6 +852,10 @@ public:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8|Cache")
 	bool bUsingKayKitWarrior = false;
 
+	/** True when CachedPlayerSkeletalMesh was filled via Epic Manny soft-miss — allows late Y Bot upgrade. */
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Art|Phase8")
+	bool bPlayerSkeletalMannySoftMiss = false;
+
 	/** Sprint O — LoadSynchronous once; reuse cached meshes (avoids per-alien PIE hitch). */
 	void ResolvePhase8LoadedMeshes();
 
