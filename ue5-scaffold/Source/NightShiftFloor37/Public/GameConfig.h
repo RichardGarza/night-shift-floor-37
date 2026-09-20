@@ -204,22 +204,38 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle")
 	float ReloadSeconds = 1.5f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle")
-	float RecoilPitchMaxDegrees = 1.2f;
+/**
+	 * DESIGN: "small random recoil kick that recovers."
+	 * Max upward pitch kick per shot (degrees). Random in [RecoilPitchMinFraction*Max, Max].
+	 * Tuned for readable per-shot feedback without wild climb (was 1.2).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle|Recoil")
+	float RecoilPitchMaxDegrees = 1.55f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle")
-	float RecoilYawMaxDegrees = 0.4f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle")
-	float RecoilRecoverySpeed = 8.f;
+	/** Max |yaw| kick per shot (degrees). Random in [-Max, +Max]. Was 0.4. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle|Recoil")
+	float RecoilYawMaxDegrees = 0.5f;
 
 	/**
-	 * Fraction of each kick that is NOT recovered (0 = camera settles exactly back, DESIGN's
-	 * "small kick that recovers"; 0.3 = spray climbs and the player pulls down). Open design decision.
+	 * Lower bound as a fraction of RecoilPitchMaxDegrees (keeps tiny rolls from feeling floaty).
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle", meta = (ClampMin = "0", ClampMax = "1"))
-	float RecoilPersistFraction = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle|Recoil", meta = (ClampMin = "0", ClampMax = "1"))
+	float RecoilPitchMinFraction = 0.45f;
 
+	/**
+	 * How fast recoverable recoil returns to zero (FInterpTo speed). Higher = snappier settle.
+	 * Was 8 — felt floaty under full-auto.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle|Recoil")
+	float RecoilRecoverySpeed = 14.f;
+
+	/**
+	 * Fraction of each kick that is NOT recovered (stays as aim climb).
+	 * 0 = full self-cancel / camera settles back (DESIGN default).
+	 * >0 = accumulating spray the player must pull down.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle|Recoil", meta = (ClampMin = "0", ClampMax = "1"))
+	float RecoilPersistFraction = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rifle")
 	float HitscanRangeMeters = 200.f;
 

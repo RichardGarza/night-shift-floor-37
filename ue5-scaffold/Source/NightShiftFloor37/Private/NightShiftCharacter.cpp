@@ -1093,7 +1093,7 @@ void ANightShiftCharacter::AddRecoilKick(float PitchDegrees, float YawDegrees)
 	RecoilOffsetDegrees.X += PitchDegrees * (1.f - Persist);
 	RecoilOffsetDegrees.Y += YawDegrees * (1.f - Persist);
 
-	// Immediate kick — snappy gunfeel (DESIGN: small random recoil)
+	// Immediate kick — DESIGN small kick; recoverable part settles via UpdateRecoilRecovery
 	AddControllerPitchInput(PitchDegrees);
 	AddControllerYawInput(YawDegrees);
 }
@@ -1106,7 +1106,7 @@ void ANightShiftCharacter::UpdateRecoilRecovery(float DeltaSeconds)
 		return;
 	}
 
-	const float Speed = GameConfig ? GameConfig->RecoilRecoverySpeed : 8.f;
+	const float Speed = GameConfig ? GameConfig->RecoilRecoverySpeed : 14.f;
 	const FVector2D Prev = RecoilOffsetDegrees;
 	RecoilOffsetDegrees = FMath::Vector2DInterpTo(RecoilOffsetDegrees, FVector2D::ZeroVector, DeltaSeconds, Speed);
 

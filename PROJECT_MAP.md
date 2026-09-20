@@ -1,6 +1,6 @@
 # Night Shift — Floor 37: Project Map
 
-Last updated: 2026-09-18 (standing board tip `3c3d6ed` — YBot uasset imported). Keep this file current when a phase closes or a tree changes shape.
+Last updated: 2026-09-20 (standing board tip `47c418a` — Y Bot anim skip + recoil). Keep this file current when a phase closes or a tree changes shape.
 
 One spec, two implementations. `DESIGN.md` is the contract. `web/` is the playable reference. `ue5-scaffold/` is the real target.
 
@@ -92,6 +92,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint W2 player grounding | **Done** | Feet on floor: mesh Z = `-CapsuleHalfHeight + PlayerMeshZOffsetCm`; soft-miss cylinder **scale-to-capsule** (`72a354b`). |
 | Kenney rifle soft path | **Done** | `RifleMesh` → `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit CC0). `.uasset` imported; `RifleRelative*` always-after-attach (`72a354b`). |
 | Mixamo Y Bot player import | **Done** | `SK_Mixamo_YBot.uasset` at `/Game/Imported/Player/SK_Mixamo_YBot` (SoftwareStarter). Soft-ref live; no longer pending. Soft-miss → Manny. |
+| Y Bot anim compatibility | **Done** (Audit P1) | When resolved mesh skeleton ≠ `PlayerAnims` (Epic Mannequin clips), skip `PlayBodyAnim` / locomotion — bind pose until Y Bot clips retargeted. Avoids T-pose. |
 | Sprint X animated aliens | **Superseded** | Quaternius `SK_Alien` / `SM_Alien` **rejected** as the enemy look (Richard). Kept only as last-resort skeletal soft-miss if Mutant package missing — never default `SM_Alien` |
 | Sprint X shooting fix | **Shipped** | Rifle trace uses complex collision + player/alien meshes block Visibility; tracer starts at the rifle muzzle. Root cause of "shots do nothing": hits only registered on the capsule, which no longer matched the visible body |
 | Sprint X lighting lift | **Shipped** | Sun 5.0 / sky 1.6 / fog 0.009, practicals 600 cd, floor/concrete albedo ×2.5, `ExposureBiasEV` 0.6 on the camera. `docs/sprintx_mannequin_aliens.png` |
@@ -110,7 +111,8 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Self-test | 49 / 49 | + audio wiring checks (rifle sound resolved, ambient loop playing) |
 | `Content/Imported` | **Partly committed** | `Aliens/Skel/` (SK_Alien + anims) is committed; office props / fluorescents / `SM_Alien` remain local-only on the Desktop copy — optional Git LFS |
 | Mouse sensitivity default | **Done** | `DefaultMouseSensitivity` / character / Esc slider seed `0.18` (was `0.35`). Slider kept. |
-| UE5 / web feel | Needs human | **Open:** recoil feel; optional Git LFS |
+| Recoil feel (DESIGN kick+recover) | **Done** | `RecoilPitchMaxDegrees` 1.55, `RecoilYawMaxDegrees` 0.5, `RecoilPitchMinFraction` 0.45, `RecoilRecoverySpeed` 14, `RecoilPersistFraction` 0 (self-cancel). Less floaty / more readable; Esc not required. |
+| UE5 / web feel | Needs human | **Open:** optional Git LFS |
 | Silhouette | **Confirmed** | `docs/sprintx_mannequin_aliens.png` (mannequin + rifle + three aliens in frame) |
 | Art / audio / packaging | Art + audio in | Mutant aliens, textured arena with neon, synthesized SFX + ambience. Packaging still open |
 
@@ -119,9 +121,11 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 
 Richard rule: short sprints, commit often after Testing OK, document continuously here as **done / in flight / next**.
 
-Tip: **`3c3d6ed`**.
+Tip: **`47c418a`**.
 
 ### Done
+- **Audit P1 Y Bot anims**: skip Epic Mannequin `PlayerAnims` when mesh skeleton mismatches (Mixamo Y Bot) — no wrong-skeleton `PlayBodyAnim` / T-pose.
+- **Recoil feel**: DESIGN kick+recover — pitch 1.55° / yaw 0.5° / minFrac 0.45 / recover 14 / persist **0** (self-cancel). Knobs on `UGameConfig` `Rifle|Recoil`.
 - **Default mouse sensitivity** `0.18` °/count (was `0.35`) — Esc slider unchanged (`0.05`–`1.5`). Saved GameUserSettings still win if present.
 - **Web softer start** (`f73a1f5`): grace 7s + spawn spacing 24m + post-grace fire delay 1.5s (UE V mirror).
 - **Web OTS camera collision** (`520d834`): camera pulls in against walls/cover.
@@ -135,7 +139,6 @@ Tip: **`3c3d6ed`**.
 - _(none — short docs board only)_
 
 ### Next / open
-- Human feel: **recoil** model.
 - Optional **Git LFS** for remaining `Content/Imported`.
 - Phase 9 web polish + Phase 10 package (parallel/last).
 
@@ -178,7 +181,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ### After standing board (2026-09-18)
 
-Board above is authoritative for done / in flight / next. Tip `3c3d6ed`: `SK_Mixamo_YBot.uasset` imported (no longer pending). Open: recoil feel, Git LFS.
+Board above is authoritative for done / in flight / next. Tip `47c418a`: Y Bot skips Mannequin PlayerAnims (no T-pose); recoil knobs tuned. Open: optional Git LFS.
 
 ### After Sprint AC (2026-09-09)
 
@@ -205,7 +208,7 @@ Richard's read after W+X: light great, character great, enemies weak, shooting o
 5. Follow-ups: AnimBlueprint + blendspace to remove clip pops; physics asset for `SK_Alien` (per-bone headshots); Git LFS decision.
 
 
-Phases 6–8 + Sprints M/N/O/Q/R/V/W/X/AA+ shipped through 2026-09-18 tip. Player soft-ref is Mixamo Y Bot (Manny interim on soft-miss) with Kenney rifle; **default enemies are Mixamo Mutant** (Quaternius rejected as primary); hitscan hits the visible bodies. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`, **human feel** (recoil). Phase 9 web + Phase 10 package remain parallel/last.
+Phases 6–8 + Sprints M/N/O/Q/R/V/W/X/AA+ shipped through 2026-09-18 tip. Player soft-ref is Mixamo Y Bot (Manny interim on soft-miss) with Kenney rifle; **default enemies are Mixamo Mutant** (Quaternius rejected as primary); hitscan hits the visible bodies. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`. Phase 9 web + Phase 10 package remain parallel/last.
 
 ### Phase 6: First playthrough + softer start — **SHIPPED**
 
@@ -231,7 +234,7 @@ Done earlier + 2026-09-08: greybox lighting tune (`BuildGreyboxLighting`); mantl
 
 Still open (human / content):
 
-- Judge feel in PIE — **recoil** accumulate vs self-cancel still an open decision.
+- Recoil: self-cancel defaults shipped (persist 0); human smoke still welcome for taste.
 - Sprint X lighting is the third lift; judge in motion. Next knob if still dark: `UGameConfig::ExposureBiasEV` (0.6).
 - Animation is single-node clip switching (no blends). If pops between clips bother you, the next step is an AnimBlueprint with a blendspace (template `ABP_Unarmed` shows the pattern) — the clips are already in `Content/Characters/Mannequins/Anims`.
 - Alien facing: `AlienMeshYawDegrees` (-90) if they run sideways. Alien size: `AlienMeshScale` (0.55).
@@ -241,7 +244,7 @@ Still open (human / content):
 
 Soft refs + `ResolvePhase8LoadedMeshes` cache: `SM_Alien`, `SM_Cubicle`, desk/chair, fluorescents. Cubicle-only cover stamps; Omie desk/chair dress (Sprint N); Kenney rack stamps (Sprint Q — `SM_ServerRack` imported); ceiling fluorescents on underside (Sprint R); hit-flash/bio tint. Sprint M yaws start cam toward nearest alien so silhouettes read on Click-to-play. Docs: `ue5-scaffold/PHASE8_WIRE.md`.
 
-**Open:** optional Git LFS for `Content/Imported/`; recoil feel; NavMesh flip / fuller atrium art from `LEVEL_SETUP_CHECKLIST.md`. Silhouette: `ue5-scaffold/Saved/sprintm_aliens_in_frame.png`. Rack asset: `/Game/Imported/Props/Office/SM_ServerRack`.
+**Open:** optional Git LFS for `Content/Imported/`; NavMesh flip / fuller atrium art from `LEVEL_SETUP_CHECKLIST.md`. Silhouette: `ue5-scaffold/Saved/sprintm_aliens_in_frame.png`. Rack asset: `/Game/Imported/Props/Office/SM_ServerRack`.
 
 ### Phase 9: Web prototype upkeep (parallel, optional)
 
@@ -259,7 +262,7 @@ Cook a Mac Development build, confirm 60 fps on integrated graphics per DESIGN, 
 
 ## Open decisions
 
-- **Recoil model**: self-cancelling vs accumulating. Affects Phase 7 and the web build equally.
+- **Recoil model**: **decided** — self-cancelling (`RecoilPersistFraction` 0). Accumulating spray available by raising persist; defaults stay DESIGN kick+recover.
 - **Ammo economy**: refill vs pickups vs larger reserve. DESIGN is silent.
 - **Alien body**: resolved — skeletal `SK_Alien`. No physics asset was generated on import, so hits use the refit capsule and headshots use the top-25% test; generating `PA_Alien` in the Editor would enable per-bone hits.
 - **Where the canonical Unreal project lives**: Desktop Test `ue5-scaffold/` is canonical. ~120 MB of template + alien `.uasset`s are now committed without LFS (largest file < 20 MB); office props / fluorescents remain local-only.

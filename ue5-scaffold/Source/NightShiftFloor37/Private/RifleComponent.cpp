@@ -327,9 +327,11 @@ void URifleComponent::KickRecoil()
 	{
 		return;
 	}
-	const float PitchMax = Config ? Config->RecoilPitchMaxDegrees : 1.2f;
-	const float YawMax = Config ? Config->RecoilYawMaxDegrees : 0.4f;
-	const float Pitch = FMath::FRandRange(0.2f, PitchMax);
+	const float PitchMax = Config ? Config->RecoilPitchMaxDegrees : 1.55f;
+	const float YawMax = Config ? Config->RecoilYawMaxDegrees : 0.5f;
+	const float MinFrac = Config ? FMath::Clamp(Config->RecoilPitchMinFraction, 0.f, 1.f) : 0.45f;
+	const float PitchMin = PitchMax * MinFrac;
+	const float Pitch = FMath::FRandRange(PitchMin, PitchMax);
 	const float Yaw = FMath::FRandRange(-YawMax, YawMax);
 	Char->AddRecoilKick(Pitch, Yaw);
 }

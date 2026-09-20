@@ -49,9 +49,9 @@ export const CONFIG = Object.freeze({
     // DESIGN lists 25 body / 50 head damage; alien death is hit-count based here
     // ("3 body or 2 headshots" — independent pools; mixed hits do not combine), see alien.js.
     reloadTime: 1.5,
-    recoilPitch: 0.018,
-    recoilYaw: 0.01,
-    recoilRecover: 8,
+    recoilPitch: 0.027, // ~1.55° — UE RecoilPitchMaxDegrees parity
+    recoilYaw: 0.0087, // ~0.5°
+    recoilRecover: 14,
     range: 80,
     muzzleOffset: { x: 0.25, y: 1.35, z: -0.6 },
   },
