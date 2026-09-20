@@ -27,7 +27,10 @@ export const CONFIG = Object.freeze({
     height: 1.65,
     shoulderOffset: 0.55,
     fov: 70,
-    mouseSens: 0.0022,
+    // Mirrors UE UGameConfig::DefaultMouseSensitivity (0.18; was 0.35 — Richard: too sensitive).
+    // mouseSens = legacy 0.0022 * (0.18/0.35) so feel tracks the UE default ratio.
+    defaultMouseSensitivity: 0.18,
+    mouseSens: 0.001131, // 0.0022 * (0.18/0.35)
     pitchMin: -1.2,
     pitchMax: 1.35,
     softLockConeDeg: 8,

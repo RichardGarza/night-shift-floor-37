@@ -43,3 +43,9 @@ Mirrors UE `UGameConfig` **Match|EarlyGame** (Sprint V). Mid/late DESIGN combat 
 | `postGraceAlienFireDelaySeconds` | **1.5** | After grace: aliens may chase/strafe but cannot fire for 1.5 s |
 
 Grace timers reset only in `softReset()` (new match / restart). Pause / resume does **not** reset grace or the post-grace fire delay.
+
+## Mouse sensitivity
+
+Web camera look uses `CONFIG.camera.defaultMouseSensitivity` (**0.18**), mirroring UE `UGameConfig::DefaultMouseSensitivity` (was 0.35; Richard found that too sensitive).
+
+`mouseSens` is radians per pointer-lock `movementX`/`movementY` pixel: **0.001131** ≈ legacy `0.0022 × (0.18 / 0.35)` so the web default tracks the same ratio as UE.
