@@ -125,8 +125,12 @@ export class Player {
   }
 
   applyRecoil() {
-    this.recoilPitch += CONFIG.rifle.recoilPitch * (0.7 + Math.random() * 0.6);
-    this.recoilYaw += (Math.random() - 0.5) * 2 * CONFIG.rifle.recoilYaw;
+    // UE KickRecoil: pitch in [RecoilPitchMinFraction * max, max]; yaw in [-max, max]
+    const minFrac = CONFIG.rifle.recoilPitchMinFraction ?? 0.45;
+    const pitchKick =
+      CONFIG.rifle.recoilPitch * (minFrac + Math.random() * (1 - minFrac));
+    this.recoilPitch += pitchKick;
+    this.recoilYaw += (Math.random() * 2 - 1) * CONFIG.rifle.recoilYaw;
   }
 
   /** Soft-lock: bias pitch/yaw toward nearest alien in cone */
@@ -203,10 +207,11 @@ export class Player {
     input.dYaw = 0;
     input.dPitch = 0;
 
-    // Recoil recover
-    const rr = CONFIG.rifle.recoilRecover * dt;
-    this.recoilPitch *= Math.max(0, 1 - rr);
-    this.recoilYaw *= Math.max(0, 1 - rr);
+    // Recoil recover — FInterpTo toward 0 (UE UpdateRecoilRecovery).
+    // FInterpTo(current, 0, dt, speed) == current * (1 - clamp(dt*speed, 0, 1))
+    const alpha = Math.min(1, CONFIG.rifle.recoilRecover * dt);
+    this.recoilPitch += (0 - this.recoilPitch) * alpha;
+    this.recoilYaw += (0 - this.recoilYaw) * alpha;
 
     // Movement relative to yaw
     _fwd.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));

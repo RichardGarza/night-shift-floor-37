@@ -51,6 +51,9 @@ export const CONFIG = Object.freeze({
     reloadTime: 1.5,
     recoilPitch: 0.027, // ~1.55° — UE RecoilPitchMaxDegrees parity
     recoilYaw: 0.0087, // ~0.5°
+    // UE RecoilPitchMinFraction — kick pitch in [minFrac*max, max]
+    recoilPitchMinFraction: 0.45,
+    // UE RecoilRecoverySpeed — FInterpTo speed toward zero (same as clamp(dt*speed) lerp)
     recoilRecover: 14,
     range: 80,
     muzzleOffset: { x: 0.25, y: 1.35, z: -0.6 },
