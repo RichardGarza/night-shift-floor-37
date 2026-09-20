@@ -1,6 +1,6 @@
 # Night Shift — Floor 37: Project Map
 
-Last updated: 2026-09-20 (standing board tip `47c418a` — Y Bot anim skip + recoil). Keep this file current when a phase closes or a tree changes shape.
+Last updated: 2026-09-20 (standing board tip `c5c440d` + Audit P1 Y Bot anim skip). Keep this file current when a phase closes or a tree changes shape.
 
 One spec, two implementations. `DESIGN.md` is the contract. `web/` is the playable reference. `ue5-scaffold/` is the real target.
 
@@ -121,7 +121,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 
 Richard rule: short sprints, commit often after Testing OK, document continuously here as **done / in flight / next**.
 
-Tip: **`47c418a`**.
+Tip: **`c5c440d`**.
 
 ### Done
 - **Audit P1 Y Bot anims**: skip Epic Mannequin `PlayerAnims` when mesh skeleton mismatches (Mixamo Y Bot) — no wrong-skeleton `PlayBodyAnim` / T-pose.
@@ -181,7 +181,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ### After standing board (2026-09-18)
 
-Board above is authoritative for done / in flight / next. Tip `47c418a`: Y Bot skips Mannequin PlayerAnims (no T-pose); recoil knobs tuned. Open: optional Git LFS.
+Board above is authoritative for done / in flight / next. Tip `c5c440d`: Y Bot skips Mannequin PlayerAnims (no T-pose); recoil knobs tuned. Open: optional Git LFS.
 
 ### After Sprint AC (2026-09-09)
 
@@ -248,10 +248,13 @@ Soft refs + `ResolvePhase8LoadedMeshes` cache: `SM_Alien`, `SM_Cubicle`, desk/ch
 
 ### Phase 9: Web prototype upkeep (parallel, optional)
 
-The web build is the fast place to test feel changes before porting them. Remaining items from the analysis:
+The web build is the fast place to test feel changes before porting them.
+
+**Shipped:** OTS camera collision (`520d834`) — pull-in via `raycastCameraSolids` + `collisionSkin` / `minDistance`. Softer start UE V mirror (`f73a1f5`) — grace 7s, separation 24m, post-grace fire delay 1.5s.
+
+Remaining items from the analysis:
 
 - Real playthrough to confirm the muzzle re-trace and platform blocking feel right.
-- Camera collision so the third-person camera does not clip through walls.
 - Spatial partitioning for the ~126 solids if alien count or map size grows.
 - Ammo economy: 120 rounds total with no pickups can make 25 kills unreachable. Either a small reserve refill per kill or ammo pickups at spawn points. Whichever you choose, mirror it in DESIGN and `UGameConfig`.
 - Keyboard path to start (currently click only) and a `visibilitychange` auto-pause.

@@ -69,6 +69,13 @@ public:
 	bool bUsingSkeletalBody = false;
 
 	/**
+	 * True when CachedPlayerAnims skeleton matches the resolved player mesh.
+	 * False for Mixamo Y Bot + Epic Mannequin clips (Audit P1) — skip PlayBodyAnim to avoid T-pose.
+	 */
+	UPROPERTY(BlueprintReadOnly, Category = "Visual")
+	bool bPlayerAnimsCompatible = false;
+
+	/**
 	 * Sprint W — swap the greybox cylinder for UGameConfig::PlayerSkeletalMesh, attach RifleMesh,
 	 * apply ExposureBiasEV to the follow camera. Safe to call repeatedly (idempotent).
 	 */
@@ -266,6 +273,9 @@ protected:
 	float FootstepDistance = 0.f;
 	/** Play Seq on GetMesh() unless it is already the active clip (looping clips never restart). */
 	void PlayBodyAnim(UAnimSequence* Seq, bool bLoop, float Rate = 1.f);
+
+	/** True when Idle anim skeleton matches Skel (Manny clips only on Manny). */
+	bool RefreshPlayerAnimCompatibility(USkeletalMesh* Skel);
 	/** Start a non-looping clip and return its duration at Rate (0 if null). */
 	float StartOneShot(UAnimSequence* Seq, EPlayerAnimState NewState, float Rate = 1.f);
 };

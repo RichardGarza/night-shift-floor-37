@@ -461,7 +461,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	float RifleMeshScale = 1.35f;
 
-	/** Sprint W — player rifle-carry animation takes (template Mannequins/Anims/Rifle + Death). */
+	/** Sprint W — player rifle-carry takes (Epic Mannequins/Anims). Compatible with SKM_Manny only;
+	 *  Mixamo Y Bot skips these at runtime (Audit P1) until retargeted clips are assigned. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Phase8")
 	FNightShiftPlayerAnimSet PlayerAnims;
 

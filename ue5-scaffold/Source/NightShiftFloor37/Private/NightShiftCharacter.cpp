@@ -23,6 +23,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/SkeletalMesh.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/Skeleton.h"
 #include "Animation/AnimSingleNodeInstance.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -390,6 +391,18 @@ void ANightShiftCharacter::ApplyConfiguredPlayerVisuals()
 			BodyMesh->SetHiddenInGame(true);
 		}
 		bUsingSkeletalBody = true;
+		RefreshPlayerAnimCompatibility(Skel);
+		if (!bPlayerAnimsCompatible && CharMesh)
+		{
+			// Bind pose > wrong-skeleton Mannequin clips on Mixamo Y Bot (T-pose risk).
+			if (UAnimSingleNodeInstance* Node = CharMesh->GetSingleNodeInstance())
+			{
+				Node->SetAnimation(nullptr);
+				Node->SetPlaying(false);
+			}
+			CurrentAnim = nullptr;
+			AnimState = EPlayerAnimState::Locomotion;
+		}
 	}
 	else if (BodyMesh && BodySM)
 	{
@@ -409,6 +422,7 @@ void ANightShiftCharacter::ApplyConfiguredPlayerVisuals()
 			CharMesh->SetHiddenInGame(true);
 		}
 		bUsingSkeletalBody = false;
+		bPlayerAnimsCompatible = false;
 	}
 	else
 	{
@@ -420,6 +434,7 @@ void ANightShiftCharacter::ApplyConfiguredPlayerVisuals()
 			CharMesh->SetHiddenInGame(true);
 		}
 		bUsingSkeletalBody = false;
+		bPlayerAnimsCompatible = false;
 		UE_LOG(LogNightShift, Log,
 			TEXT("ANightShiftCharacter::ApplyConfiguredPlayerVisuals — soft-miss; grounded cylinder (skel=%s body=%s)."),
 			Skel ? TEXT("ok") : TEXT("null"),
@@ -508,7 +523,7 @@ void ANightShiftCharacter::ApplyConfiguredPlayerVisuals()
 		}
 	}
 
-	if (bUsingSkeletalBody && CurrentAnim == nullptr)
+	if (bUsingSkeletalBody && bPlayerAnimsCompatible && CurrentAnim == nullptr)
 	{
 		PlayBodyAnim(GameConfig->CachedPlayerAnims.Idle, true);
 	}
@@ -538,8 +553,37 @@ FVector ANightShiftCharacter::GetMuzzleLocation() const
 	return GetAimOrigin() + GetAimDirection() * 40.f;
 }
 
+
+bool ANightShiftCharacter::RefreshPlayerAnimCompatibility(USkeletalMesh* Skel)
+{
+	bPlayerAnimsCompatible = false;
+	if (!Skel || !GameConfig)
+	{
+		return false;
+	}
+	UAnimSequence* Probe = GameConfig->CachedPlayerAnims.Idle.Get();
+	if (!Probe)
+	{
+		return false;
+	}
+	USkeleton* MeshSkeleton = Skel->GetSkeleton();
+	USkeleton* AnimSkeleton = Probe->GetSkeleton();
+	bPlayerAnimsCompatible = (MeshSkeleton != nullptr && AnimSkeleton != nullptr && MeshSkeleton == AnimSkeleton);
+	if (!bPlayerAnimsCompatible)
+	{
+		UE_LOG(LogNightShift, Log,
+			TEXT("ANightShiftCharacter: PlayerAnims skeleton mismatch for mesh %s — skipping PlayBodyAnim (Audit P1 T-pose guard). Retarget or swap clips for Y Bot."),
+			*Skel->GetName());
+	}
+	return bPlayerAnimsCompatible;
+}
+
 void ANightShiftCharacter::PlayBodyAnim(UAnimSequence* Seq, bool bLoop, float Rate)
 {
+	if (!bPlayerAnimsCompatible)
+	{
+		return;
+	}
 	USkeletalMeshComponent* CharMesh = GetMesh();
 	if (!CharMesh || !Seq)
 	{
@@ -557,7 +601,7 @@ void ANightShiftCharacter::PlayBodyAnim(UAnimSequence* Seq, bool bLoop, float Ra
 
 float ANightShiftCharacter::StartOneShot(UAnimSequence* Seq, EPlayerAnimState NewState, float Rate)
 {
-	if (!Seq || !bUsingSkeletalBody)
+	if (!Seq || !bUsingSkeletalBody || !bPlayerAnimsCompatible)
 	{
 		return 0.f;
 	}
@@ -570,7 +614,7 @@ float ANightShiftCharacter::StartOneShot(UAnimSequence* Seq, EPlayerAnimState Ne
 
 void ANightShiftCharacter::UpdateLocomotionAnim(float DeltaSeconds)
 {
-	if (!bUsingSkeletalBody || !GameConfig)
+	if (!bUsingSkeletalBody || !bPlayerAnimsCompatible || !GameConfig)
 	{
 		return;
 	}
@@ -1140,7 +1184,7 @@ void ANightShiftCharacter::SoftResetPlayerState()
 	AnimState = EPlayerAnimState::Locomotion;
 	OneShotRemaining = 0.f;
 	CurrentAnim = nullptr;
-	if (GameConfig && bUsingSkeletalBody)
+	if (GameConfig && bUsingSkeletalBody && bPlayerAnimsCompatible)
 	{
 		PlayBodyAnim(GameConfig->CachedPlayerAnims.Idle, true);
 	}
