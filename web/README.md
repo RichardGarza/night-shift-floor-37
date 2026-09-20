@@ -44,6 +44,18 @@ Mirrors UE `UGameConfig` **Match|EarlyGame** (Sprint V). Mid/late DESIGN combat 
 
 Grace timers reset only in `softReset()` (new match / restart). Pause / resume does **not** reset grace or the post-grace fire delay.
 
+
+## OTS camera collision
+
+Shipped (`520d834`). When walls/cover block the over-the-shoulder camera, it pulls in along the pivot→desired ray.
+
+| Tunable | Value | Effect |
+|---|---|---|
+| `camera.collisionSkin` | **0.2** | Keep cam this far inside the hit surface |
+| `camera.minDistance` | **0.65** | Floor on pull-in so the camera never collapses into the player |
+
+Uses `raycastCameraSolids` in `collision.js`; `player.js` sets `_camSolids` from arena solids each frame.
+
 ## Mouse sensitivity
 
 Web camera look uses `CONFIG.camera.defaultMouseSensitivity` (**0.18**), mirroring UE `UGameConfig::DefaultMouseSensitivity` (was 0.35; Richard found that too sensitive).
