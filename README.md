@@ -71,6 +71,7 @@ ue5-scaffold/     The Unreal project (this is the game).
   Source/         One C++ module, nine classes.
   Config/         Engine, game, and input settings.
   Content/Maps/   Floor37.umap, generated.
+  Content/Imported/  Partial: Mutant/props/audio may be in git; Y Bot + SM_Rifle packages NOT READY on tip (Player/Weapons = 0). Soft-miss → Manny / no Kenney expected. SoftStarter-local or LFS later. See IMPORT_MANIFEST / PHASE8_WIRE.
   Scripts/        Headless map generator.
   *.md            Editor drop-in guides for adding real content.
 web/              Earlier Three.js prototype of the same spec. Not maintained.

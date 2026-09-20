@@ -44,6 +44,10 @@ If `Content/Maps/Floor37.umap` is missing, regenerate it headlessly:
 > **Missing Editor Content blockers → see [`EDITOR_DROP_IN.md`](EDITOR_DROP_IN.md)**  
 > Exact click-paths for `DA_GameConfig`, Enhanced Input IMC/IA, `WBP_NightShiftHUD` → `HUDWidgetClass`, `AFXPoolManager`, and NavMesh (Audit/Boss gates). Scaffold ships no `.uasset` binaries.
 
+## Content/Imported (SoftStarter vs clone)
+
+**Y Bot / Kenney `SM_Rifle` Imported packages are NOT READY on tip.** Soft paths exist in code, but `Content/Imported/Player/**` and `Weapons/**` have **0 tracked packages** on the monorepo. Soft-miss → Epic Manny / no Kenney mesh is expected on a clean clone. Optional Desktop SoftStarter-local `.uasset` or Git LFS later. Other Imported packages (Mutant, Skel, office props, surfaces, audio) may be in git. See `Content/Imported/IMPORT_MANIFEST.md` and `PHASE8_WIRE.md`.
+
 ## Modules
 
 | Class | Role |

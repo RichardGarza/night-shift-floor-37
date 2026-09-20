@@ -1,8 +1,10 @@
 # Phase 8 Import Manifest — Night Shift Floor 37
 
-Canonical root: `/Users/garzamacbookair/Desktop/Test/night-shift-floor-37/ue5-scaffold/Content/Imported/`
+> **Location policy (Audit P1):** Mixamo Y Bot and Kenney `SM_Rifle` Imported **packages are NOT READY on tip/monorepo**. Soft paths exist in code (`/Game/Imported/Player/SK_Mixamo_YBot`, `/Game/Imported/Weapons/SM_Rifle`), but `Content/Imported/Player/**` and `Content/Imported/Weapons/**` have **0 tracked packages** on tip. Soft-miss → Epic Manny / no Kenney mesh is **expected** on a clean clone. Desktop SoftStarter-local `.uasset`s (or optional Git LFS later) are the only way those soft paths resolve. Do **not** claim Y Bot / SM_Rifle Imported packages READY.
 
-## 1. Omie Office Set — READY
+Canonical root (Desktop SoftStarter-local): `/Users/garzamacbookair/Desktop/Test/night-shift-floor-37/ue5-scaffold/Content/Imported/`
+
+## 1. Omie Office Set — READY (Desktop SoftStarter-local / staged FBX)
 - Path: `OmieOfficeSet/extracted/` (from `OmieOfficeSet_UE_Ready.zip`)
 - License: **CC0**
 - Source: https://omies-assets.itch.io/omies-assets-office-set
@@ -18,7 +20,7 @@ Canonical root: `/Users/garzamacbookair/Desktop/Test/night-shift-floor-37/ue5-sc
 - Alien FBX (ready now): `QuaterniusUltimateMonsters/pack/Big/FBX/Alien.fbx`
 - Also: `Big/glTF/Alien.gltf`, `Big/OBJ/Alien.obj`
 
-## 3. Poly Haven Mounted Fluorescent Lights — READY
+## 3. Poly Haven Mounted Fluorescent Lights — READY (Desktop SoftStarter-local / staged FBX)
 - Path: `PolyHaven_MountedFluorescentLights/`
 - License: **CC0** (https://polyhaven.com/license)
 - Source: https://polyhaven.com/a/mounted_fluorescent_lights
@@ -42,9 +44,14 @@ Import from `Content/Imported/` into project Content (suggested folders: `Props/
 - Editor: import FBX → `/Game/Imported/Props/Office/SM_ServerRack` for PIE soft-ref resolve
 - Optional later: Sketchfab Dreadler Server Rack (CC-BY) if Sketchfab login available
 
-## Player — Mixamo Y Bot — READY (FBX + uasset)
-- Soft path: `/Game/Imported/Player/SK_Mixamo_YBot`
-- FBX: `Content/Imported/Player/SK_Mixamo_YBot.fbx` (1,982,368 B)
-- Editor: `SK_Mixamo_YBot.uasset` + Skeleton + PhysicsAsset
-- Soft-miss: Epic Manny
+## Player — Mixamo Y Bot — NOT IN MONOREPO (soft path only; packages empty on tip)
+- Soft path (code only): `/Game/Imported/Player/SK_Mixamo_YBot`
+- Tip / GitHub monorepo: `Content/Imported/Player/**` = **0 packages** — **not READY**
+- Soft-miss on clean clone / tip without SoftStarter: **Epic Manny** (expected)
+- Optional: Desktop SoftStarter-local `.uasset` import, or Git LFS later — until then do not claim Imported Y Bot READY
 
+## Weapons — Kenney SM_Rifle — NOT IN MONOREPO (soft path only; packages empty on tip)
+- Soft path (code only): `/Game/Imported/Weapons/SM_Rifle`
+- Tip / GitHub monorepo: `Content/Imported/Weapons/**` = **0 packages** — **not READY**
+- Soft-miss on clean clone / tip without SoftStarter: **no Kenney rifle mesh** (expected; greybox / soft-miss path)
+- Optional: Desktop SoftStarter-local `.uasset`, or Git LFS later — until then do not claim Imported SM_Rifle READY

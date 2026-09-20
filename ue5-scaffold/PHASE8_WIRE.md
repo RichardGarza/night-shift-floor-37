@@ -2,6 +2,8 @@
 
 Tip baseline: `51b700c`. Soft refs live on `UGameConfig` (`EnsurePhase8DefaultSoftPaths`).
 
+**Imported / SoftStarter policy (Audit P1):** Y Bot and Kenney `SM_Rifle` soft paths exist in code, but tip/monorepo `Content/Imported/Player/**` and `Weapons/**` have **0 packages** — **not READY**. Soft-miss → Manny / no Kenney mesh is expected on a clean clone. Desktop SoftStarter-local import or optional Git LFS later only. Do not claim those Imported packages READY.
+
 ## Staged FBX (import sources)
 
 | Role | Source FBX | Import as StaticMesh asset path |
@@ -98,12 +100,12 @@ Runtime `ResolveOrCreate` fills soft paths when null. Creating `DA_GameConfig` i
 
 - `AlienSkeletalMesh` default: `/Game/Imported/Aliens/Mutant/SK_Mutant` (Mixamo Mutant) when package exists.
 - `AlienBodyMesh` is **not** defaulted to Quaternius `SM_Alien`.
-- `RifleMesh` default: `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit `blaster-r`). **uasset READY.**
+- `RifleMesh` soft path: `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit `blaster-r`). **NOT READY on tip** — `Content/Imported/Weapons/**` empty (0 packages). Soft-miss → no Kenney mesh (expected). Optional Desktop SoftStarter-local `.uasset` or Git LFS later.
 - Player W2 grounding unchanged.
 
-## OTS gun verify (post SoftStarter SM_Rifle.uasset)
+## OTS gun verify (post SoftStarter SM_Rifle.uasset — Desktop SoftStarter-local)
 
-- Soft path `/Game/Imported/Weapons/SM_Rifle` resolves (uasset on disk).
+- Soft path `/Game/Imported/Weapons/SM_Rifle` resolves when the SoftStarter `.uasset` is on the Desktop Test tree (not from a bare git clone).
 - Locked OTS attach defaults — see **Rifle OTS attach polish** below.
 - Mutant: `MutantMeshScale` **1.15** (~2.1 m vs player ~1.8 m) via `FitSkeletalBody` bounds fit — not tiny/huge.
 - `ResolvePhase8LoadedMeshes` retries null rifle/alien caches after late SoftStarter imports.
@@ -129,7 +131,7 @@ Apply path (`ApplyConfiguredPlayerVisuals`):
 
 ## Audit P2 — late Y Bot upgrade + Mixamo rifle sockets (NumberFourCoding)
 
-1. **Late Y Bot after Manny soft-miss:** `ResolvePhase8LoadedMeshes` sets `bPlayerSkeletalMannySoftMiss` when soft-miss fills the cache with `SKM_Manny_Simple`. On later calls (after SoftStarter import), if `/Game/Imported/Player/SK_Mixamo_YBot` exists and that flag is set (or cache still null), upgrade soft-ref + cache to Y Bot — no longer blocked by a filled Manny cache.
+1. **Late Y Bot after Manny soft-miss:** `ResolvePhase8LoadedMeshes` sets `bPlayerSkeletalMannySoftMiss` when soft-miss fills the cache with `SKM_Manny_Simple`. On later calls (after SoftStarter import), if `/Game/Imported/Player/SK_Mixamo_YBot` exists and that flag is set (or cache still null), upgrade soft-ref + cache to Y Bot — no longer blocked by a filled Manny cache. After that upgrade, `ReapplyConfiguredPlayerVisualsAfterLateUpgrade` calls `ApplyConfiguredPlayerVisuals` on live `ANightShiftCharacter`s so the spawned mesh does not stay Manny until restart.
 2. **Mixamo rifle sockets:** socket try order now includes `mixamorig:RightHand`, `mixamorig_RightHand`, `RightHand`, `Hand_R` before mesh-root soft-attach. `RifleRelative*` still applied for HandGrip / all socket hits (HandGrip-tuned defaults kept).
 
 
@@ -150,7 +152,7 @@ Apply path (`ApplyConfiguredPlayerVisuals`):
 ## Player soft-ref — Mixamo Y Bot
 
 - **Default soft path:** `/Game/Imported/Player/SK_Mixamo_YBot` (ModelFinder Mixamo Y Bot).
-- **Editor uasset:** READY — `SK_Mixamo_YBot.uasset` + Skeleton + PhysicsAsset (SoftStarter). Soft-ref should resolve in PIE.
+- **Imported package status:** **NOT READY on tip/monorepo** — `Content/Imported/Player/**` = 0 packages. Soft-miss → Epic Manny (expected). Optional Desktop SoftStarter-local `.uasset` / Git LFS later; do not claim Y Bot Imported READY.
 - **Soft-miss:** `/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple` (Epic Manny interim).
 - Not defaulting to Quaternius `SK_Player`.
 - W2 grounding + rifle OTS offsets unchanged after mesh swap.

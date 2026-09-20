@@ -61,3 +61,16 @@ Uses `raycastCameraSolids` in `collision.js`; `player.js` sets `_camSolids` from
 Web camera look uses `CONFIG.camera.defaultMouseSensitivity` (**0.18**), mirroring UE `UGameConfig::DefaultMouseSensitivity` (was 0.35; Richard found that too sensitive).
 
 `mouseSens` is radians per pointer-lock `movementX`/`movementY` pixel: **0.001131** ≈ legacy `0.0022 × (0.18 / 0.35)` so the web default tracks the same ratio as UE.
+
+## Recoil
+
+Mirrors UE rifle recoil defaults:
+
+| Tunable | Web | UE |
+|---|---|---|
+| Max pitch kick | `recoilPitch` **0.027** rad (~1.55°) | `RecoilPitchMaxDegrees` 1.55 |
+| Pitch min fraction | `recoilPitchMinFraction` **0.45** | `RecoilPitchMinFraction` 0.45 |
+| Yaw kick | `recoilYaw` **0.0087** rad (~0.5°) | `RecoilYawMaxDegrees` 0.5 |
+| Recover | `recoilRecover` **14** via FInterpTo-to-zero | `RecoilRecoverySpeed` 14 (`FInterpTo`) |
+
+Each shot picks pitch in `[minFraction × max, max]` (no overshoot above max). Recover uses the same lerp-to-zero as UE `FInterpTo` (`alpha = clamp(dt × speed, 0, 1)`).

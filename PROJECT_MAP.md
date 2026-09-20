@@ -1,6 +1,6 @@
 # Night Shift — Floor 37: Project Map
 
-Last updated: 2026-09-20 (standing board tip `c5c440d` + Audit P1 Y Bot anim skip). Keep this file current when a phase closes or a tree changes shape.
+Last updated: 2026-09-20 (standing board tip `c147555` — SoftStarter-local Y Bot/rifle honesty). Keep this file current when a phase closes or a tree changes shape.
 
 One spec, two implementations. `DESIGN.md` is the contract. `web/` is the playable reference. `ue5-scaffold/` is the real target.
 
@@ -40,7 +40,7 @@ night-shift-floor-37/
     ├── Config/               DefaultEngine / DefaultGame / DefaultInput merge stubs.
     ├── Content/Maps/Floor37.umap  Generated map: OfficeArena + FXPoolManager + PlayerStart.
     ├── Content/Characters/Mannequins/  UE template Manny/Quinn + rifle/death/unarmed anims (Sprint W, committed).
-    ├── Content/Imported/Weapons/SM_Rifle  Kenney Blaster Kit CC0 (soft ref `/Game/Imported/Weapons/SM_Rifle`; Sprint W2+).
+    ├── Content/Imported/Weapons/SM_Rifle  Kenney Blaster Kit CC0 soft ref (Sprint W2+); SoftStarter `.uasset` Desktop-local — not in clone.
     ├── Content/Imported/Aliens/Skel/  Quaternius Alien as SK_Alien + 14 anim takes + atlas (Sprint X, committed).
     ├── Scripts/make_floor37_map.py  Headless map generator (Python commandlet).
     ├── Scripts/import_alien_skeletal.py  Headless FBX → skeletal mesh + anims import (Sprint X).
@@ -88,10 +88,10 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Sprint Q server racks | **Shipped** | `ServerRackPropMesh` on Rack* volumes; Kenney CC0 — `/Game/Imported/Props/Office/SM_ServerRack` **imported** |
 | Sprint R ceiling fluorescents | **Shipped** | Mount Z = CeilingClamp underside − 35cm (`3ac5f1a`) |
 | Sprint V softer start + readability | **Done** (`71f694f`) | Grace 7s, `MinStartSeparation` 24m, `PostGraceAlienFireDelaySeconds` 1.5s (chase OK, no fire); brighter sun/sky, thinner fog, stronger practicals. Self-test waits out grace. `Saved/sprintv_lighting_start.png` |
-| Sprint W player body + rifle | **Done** | Player soft-ref prefers `/Game/Imported/Player/SK_Mixamo_YBot`; soft-miss → Epic Manny. Kenney rifle `/Game/Imported/Weapons/SM_Rifle` + rifle clips. W2 grounding kept. Soft-miss mesh → grounded cylinder |
+| Sprint W player body + rifle | **Done** (soft paths; tip packages empty) | Soft-refs prefer Y Bot + `SM_Rifle`; tip `Imported/Player` + `Weapons` = **0 packages** → soft-miss Manny / no Kenney (expected). W2 grounding kept. |
 | Sprint W2 player grounding | **Done** | Feet on floor: mesh Z = `-CapsuleHalfHeight + PlayerMeshZOffsetCm`; soft-miss cylinder **scale-to-capsule** (`72a354b`). |
-| Kenney rifle soft path | **Done** | `RifleMesh` → `/Game/Imported/Weapons/SM_Rifle` (Kenney Blaster Kit CC0). `.uasset` imported; `RifleRelative*` always-after-attach (`72a354b`). |
-| Mixamo Y Bot player import | **Done** | `SK_Mixamo_YBot.uasset` at `/Game/Imported/Player/SK_Mixamo_YBot` (SoftwareStarter). Soft-ref live; no longer pending. Soft-miss → Manny. |
+| Kenney rifle soft path | **Soft path only — NOT READY on tip** | Soft path `/Game/Imported/Weapons/SM_Rifle` exists; tip `Content/Imported/Weapons/**` = **0 packages**. Soft-miss → no Kenney mesh (expected). SoftStarter-local or optional LFS later. `RifleRelative*` (`72a354b`). |
+| Mixamo Y Bot player import | **Soft path only — NOT READY on tip** | Soft path `/Game/Imported/Player/SK_Mixamo_YBot` exists; tip `Content/Imported/Player/**` = **0 packages**. Soft-miss → Epic Manny (expected). SoftStarter-local or optional LFS later. |
 | Y Bot anim compatibility | **Done** (Audit P1) | When resolved mesh skeleton ≠ `PlayerAnims` (Epic Mannequin clips), skip `PlayBodyAnim` / locomotion — bind pose until Y Bot clips retargeted. Avoids T-pose. |
 | Sprint X animated aliens | **Superseded** | Quaternius `SK_Alien` / `SM_Alien` **rejected** as the enemy look (Richard). Kept only as last-resort skeletal soft-miss if Mutant package missing — never default `SM_Alien` |
 | Sprint X shooting fix | **Shipped** | Rifle trace uses complex collision + player/alien meshes block Visibility; tracer starts at the rifle muzzle. Root cause of "shots do nothing": hits only registered on the capsule, which no longer matched the visible body |
@@ -109,7 +109,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 | Web softer start (UE V mirror) | **Done** (`f73a1f5`) | `spawnGraceSeconds` 7, `minStartSeparationMeters` 24, `postGraceAlienFireDelaySeconds` 1.5; aggro/fire flags match UE |
 | KayKit Warrior dual-path | **Done** (`09c5f65`) | Optional `bPreferKayKitWarrior` — soft-ref `KayKitWarrior/SK_KayKit_Warrior` **or** `KayKit_Staged/SK_Skeleton_Warrior`; default remains Mutant |
 | Self-test | 49 / 49 | + audio wiring checks (rifle sound resolved, ambient loop playing) |
-| `Content/Imported` | **Partly committed** | `Aliens/Skel/` (SK_Alien + anims) is committed; office props / fluorescents / `SM_Alien` remain local-only on the Desktop copy — optional Git LFS |
+| `Content/Imported` | **Partly committed** | Git has Mutant/Skel/Props/Surfaces/Audio + manifest. **Y Bot / SM_Rifle packages NOT READY on tip** (`Player/**` + `Weapons/**` = 0). SoftStarter-local or optional LFS later. |
 | Mouse sensitivity default | **Done** | `DefaultMouseSensitivity` / character / Esc slider seed `0.18` (was `0.35`). Slider kept. |
 | Recoil feel (DESIGN kick+recover) | **Done** | `RecoilPitchMaxDegrees` 1.55, `RecoilYawMaxDegrees` 0.5, `RecoilPitchMinFraction` 0.45, `RecoilRecoverySpeed` 14, `RecoilPersistFraction` 0 (self-cancel). Less floaty / more readable; Esc not required. |
 | UE5 / web feel | Needs human | **Open:** optional Git LFS |
@@ -121,7 +121,7 @@ Cross-references: GameMode pushes `UGameConfig` into everything at BeginPlay. Bo
 
 Richard rule: short sprints, commit often after Testing OK, document continuously here as **done / in flight / next**.
 
-Tip: **`c5c440d`**.
+Tip: **`c147555`**.
 
 ### Done
 - **Audit P1 Y Bot anims**: skip Epic Mannequin `PlayerAnims` when mesh skeleton mismatches (Mixamo Y Bot) — no wrong-skeleton `PlayBodyAnim` / T-pose.
@@ -130,8 +130,8 @@ Tip: **`c5c440d`**.
 - **Web softer start** (`f73a1f5`): grace 7s + spawn spacing 24m + post-grace fire delay 1.5s (UE V mirror).
 - **Web OTS camera collision** (`520d834`): camera pulls in against walls/cover.
 - **UE Mutant enemy default**: `/Game/Imported/Aliens/Mutant/SK_Mutant` (Quaternius rejected as primary).
-- **Mixamo Y Bot player**: `SK_Mixamo_YBot.uasset` **imported** at `/Game/Imported/Player/SK_Mixamo_YBot` (no longer pending). Soft-miss → Epic Manny.
-- **Kenney rifle + grounding**: `/Game/Imported/Weapons/SM_Rifle` + cylinder scale-to-capsule / `RifleRelative*` (`72a354b`).
+- **Mixamo Y Bot player**: soft path only; tip `Imported/Player/**` empty (0) — **not READY**. Soft-miss → Epic Manny (expected). SoftStarter-local / LFS later optional.
+- **Kenney rifle + grounding**: soft path only; tip `Imported/Weapons/**` empty (0) — **not READY**. Soft-miss → no Kenney mesh (expected). SoftStarter-local / LFS later optional. `RifleRelative*` (`72a354b`).
 - **KayKit dual-path** (`09c5f65` / `067ab0d`): optional Warrior soft-ref (`KayKitWarrior` or `KayKit_Staged`); Mutant stays default unless `bPreferKayKitWarrior`.
 - **Sprint V** (`71f694f`): UE brightness + grace/separation/fire lock.
 
@@ -181,7 +181,7 @@ Do not merge from the copy under `~/Documents/Unreal Projects/NightShiftFloor37/
 
 ### After standing board (2026-09-18)
 
-Board above is authoritative for done / in flight / next. Tip `c5c440d`: Y Bot skips Mannequin PlayerAnims (no T-pose); recoil knobs tuned. Open: optional Git LFS.
+Board above is authoritative for done / in flight / next. Tip `c147555`: Y Bot skips Mannequin PlayerAnims (no T-pose); recoil knobs tuned. Open: optional Git LFS.
 
 ### After Sprint AC (2026-09-09)
 
@@ -208,7 +208,7 @@ Richard's read after W+X: light great, character great, enemies weak, shooting o
 5. Follow-ups: AnimBlueprint + blendspace to remove clip pops; physics asset for `SK_Alien` (per-bone headshots); Git LFS decision.
 
 
-Phases 6–8 + Sprints M/N/O/Q/R/V/W/X/AA+ shipped through 2026-09-18 tip. Player soft-ref is Mixamo Y Bot (Manny interim on soft-miss) with Kenney rifle; **default enemies are Mixamo Mutant** (Quaternius rejected as primary); hitscan hits the visible bodies. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`. Phase 9 softer-start + OTS camera **shipped**; other Phase 9 opens + Phase 10 package remain parallel/last.
+Phases 6–8 + Sprints M/N/O/Q/R/V/W/X/AA+ shipped through 2026-09-18 tip. Player soft-ref is Mixamo Y Bot (Manny interim on soft-miss) with Kenney rifle; **default enemies are Mixamo Mutant** (Quaternius rejected as primary); hitscan hits the visible bodies. **Visual unlock + silhouette confirmed** (`ue5-scaffold/Saved/sprintm_aliens_in_frame.png`). **Server-rack `.uasset` imported** (`/Game/Imported/Props/Office/SM_ServerRack`). Open items: optional **Git LFS** for `Content/Imported`. Phase 9 softer-start + OTS camera **shipped** (`f73a1f5` / `520d834`); other Phase 9 opens + Phase 10 package remain parallel/last.
 
 ### Phase 6: First playthrough + softer start — **SHIPPED**
 
@@ -248,13 +248,10 @@ Soft refs + `ResolvePhase8LoadedMeshes` cache: `SM_Alien`, `SM_Cubicle`, desk/ch
 
 ### Phase 9: Web prototype upkeep (parallel, optional)
 
-The web build is the fast place to test feel changes before porting them.
-
-**Shipped:** OTS camera collision (`520d834`) — pull-in via `raycastCameraSolids` + `collisionSkin` / `minDistance`. Softer start UE V mirror (`f73a1f5`) — grace 7s, separation 24m, post-grace fire delay 1.5s.
-
-Remaining items from the analysis:
+The web build is the fast place to test feel changes before porting them. Remaining items from the analysis:
 
 - Real playthrough to confirm the muzzle re-trace and platform blocking feel right.
+- Camera collision so the third-person camera does not clip through walls.
 - Spatial partitioning for the ~126 solids if alien count or map size grows.
 - Ammo economy: 120 rounds total with no pickups can make 25 kills unreachable. Either a small reserve refill per kill or ammo pickups at spawn points. Whichever you choose, mirror it in DESIGN and `UGameConfig`.
 - Keyboard path to start (currently click only) and a `visibilitychange` auto-pause.
@@ -268,4 +265,4 @@ Cook a Mac Development build, confirm 60 fps on integrated graphics per DESIGN, 
 - **Recoil model**: **decided** — self-cancelling (`RecoilPersistFraction` 0). Accumulating spray available by raising persist; defaults stay DESIGN kick+recover.
 - **Ammo economy**: refill vs pickups vs larger reserve. DESIGN is silent.
 - **Alien body**: resolved — skeletal `SK_Alien`. No physics asset was generated on import, so hits use the refit capsule and headshots use the top-25% test; generating `PA_Alien` in the Editor would enable per-bone hits.
-- **Where the canonical Unreal project lives**: Desktop Test `ue5-scaffold/` is canonical. ~120 MB of template + alien `.uasset`s are now committed without LFS (largest file < 20 MB); office props / fluorescents remain local-only.
+- **Where the canonical Unreal project lives**: Desktop Test `ue5-scaffold/` is canonical. Some Imported uassets (Mutant/Skel/Props/Surfaces/Audio) are committed without LFS; SoftStarter player/rifle (Y Bot, `SM_Rifle`) stay Desktop SoftStarter-local — do not claim clone-ready Imported for those.
